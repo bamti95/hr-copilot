@@ -46,16 +46,27 @@ class AdminMenuRepository(BaseRepository[AdminMenu]):
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
-    
-    async def exists_childern(self, menu_id: int) -> bool:
+
+    async def find_by_ids(self, menu_ids: list[int]) -> list[AdminMenu]:
+        if not menu_ids:
+            return []
+
+        stmt = select(AdminMenu).where(
+            AdminMenu.id.in_(menu_ids),
+            AdminMenu.del_tf == "N",
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def exists_children(self, menu_id: int) -> bool:
         stmt = select(func.count(AdminMenu.id)).where(
             AdminMenu.parent_id == menu_id,
             AdminMenu.del_tf == "N",
         )
-        
+
         result = await self.db.execute(stmt)
-        return result.scalar_one > 0
-        
+        return result.scalar_one() > 0
+
     async def count_list(
         self,
         keyword: str | None = None,
@@ -132,12 +143,3 @@ class AdminMenuRepository(BaseRepository[AdminMenu]):
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
-    
-    
-    
-
-        
- 
-    
-        
-    

@@ -10,7 +10,7 @@ class AdmMenuTreeResponse(BaseModel):
     sort_no: int = Field(..., alias="sortNo")
     icon: str | None = None
     use_tf: str | None = Field(None, alias="useTf")
-    children: list["AdmMenuTreeResponse"] = []
+    children: list["AdmMenuTreeResponse"] = Field(default_factory=list)
 
     model_config = ConfigDict(
         from_attributes=True,
