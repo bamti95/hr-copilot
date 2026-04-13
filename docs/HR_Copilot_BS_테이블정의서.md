@@ -22,7 +22,7 @@
 ---
 
 ## ERD 
-![ERD 이미ㅣㅈ](images/erd_v1.png)
+![ERD 이미지=](images/erd_v1.png)
 
 ---
 
