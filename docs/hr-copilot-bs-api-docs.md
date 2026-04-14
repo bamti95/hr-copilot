@@ -171,7 +171,7 @@ Authorization: Bearer {access_token}
 #### API 기본 정보
 - **Method:** `POST`
 - **Endpoint:** `/auth/login`
-- **Description:** login_id와 password로 관리자 인증을 수행하고 JWT 토큰을 발급합니다.
+- **Description:** login_id와 password로 관리자 인증을 수행하고 JWT 토큰을 발급합니다. 계정 상태를 확인합니다.
 
 #### Request
 
@@ -213,10 +213,9 @@ Authorization: Bearer {access_token}
 | :--- | :--- | :--- | :--- |
 | **401** | `INVALID_CREDENTIALS` | "로그인 정보가 일치하지 않습니다." | login_id 또는 password 불일치 시 |
 | **403** | `ACCOUNT_INACTIVE` | "비활성화된 계정입니다." | status가 INACTIVE일 때 |
-| **403** | `ACCOUNT_LOCKED` | "잠긴 계정입니다. 관리자에게 문의하세요." | status가 LOCK일 때 |
 
 #### 데이터 제약 조건 (Validation)
-1. **last_login_at**: 로그인 성공 시 자동 갱신
+1. **last_login_at**: 로그인 성공 시 자동 갱신 (FR-01-03)
 2. **status**: ACTIVE 상태만 로그인 가능
 
 ---
@@ -227,7 +226,7 @@ Authorization: Bearer {access_token}
 #### API 기본 정보
 - **Method:** `PATCH`
 - **Endpoint:** `/users/{user_id}/approve`
-- **Description:** REQUESTED 상태의 사용자 계정 요청을 승인합니다.
+- **Description:** request_status가 REQUESTED인 사용자 계정 요청을 검토 후 승인 처리합니다.
 
 #### Request
 
@@ -263,6 +262,7 @@ Authorization: Bearer {access_token}
     "status": "ACTIVE",
     "role_type": "EDITOR",
     "approved_by": "550e8400-e29b-41d4-a716-446655440000",
+    "created_by": "550e8400-e29b-41d4-a716-446655440000",
     "approved_at": "2024-04-14T12:00:00Z"
   }
 }
@@ -277,7 +277,9 @@ Authorization: Bearer {access_token}
 #### 데이터 제약 조건 (Validation)
 1. **request_status**: REQUESTED → APPROVED로 변경
 2. **status**: ACTIVE로 설정
-3. **approved_by**: 요청한 관리자 ID 자동 저장
+3. **role_type**: 설정 필수 (FR-01-05)
+4. **created_by**: 계정을 생성한 관리자 ID 저장 (FR-01-05)
+5. **approved_by**: 요청한 관리자 ID 자동 저장 (FR-01-06)
 
 ---
 
@@ -287,7 +289,7 @@ Authorization: Bearer {access_token}
 #### API 기본 정보
 - **Method:** `PATCH`
 - **Endpoint:** `/users/{user_id}/reject`
-- **Description:** REQUESTED 상태의 사용자 계정 요청을 반려합니다.
+- **Description:** request_status가 REQUESTED인 사용자 계정 요청을 반려 처리합니다.
 
 #### Request
 
@@ -305,7 +307,7 @@ Authorization: Bearer {access_token}
 ##### C. Request Body
 | 변수명 | 타입 | 필수 여부 | 제약 조건 | 설명 |
 | :--- | :--- | :---: | :--- | :--- |
-| `rejection_reason` | `string` | **필수** | 최대 500자 | 반려 사유 |
+| `rejection_note` | `string` | 선택 | 최대 500자 | 반려 사유 |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -316,10 +318,10 @@ Authorization: Bearer {access_token}
   "message": "사용자 계정 요청이 반려되었습니다.",
   "data": {
     "id": "660e8400-e29b-41d4-a716-446655440001",
+    "name": "김철수",
+    "email": "user@example.com",
     "request_status": "REJECTED",
-    "rejection_reason": "신청 정보가 불충분합니다.",
-    "rejected_by": "550e8400-e29b-41d4-a716-446655440000",
-    "rejected_at": "2024-04-14T12:30:00Z"
+    "rejected_at": "2024-04-14T12:00:00Z"
   }
 }
 ```
@@ -328,19 +330,22 @@ Authorization: Bearer {access_token}
 | 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
 | :--- | :--- | :--- | :--- |
 | **400** | `INVALID_STATUS` | "반려 가능한 상태가 아닙니다." | request_status가 REQUESTED가 아닐 때 |
-| **400** | `REJECTION_REASON_REQUIRED` | "반려 사유는 필수입니다." | rejection_reason이 없을 때 |
+| **404** | `USER_NOT_FOUND` | "사용자를 찾을 수 없습니다." | 존재하지 않는 user_id일 때 |
+
+#### 데이터 제약 조건 (Validation)
+1. **request_status**: REQUESTED → REJECTED로 변경
 
 ---
 
 ## 2. 서비스 사용자 관리
 
-### 2.1 사용자 계정 생성 요청
+### 2.1 사용자 계정 생성 요청 등록
 **FR-02-01: 사용자 계정 생성 요청 등록**
 
 #### API 기본 정보
 - **Method:** `POST`
 - **Endpoint:** `/users/request`
-- **Description:** 서비스 사용자 계정 생성을 요청합니다. 관리자 승인 후 활성화됩니다.
+- **Description:** 요청자 정보와 요청 사유를 저장하여 계정 생성을 요청합니다.
 
 #### Request
 
@@ -354,8 +359,6 @@ Authorization: Bearer {access_token}
 | :--- | :--- | :---: | :--- | :--- |
 | `requested_by_name` | `string` | **필수** | 2~50자 | 요청자 이름 |
 | `requested_by_email` | `string` | **필수** | 이메일 형식 | 요청자 이메일 |
-| `phone` | `string` | 선택 | 전화번호 형식 | 요청자 전화번호 |
-| `department` | `string` | 선택 | 최대 100자 | 소속 부서 |
 | `request_note` | `string` | 선택 | 최대 500자 | 요청 사유 |
 
 #### Response
@@ -364,15 +367,13 @@ Authorization: Bearer {access_token}
 ```json
 {
   "success": true,
-  "message": "계정 생성 요청이 접수되었습니다.",
+  "message": "계정 생성 요청이 등록되었습니다.",
   "data": {
     "id": "660e8400-e29b-41d4-a716-446655440001",
     "requested_by_name": "김철수",
     "requested_by_email": "user@example.com",
-    "phone": "010-9876-5432",
-    "department": "인사팀",
+    "request_note": "HR 업무를 위한 계정 요청드립니다.",
     "request_status": "REQUESTED",
-    "request_note": "채용 시스템 사용을 위해 계정이 필요합니다.",
     "created_at": "2024-04-14T11:00:00Z"
   }
 }
@@ -381,12 +382,12 @@ Authorization: Bearer {access_token}
 #### 에러 응답 (Error Response)
 | 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
 | :--- | :--- | :--- | :--- |
-| **400** | `DUPLICATE_EMAIL` | "이미 요청된 이메일입니다." | 중복된 이메일로 요청 시 |
 | **400** | `INVALID_EMAIL` | "유효하지 않은 이메일 형식입니다." | 이메일 형식 오류 시 |
+| **409** | `DUPLICATE_REQUEST` | "이미 요청한 이메일입니다." | 동일 이메일로 중복 요청 시 |
 
 #### 데이터 제약 조건 (Validation)
-1. **request_status**: 자동으로 REQUESTED로 설정
-2. **requested_by_email**: 중복 요청 불가
+1. **request_status**: REQUESTED 상태로 저장 (FR-02-02)
+2. **requested_by_email**: 이메일 형식 검증 필요
 
 ---
 
@@ -396,7 +397,7 @@ Authorization: Bearer {access_token}
 #### API 기본 정보
 - **Method:** `GET`
 - **Endpoint:** `/users`
-- **Description:** 전체 사용자 목록을 조회합니다. (request_status 포함)
+- **Description:** 전체 사용자 목록을 조회합니다. request_status 포함.
 
 #### Request
 
@@ -406,13 +407,12 @@ Authorization: Bearer {access_token}
 | `Authorization` | `string` | **필수** | `Bearer {token}` | 관리자 인증 토큰 |
 
 ##### B. Query Parameters
-| 변수명 | 타입 | 필수 여부 | 기본값 | 설명 |
-| :--- | :--- | :---: | :--- | :--- |
-| `page` | `integer` | 선택 | `1` | 페이지 번호 |
-| `limit` | `integer` | 선택 | `20` | 페이지당 항목 수 (최대 100) |
-| `request_status` | `string` | 선택 | - | REQUESTED, APPROVED, REJECTED |
-| `status` | `string` | 선택 | - | ACTIVE, INACTIVE |
-| `search` | `string` | 선택 | - | 이름, 이메일 검색 |
+| 변수명 | 타입 | 필수 여부 | 설명 |
+| :--- | :--- | :---: | :--- |
+| `page` | `integer` | 선택 | 페이지 번호 (기본값: 1) |
+| `limit` | `integer` | 선택 | 페이지당 항목 수 (기본값: 20) |
+| `request_status` | `string` | 선택 | 필터: REQUESTED, APPROVED, REJECTED |
+| `status` | `string` | 선택 | 필터: ACTIVE, INACTIVE |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -426,11 +426,10 @@ Authorization: Bearer {access_token}
         "id": "660e8400-e29b-41d4-a716-446655440001",
         "requested_by_name": "김철수",
         "requested_by_email": "user@example.com",
-        "phone": "010-9876-5432",
-        "department": "인사팀",
         "request_status": "APPROVED",
         "status": "ACTIVE",
         "role_type": "EDITOR",
+        "approved_by": "550e8400-e29b-41d4-a716-446655440000",
         "created_at": "2024-04-14T11:00:00Z"
       }
     ],
@@ -445,11 +444,6 @@ Authorization: Bearer {access_token}
   }
 }
 ```
-
-#### 에러 응답 (Error Response)
-| 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
-| :--- | :--- | :--- | :--- |
-| **401** | `AUTH_REQUIRED` | "인증이 필요합니다." | 인증 토큰이 없을 때 |
 
 ---
 
@@ -471,7 +465,7 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `user_id` | `string` | **필수** | 사용자 ID (UUID) |
+| `user_id` | `string` | **필수** | 조회할 사용자 ID (UUID) |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -483,15 +477,14 @@ Authorization: Bearer {access_token}
     "id": "660e8400-e29b-41d4-a716-446655440001",
     "requested_by_name": "김철수",
     "requested_by_email": "user@example.com",
-    "phone": "010-9876-5432",
-    "department": "인사팀",
+    "request_note": "HR 업무를 위한 계정 요청드립니다.",
     "request_status": "APPROVED",
     "status": "ACTIVE",
     "role_type": "EDITOR",
-    "request_note": "채용 시스템 사용을 위해 계정이 필요합니다.",
     "approved_by": "550e8400-e29b-41d4-a716-446655440000",
+    "created_by": "550e8400-e29b-41d4-a716-446655440000",
     "created_at": "2024-04-14T11:00:00Z",
-    "updated_at": "2024-04-14T12:00:00Z"
+    "approved_at": "2024-04-14T12:00:00Z"
   }
 }
 ```
@@ -507,9 +500,9 @@ Authorization: Bearer {access_token}
 **FR-02-11: 사용자 정보 수정**
 
 #### API 기본 정보
-- **Method:** `PUT`
+- **Method:** `PATCH`
 - **Endpoint:** `/users/{user_id}`
-- **Description:** 사용자의 이름, 이메일, 권한을 수정합니다.
+- **Description:** 이름, 이메일, 권한(role_type)을 수정합니다.
 
 #### Request
 
@@ -522,15 +515,13 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `user_id` | `string` | **필수** | 사용자 ID (UUID) |
+| `user_id` | `string` | **필수** | 수정할 사용자 ID (UUID) |
 
 ##### C. Request Body
 | 변수명 | 타입 | 필수 여부 | 제약 조건 | 설명 |
 | :--- | :--- | :---: | :--- | :--- |
 | `requested_by_name` | `string` | 선택 | 2~50자 | 사용자 이름 |
 | `requested_by_email` | `string` | 선택 | 이메일 형식 | 사용자 이메일 |
-| `phone` | `string` | 선택 | 전화번호 형식 | 전화번호 |
-| `department` | `string` | 선택 | 최대 100자 | 소속 부서 |
 | `role_type` | `string` | 선택 | VIEWER, EDITOR, ADMIN | 권한 |
 
 #### Response
@@ -543,9 +534,7 @@ Authorization: Bearer {access_token}
   "data": {
     "id": "660e8400-e29b-41d4-a716-446655440001",
     "requested_by_name": "김철수",
-    "requested_by_email": "newemail@example.com",
-    "phone": "010-9999-8888",
-    "department": "채용팀",
+    "requested_by_email": "updated@example.com",
     "role_type": "ADMIN",
     "updated_at": "2024-04-14T13:00:00Z"
   }
@@ -556,17 +545,17 @@ Authorization: Bearer {access_token}
 | 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
 | :--- | :--- | :--- | :--- |
 | **404** | `USER_NOT_FOUND` | "사용자를 찾을 수 없습니다." | 존재하지 않는 user_id일 때 |
-| **400** | `DUPLICATE_EMAIL` | "이미 사용 중인 이메일입니다." | 중복된 이메일로 수정 시 |
+| **400** | `INVALID_EMAIL` | "유효하지 않은 이메일 형식입니다." | 이메일 형식 오류 시 |
 
 ---
 
-### 2.5 사용자 상태 변경
+### 2.5 사용자 상태 관리
 **FR-02-12: 사용자 상태 관리**
 
 #### API 기본 정보
 - **Method:** `PATCH`
 - **Endpoint:** `/users/{user_id}/status`
-- **Description:** 사용자의 상태를 ACTIVE 또는 INACTIVE로 변경합니다.
+- **Description:** 사용자의 status를 ACTIVE / INACTIVE로 변경합니다.
 
 #### Request
 
@@ -579,7 +568,7 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `user_id` | `string` | **필수** | 사용자 ID (UUID) |
+| `user_id` | `string` | **필수** | 상태 변경할 사용자 ID (UUID) |
 
 ##### C. Request Body
 | 변수명 | 타입 | 필수 여부 | 제약 조건 | 설명 |
@@ -596,7 +585,7 @@ Authorization: Bearer {access_token}
   "data": {
     "id": "660e8400-e29b-41d4-a716-446655440001",
     "status": "INACTIVE",
-    "updated_at": "2024-04-14T13:30:00Z"
+    "updated_at": "2024-04-14T14:00:00Z"
   }
 }
 ```
@@ -604,10 +593,11 @@ Authorization: Bearer {access_token}
 #### 에러 응답 (Error Response)
 | 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
 | :--- | :--- | :--- | :--- |
-| **400** | `INVALID_STATUS` | "유효하지 않은 상태값입니다." | ACTIVE, INACTIVE 이외의 값일 때 |
+| **404** | `USER_NOT_FOUND` | "사용자를 찾을 수 없습니다." | 존재하지 않는 user_id일 때 |
+| **400** | `INVALID_STATUS` | "유효하지 않은 상태 값입니다." | status 값이 ACTIVE/INACTIVE가 아닐 때 |
 
 #### 데이터 제약 조건 (Validation)
-1. **INACTIVE 상태**: 시스템 로그인 불가
+1. **INACTIVE 상태**: 사용자는 로그인 불가 처리 (FR-02-14)
 
 ---
 
@@ -617,7 +607,7 @@ Authorization: Bearer {access_token}
 #### API 기본 정보
 - **Method:** `DELETE`
 - **Endpoint:** `/users/{user_id}`
-- **Description:** 사용자를 논리 삭제 처리합니다. (deleted_at, deleted_by 기록)
+- **Description:** 사용자를 논리 삭제 처리합니다. deleted_at, deleted_by를 기록합니다.
 
 #### Request
 
@@ -629,7 +619,7 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `user_id` | `string` | **필수** | 사용자 ID (UUID) |
+| `user_id` | `string` | **필수** | 삭제할 사용자 ID (UUID) |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -640,7 +630,7 @@ Authorization: Bearer {access_token}
   "message": "사용자가 삭제되었습니다.",
   "data": {
     "id": "660e8400-e29b-41d4-a716-446655440001",
-    "deleted_at": "2024-04-14T14:00:00Z",
+    "deleted_at": "2024-04-14T15:00:00Z",
     "deleted_by": "550e8400-e29b-41d4-a716-446655440000"
   }
 }
@@ -652,8 +642,7 @@ Authorization: Bearer {access_token}
 | **404** | `USER_NOT_FOUND` | "사용자를 찾을 수 없습니다." | 존재하지 않는 user_id일 때 |
 
 #### 데이터 제약 조건 (Validation)
-1. **논리 삭제**: 물리적 삭제 대신 deleted_at, deleted_by 기록
-2. **deleted_by**: 요청한 관리자 ID 자동 저장
+1. **논리 삭제**: 물리 삭제 대신 deleted_at, deleted_by 기록 (FR-08-02)
 
 ---
 
@@ -665,7 +654,7 @@ Authorization: Bearer {access_token}
 #### API 기본 정보
 - **Method:** `POST`
 - **Endpoint:** `/candidates`
-- **Description:** 지원자의 기본 정보를 등록합니다.
+- **Description:** 이름, 이메일, 전화번호, 생년월일 등 지원자 기본 정보를 등록합니다.
 
 #### Request
 
@@ -682,7 +671,7 @@ Authorization: Bearer {access_token}
 | `email` | `string` | **필수** | 이메일 형식 | 지원자 이메일 |
 | `phone` | `string` | 선택 | 전화번호 형식 | 지원자 전화번호 |
 | `birth_date` | `string` | 선택 | YYYY-MM-DD | 생년월일 |
-| `position_applied` | `string` | 선택 | 최대 100자 | 지원 직무 |
+| `apply_status` | `string` | 선택 | 상태값 | 지원 상태 (기본값: APPLIED) |
 
 #### Response
 - **Status Code**: `201 Created`
@@ -695,13 +684,10 @@ Authorization: Bearer {access_token}
     "id": "770e8400-e29b-41d4-a716-446655440002",
     "name": "이영희",
     "email": "candidate@example.com",
-    "phone": "010-1111-2222",
-    "birth_date": "1995-03-15",
-    "position_applied": "백엔드 개발자",
+    "phone": "010-9876-5432",
+    "birth_date": "1995-05-20",
     "apply_status": "APPLIED",
-    "resume_doc_id": null,
-    "portfolio_doc_id": null,
-    "created_at": "2024-04-14T15:00:00Z"
+    "created_at": "2024-04-14T16:00:00Z"
   }
 }
 ```
@@ -709,13 +695,8 @@ Authorization: Bearer {access_token}
 #### 에러 응답 (Error Response)
 | 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
 | :--- | :--- | :--- | :--- |
-| **400** | `DUPLICATE_EMAIL` | "이미 등록된 이메일입니다." | 중복된 이메일로 등록 시 |
 | **400** | `INVALID_EMAIL` | "유효하지 않은 이메일 형식입니다." | 이메일 형식 오류 시 |
-| **400** | `INVALID_DATE` | "유효하지 않은 날짜 형식입니다." | birth_date 형식 오류 시 |
-
-#### 데이터 제약 조건 (Validation)
-1. **apply_status**: 자동으로 APPLIED로 설정
-2. **email**: 중복 불가 권장
+| **409** | `DUPLICATE_CANDIDATE` | "이미 등록된 지원자입니다." | 동일 이메일로 중복 등록 시 |
 
 ---
 
@@ -735,13 +716,11 @@ Authorization: Bearer {access_token}
 | `Authorization` | `string` | **필수** | `Bearer {token}` | 인증 토큰 |
 
 ##### B. Query Parameters
-| 변수명 | 타입 | 필수 여부 | 기본값 | 설명 |
-| :--- | :--- | :---: | :--- | :--- |
-| `page` | `integer` | 선택 | `1` | 페이지 번호 |
-| `limit` | `integer` | 선택 | `20` | 페이지당 항목 수 (최대 100) |
-| `apply_status` | `string` | 선택 | - | 지원 상태 필터 |
-| `search` | `string` | 선택 | - | 이름, 이메일 검색 |
-| `position_applied` | `string` | 선택 | - | 지원 직무 필터 |
+| 변수명 | 타입 | 필수 여부 | 설명 |
+| :--- | :--- | :---: | :--- |
+| `page` | `integer` | 선택 | 페이지 번호 (기본값: 1) |
+| `limit` | `integer` | 선택 | 페이지당 항목 수 (기본값: 20) |
+| `apply_status` | `string` | 선택 | 필터: 지원 상태 |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -755,10 +734,9 @@ Authorization: Bearer {access_token}
         "id": "770e8400-e29b-41d4-a716-446655440002",
         "name": "이영희",
         "email": "candidate@example.com",
-        "phone": "010-1111-2222",
-        "position_applied": "백엔드 개발자",
+        "phone": "010-9876-5432",
         "apply_status": "APPLIED",
-        "created_at": "2024-04-14T15:00:00Z"
+        "created_at": "2024-04-14T16:00:00Z"
       }
     ],
     "pagination": {
@@ -781,7 +759,7 @@ Authorization: Bearer {access_token}
 #### API 기본 정보
 - **Method:** `GET`
 - **Endpoint:** `/candidates/{candidate_id}`
-- **Description:** 지원자의 상세 정보와 연결된 대표 문서 정보를 함께 조회합니다.
+- **Description:** 지원자 기본 정보와 연결된 대표 문서 정보를 함께 조회합니다.
 
 #### Request
 
@@ -793,7 +771,7 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `candidate_id` | `string` | **필수** | 지원자 ID (UUID) |
+| `candidate_id` | `string` | **필수** | 조회할 지원자 ID (UUID) |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -805,28 +783,24 @@ Authorization: Bearer {access_token}
     "id": "770e8400-e29b-41d4-a716-446655440002",
     "name": "이영희",
     "email": "candidate@example.com",
-    "phone": "010-1111-2222",
-    "birth_date": "1995-03-15",
-    "position_applied": "백엔드 개발자",
+    "phone": "010-9876-5432",
+    "birth_date": "1995-05-20",
     "apply_status": "APPLIED",
     "resume_doc_id": "880e8400-e29b-41d4-a716-446655440003",
     "portfolio_doc_id": "990e8400-e29b-41d4-a716-446655440004",
-    "documents": [
-      {
-        "id": "880e8400-e29b-41d4-a716-446655440003",
-        "document_type": "RESUME",
-        "title": "이영희_이력서.pdf",
-        "extract_status": "READY"
-      },
-      {
-        "id": "990e8400-e29b-41d4-a716-446655440004",
-        "document_type": "PORTFOLIO",
-        "title": "이영희_포트폴리오.pdf",
-        "extract_status": "READY"
-      }
-    ],
-    "created_at": "2024-04-14T15:00:00Z",
-    "updated_at": "2024-04-14T15:00:00Z"
+    "resume_document": {
+      "id": "880e8400-e29b-41d4-a716-446655440003",
+      "title": "이영희_이력서.pdf",
+      "document_type": "RESUME",
+      "extract_status": "READY"
+    },
+    "portfolio_document": {
+      "id": "990e8400-e29b-41d4-a716-446655440004",
+      "title": "이영희_포트폴리오.pdf",
+      "document_type": "PORTFOLIO",
+      "extract_status": "READY"
+    },
+    "created_at": "2024-04-14T16:00:00Z"
   }
 }
 ```
@@ -838,13 +812,13 @@ Authorization: Bearer {access_token}
 
 ---
 
-### 3.4 지원자 정보 수정
+### 3.4 지원자 수정
 **FR-03-06: 지원자 수정**
 
 #### API 기본 정보
-- **Method:** `PUT`
+- **Method:** `PATCH`
 - **Endpoint:** `/candidates/{candidate_id}`
-- **Description:** 지원자의 기본 정보 및 상태를 수정합니다.
+- **Description:** 지원자 기본 정보 및 상태를 수정합니다.
 
 #### Request
 
@@ -857,7 +831,7 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `candidate_id` | `string` | **필수** | 지원자 ID (UUID) |
+| `candidate_id` | `string` | **필수** | 수정할 지원자 ID (UUID) |
 
 ##### C. Request Body
 | 변수명 | 타입 | 필수 여부 | 제약 조건 | 설명 |
@@ -865,8 +839,8 @@ Authorization: Bearer {access_token}
 | `name` | `string` | 선택 | 2~50자 | 지원자 이름 |
 | `email` | `string` | 선택 | 이메일 형식 | 지원자 이메일 |
 | `phone` | `string` | 선택 | 전화번호 형식 | 지원자 전화번호 |
-| `position_applied` | `string` | 선택 | 최대 100자 | 지원 직무 |
-| `apply_status` | `string` | 선택 | 지원 상태값 | 지원 상태 |
+| `birth_date` | `string` | 선택 | YYYY-MM-DD | 생년월일 |
+| `apply_status` | `string` | 선택 | 상태값 | 지원 상태 |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -878,11 +852,9 @@ Authorization: Bearer {access_token}
   "data": {
     "id": "770e8400-e29b-41d4-a716-446655440002",
     "name": "이영희",
-    "email": "newemail@example.com",
-    "phone": "010-3333-4444",
-    "position_applied": "풀스택 개발자",
-    "apply_status": "INTERVIEW_SCHEDULED",
-    "updated_at": "2024-04-14T16:00:00Z"
+    "email": "updated@example.com",
+    "apply_status": "INTERVIEWING",
+    "updated_at": "2024-04-14T17:00:00Z"
   }
 }
 ```
@@ -894,13 +866,13 @@ Authorization: Bearer {access_token}
 
 ---
 
-### 3.5 지원 상태 변경
+### 3.5 지원 상태 관리
 **FR-03-04: 지원 상태 관리**
 
 #### API 기본 정보
 - **Method:** `PATCH`
 - **Endpoint:** `/candidates/{candidate_id}/status`
-- **Description:** 지원자의 지원 상태를 변경합니다.
+- **Description:** apply_status 값을 기준으로 지원 진행 상태를 관리합니다.
 
 #### Request
 
@@ -913,12 +885,12 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `candidate_id` | `string` | **필수** | 지원자 ID (UUID) |
+| `candidate_id` | `string` | **필수** | 상태 변경할 지원자 ID (UUID) |
 
 ##### C. Request Body
 | 변수명 | 타입 | 필수 여부 | 제약 조건 | 설명 |
 | :--- | :--- | :---: | :--- | :--- |
-| `apply_status` | `string` | **필수** | APPLIED, DOCUMENT_REVIEW, INTERVIEW_SCHEDULED, INTERVIEW_COMPLETED, ACCEPTED, REJECTED | 변경할 상태 |
+| `apply_status` | `string` | **필수** | 상태값 | 변경할 지원 상태 |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -929,19 +901,11 @@ Authorization: Bearer {access_token}
   "message": "지원 상태가 변경되었습니다.",
   "data": {
     "id": "770e8400-e29b-41d4-a716-446655440002",
-    "apply_status": "DOCUMENT_REVIEW",
-    "updated_at": "2024-04-14T16:30:00Z"
+    "apply_status": "PASSED",
+    "updated_at": "2024-04-14T18:00:00Z"
   }
 }
 ```
-
-#### 에러 응답 (Error Response)
-| 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
-| :--- | :--- | :--- | :--- |
-| **400** | `INVALID_STATUS` | "유효하지 않은 상태값입니다." | 정의되지 않은 상태값일 때 |
-
-#### 데이터 제약 조건 (Validation)
-1. **apply_status 가능한 값**: APPLIED, DOCUMENT_REVIEW, INTERVIEW_SCHEDULED, INTERVIEW_COMPLETED, ACCEPTED, REJECTED
 
 ---
 
@@ -951,7 +915,7 @@ Authorization: Bearer {access_token}
 #### API 기본 정보
 - **Method:** `PATCH`
 - **Endpoint:** `/candidates/{candidate_id}/documents`
-- **Description:** 지원자의 대표 이력서 및 포트폴리오 문서를 연결합니다.
+- **Description:** resume_doc_id, portfolio_doc_id를 통해 대표 문서를 연결합니다.
 
 #### Request
 
@@ -964,13 +928,13 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `candidate_id` | `string` | **필수** | 지원자 ID (UUID) |
+| `candidate_id` | `string` | **필수** | 문서 연결할 지원자 ID (UUID) |
 
 ##### C. Request Body
-| 변수명 | 타입 | 필수 여부 | 제약 조건 | 설명 |
-| :--- | :--- | :---: | :--- | :--- |
-| `resume_doc_id` | `string` | 선택 | UUID | 대표 이력서 문서 ID |
-| `portfolio_doc_id` | `string` | 선택 | UUID | 대표 포트폴리오 문서 ID |
+| 변수명 | 타입 | 필수 여부 | 설명 |
+| :--- | :--- | :---: | :--- |
+| `resume_doc_id` | `string` | 선택 | 이력서 문서 ID (UUID) |
+| `portfolio_doc_id` | `string` | 선택 | 포트폴리오 문서 ID (UUID) |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -983,7 +947,7 @@ Authorization: Bearer {access_token}
     "id": "770e8400-e29b-41d4-a716-446655440002",
     "resume_doc_id": "880e8400-e29b-41d4-a716-446655440003",
     "portfolio_doc_id": "990e8400-e29b-41d4-a716-446655440004",
-    "updated_at": "2024-04-14T17:00:00Z"
+    "updated_at": "2024-04-14T19:00:00Z"
   }
 }
 ```
@@ -991,11 +955,8 @@ Authorization: Bearer {access_token}
 #### 에러 응답 (Error Response)
 | 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
 | :--- | :--- | :--- | :--- |
-| **404** | `DOCUMENT_NOT_FOUND` | "문서를 찾을 수 없습니다." | 존재하지 않는 문서 ID일 때 |
-
-#### 데이터 제약 조건 (Validation)
-1. **document_id**: 해당 candidate_id와 연결된 문서만 설정 가능
-2. **document_type**: RESUME, PORTFOLIO 타입 확인 필요
+| **404** | `CANDIDATE_NOT_FOUND` | "지원자를 찾을 수 없습니다." | 존재하지 않는 candidate_id일 때 |
+| **404** | `DOCUMENT_NOT_FOUND` | "문서를 찾을 수 없습니다." | 존재하지 않는 document_id일 때 |
 
 ---
 
@@ -1005,7 +966,7 @@ Authorization: Bearer {access_token}
 #### API 기본 정보
 - **Method:** `DELETE`
 - **Endpoint:** `/candidates/{candidate_id}`
-- **Description:** 지원자를 논리 삭제 처리합니다.
+- **Description:** 지원자를 논리 삭제 처리합니다. Audit 컬럼 기반.
 
 #### Request
 
@@ -1017,7 +978,7 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `candidate_id` | `string` | **필수** | 지원자 ID (UUID) |
+| `candidate_id` | `string` | **필수** | 삭제할 지원자 ID (UUID) |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -1028,19 +989,14 @@ Authorization: Bearer {access_token}
   "message": "지원자가 삭제되었습니다.",
   "data": {
     "id": "770e8400-e29b-41d4-a716-446655440002",
-    "deleted_at": "2024-04-14T17:30:00Z",
-    "deleted_by": "550e8400-e29b-41d4-a716-446655440000"
+    "deleted_at": "2024-04-14T20:00:00Z",
+    "deleted_by": "660e8400-e29b-41d4-a716-446655440001"
   }
 }
 ```
 
-#### 에러 응답 (Error Response)
-| 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
-| :--- | :--- | :--- | :--- |
-| **404** | `CANDIDATE_NOT_FOUND` | "지원자를 찾을 수 없습니다." | 존재하지 않는 candidate_id일 때 |
-
 #### 데이터 제약 조건 (Validation)
-1. **논리 삭제**: deleted_at, deleted_by 기록
+1. **논리 삭제**: 물리 삭제 대신 deleted_at, deleted_by 기록 (FR-08-02)
 
 ---
 
@@ -1062,13 +1018,13 @@ Authorization: Bearer {access_token}
 | `Content-Type` | `string` | **필수** | `multipart/form-data` | 파일 업로드 형식 |
 | `Authorization` | `string` | **필수** | `Bearer {token}` | 인증 토큰 |
 
-##### B. Form Data
+##### B. Request Body (Form Data)
 | 변수명 | 타입 | 필수 여부 | 제약 조건 | 설명 |
 | :--- | :--- | :---: | :--- | :--- |
 | `candidate_id` | `string` | **필수** | UUID | 지원자 ID |
 | `document_type` | `string` | **필수** | RESUME, PORTFOLIO | 문서 타입 |
 | `title` | `string` | **필수** | 최대 200자 | 문서 제목 |
-| `file` | `file` | **필수** | PDF, DOCX, 최대 10MB | 업로드할 파일 |
+| `file` | `file` | **필수** | PDF, DOCX (최대 10MB) | 업로드 파일 |
 
 #### Response
 - **Status Code**: `201 Created`
@@ -1082,11 +1038,9 @@ Authorization: Bearer {access_token}
     "candidate_id": "770e8400-e29b-41d4-a716-446655440002",
     "document_type": "RESUME",
     "title": "이영희_이력서.pdf",
-    "file_path": "/uploads/2024/04/14/880e8400-resume.pdf",
-    "file_size": 1024000,
-    "mime_type": "application/pdf",
+    "file_path": "/uploads/2024/04/14/880e8400-e29b-41d4-a716-446655440003.pdf",
     "extract_status": "PENDING",
-    "created_at": "2024-04-14T18:00:00Z"
+    "created_at": "2024-04-14T21:00:00Z"
   }
 }
 ```
@@ -1094,14 +1048,13 @@ Authorization: Bearer {access_token}
 #### 에러 응답 (Error Response)
 | 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
 | :--- | :--- | :--- | :--- |
-| **400** | `FILE_TOO_LARGE` | "파일 크기는 10MB를 초과할 수 없습니다." | 파일 크기 초과 시 |
-| **400** | `INVALID_FILE_TYPE` | "지원하지 않는 파일 형식입니다." | PDF, DOCX 외 형식일 때 |
+| **400** | `INVALID_FILE_TYPE` | "지원하지 않는 파일 형식입니다." | PDF, DOCX 외 파일 업로드 시 |
+| **400** | `FILE_TOO_LARGE` | "파일 크기가 10MB를 초과합니다." | 파일 크기 초과 시 |
 | **404** | `CANDIDATE_NOT_FOUND` | "지원자를 찾을 수 없습니다." | 존재하지 않는 candidate_id일 때 |
 
 #### 데이터 제약 조건 (Validation)
-1. **file_size**: 최대 10MB
-2. **mime_type**: application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document
-3. **extract_status**: 자동으로 PENDING 설정 (백그라운드 텍스트 추출 시작)
+1. **extract_status**: PENDING 상태로 초기화 (FR-04-05)
+2. **document_type**: RESUME / PORTFOLIO 구분 (FR-04-02)
 
 ---
 
@@ -1121,13 +1074,13 @@ Authorization: Bearer {access_token}
 | `Authorization` | `string` | **필수** | `Bearer {token}` | 인증 토큰 |
 
 ##### B. Query Parameters
-| 변수명 | 타입 | 필수 여부 | 기본값 | 설명 |
-| :--- | :--- | :---: | :--- | :--- |
-| `candidate_id` | `string` | 선택 | - | 지원자 ID 필터 |
-| `document_type` | `string` | 선택 | - | RESUME, PORTFOLIO |
-| `extract_status` | `string` | 선택 | - | PENDING, READY, FAILED |
-| `page` | `integer` | 선택 | `1` | 페이지 번호 |
-| `limit` | `integer` | 선택 | `20` | 페이지당 항목 수 (최대 100) |
+| 변수명 | 타입 | 필수 여부 | 설명 |
+| :--- | :--- | :---: | :--- |
+| `candidate_id` | `string` | 선택 | 필터: 지원자 ID |
+| `document_type` | `string` | 선택 | 필터: RESUME, PORTFOLIO |
+| `extract_status` | `string` | 선택 | 필터: PENDING, READY, FAILED |
+| `page` | `integer` | 선택 | 페이지 번호 (기본값: 1) |
+| `limit` | `integer` | 선택 | 페이지당 항목 수 (기본값: 20) |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -1140,12 +1093,11 @@ Authorization: Bearer {access_token}
       {
         "id": "880e8400-e29b-41d4-a716-446655440003",
         "candidate_id": "770e8400-e29b-41d4-a716-446655440002",
-        "candidate_name": "이영희",
         "document_type": "RESUME",
         "title": "이영희_이력서.pdf",
-        "file_size": 1024000,
+        "file_path": "/uploads/2024/04/14/880e8400-e29b-41d4-a716-446655440003.pdf",
         "extract_status": "READY",
-        "created_at": "2024-04-14T18:00:00Z"
+        "created_at": "2024-04-14T21:00:00Z"
       }
     ],
     "pagination": {
@@ -1168,7 +1120,7 @@ Authorization: Bearer {access_token}
 #### API 기본 정보
 - **Method:** `GET`
 - **Endpoint:** `/documents/{document_id}`
-- **Description:** 문서의 상세 정보를 조회합니다. (제목, 파일 경로, 추출 텍스트, 추출 상태 포함)
+- **Description:** 제목, 파일 경로, 추출 텍스트, 추출 상태를 포함한 상세 정보를 조회합니다.
 
 #### Request
 
@@ -1180,7 +1132,7 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `document_id` | `string` | **필수** | 문서 ID (UUID) |
+| `document_id` | `string` | **필수** | 조회할 문서 ID (UUID) |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -1191,17 +1143,13 @@ Authorization: Bearer {access_token}
   "data": {
     "id": "880e8400-e29b-41d4-a716-446655440003",
     "candidate_id": "770e8400-e29b-41d4-a716-446655440002",
-    "candidate_name": "이영희",
     "document_type": "RESUME",
     "title": "이영희_이력서.pdf",
-    "file_path": "/uploads/2024/04/14/880e8400-resume.pdf",
-    "file_size": 1024000,
-    "mime_type": "application/pdf",
+    "file_path": "/uploads/2024/04/14/880e8400-e29b-41d4-a716-446655440003.pdf",
     "extract_status": "READY",
-    "extracted_text": "경력\n- ABC 회사 (2020-2023)\n  백엔드 개발자...",
-    "extract_error": null,
-    "created_at": "2024-04-14T18:00:00Z",
-    "updated_at": "2024-04-14T18:05:00Z"
+    "extracted_text": "이름: 이영희\n이메일: candidate@example.com\n...",
+    "created_at": "2024-04-14T21:00:00Z",
+    "updated_at": "2024-04-14T21:05:00Z"
   }
 }
 ```
@@ -1213,62 +1161,32 @@ Authorization: Bearer {access_token}
 
 ---
 
-### 4.4 문서 다운로드
-**FR-04-04: 문서 다운로드**
+### 4.4 추출 텍스트 저장
+**FR-04-06: 추출 텍스트 저장**
 
 #### API 기본 정보
-- **Method:** `GET`
-- **Endpoint:** `/documents/{document_id}/download`
-- **Description:** 원본 문서 파일을 다운로드합니다.
+- **Method:** `PATCH`
+- **Endpoint:** `/documents/{document_id}/extract`
+- **Description:** 문서 파싱/OCR 결과를 extracted_text에 저장하고 extract_status를 READY로 변경합니다.
 
 #### Request
 
 ##### A. Headers
 | 필드명 | 타입 | 필수 여부 | 값/예시 | 설명 |
 | :--- | :--- | :---: | :--- | :--- |
+| `Content-Type` | `string` | **필수** | `application/json` | 요청 본문의 데이터 형식 |
 | `Authorization` | `string` | **필수** | `Bearer {token}` | 인증 토큰 |
 
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `document_id` | `string` | **필수** | 문서 ID (UUID) |
+| `document_id` | `string` | **필수** | 텍스트 저장할 문서 ID (UUID) |
 
-#### Response
-- **Status Code**: `200 OK`
-- **Content-Type**: `application/pdf` or `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
-- **Content-Disposition**: `attachment; filename="이영희_이력서.pdf"`
-
-```
-[Binary File Data]
-```
-
-#### 에러 응답 (Error Response)
-| 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
-| :--- | :--- | :--- | :--- |
-| **404** | `DOCUMENT_NOT_FOUND` | "문서를 찾을 수 없습니다." | 존재하지 않는 document_id일 때 |
-| **404** | `FILE_NOT_FOUND` | "파일을 찾을 수 없습니다." | 파일이 서버에 존재하지 않을 때 |
-
----
-
-### 4.5 텍스트 추출 상태 조회
-**FR-04-05: 텍스트 추출 상태 관리**
-
-#### API 기본 정보
-- **Method:** `GET`
-- **Endpoint:** `/documents/{document_id}/extract-status`
-- **Description:** 문서의 텍스트 추출 상태를 조회합니다.
-
-#### Request
-
-##### A. Headers
-| 필드명 | 타입 | 필수 여부 | 값/예시 | 설명 |
-| :--- | :--- | :---: | :--- | :--- |
-| `Authorization` | `string` | **필수** | `Bearer {token}` | 인증 토큰 |
-
-##### B. Path Parameters
+##### C. Request Body
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `document_id` | `string` | **필수** | 문서 ID (UUID) |
+| `extracted_text` | `string` | **필수** | 추출된 텍스트 |
+| `extract_status` | `string` | **필수** | READY, FAILED |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -1276,11 +1194,12 @@ Authorization: Bearer {access_token}
 ```json
 {
   "success": true,
+  "message": "텍스트 추출이 완료되었습니다.",
   "data": {
     "id": "880e8400-e29b-41d4-a716-446655440003",
     "extract_status": "READY",
-    "extracted_at": "2024-04-14T18:05:00Z",
-    "extract_error": null
+    "extracted_text": "이름: 이영희\n이메일: candidate@example.com\n...",
+    "updated_at": "2024-04-14T21:05:00Z"
   }
 }
 ```
@@ -1291,59 +1210,17 @@ Authorization: Bearer {access_token}
 | **404** | `DOCUMENT_NOT_FOUND` | "문서를 찾을 수 없습니다." | 존재하지 않는 document_id일 때 |
 
 #### 데이터 제약 조건 (Validation)
-1. **extract_status**: PENDING (대기 중), READY (완료), FAILED (실패)
+1. **extract_status**: PENDING / READY / FAILED 상태로 관리 (FR-04-05)
 
 ---
 
-### 4.6 텍스트 추출 재시도
-**FR-04-06: 추출 텍스트 저장**
-
-#### API 기본 정보
-- **Method:** `POST`
-- **Endpoint:** `/documents/{document_id}/extract`
-- **Description:** 텍스트 추출을 재시도합니다.
-
-#### Request
-
-##### A. Headers
-| 필드명 | 타입 | 필수 여부 | 값/예시 | 설명 |
-| :--- | :--- | :---: | :--- | :--- |
-| `Authorization` | `string` | **필수** | `Bearer {token}` | 인증 토큰 |
-
-##### B. Path Parameters
-| 변수명 | 타입 | 필수 여부 | 설명 |
-| :--- | :--- | :---: | :--- |
-| `document_id` | `string` | **필수** | 문서 ID (UUID) |
-
-#### Response
-- **Status Code**: `200 OK`
-
-```json
-{
-  "success": true,
-  "message": "텍스트 추출이 시작되었습니다.",
-  "data": {
-    "id": "880e8400-e29b-41d4-a716-446655440003",
-    "extract_status": "PENDING"
-  }
-}
-```
-
-#### 에러 응답 (Error Response)
-| 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
-| :--- | :--- | :--- | :--- |
-| **404** | `DOCUMENT_NOT_FOUND` | "문서를 찾을 수 없습니다." | 존재하지 않는 document_id일 때 |
-| **400** | `EXTRACTION_IN_PROGRESS` | "이미 추출이 진행 중입니다." | extract_status가 PENDING일 때 |
-
----
-
-### 4.7 문서 삭제
+### 4.5 문서 삭제
 **FR-04-07: 문서 삭제 처리**
 
 #### API 기본 정보
 - **Method:** `DELETE`
 - **Endpoint:** `/documents/{document_id}`
-- **Description:** 문서를 논리 삭제 처리합니다.
+- **Description:** 문서를 논리 삭제 처리합니다. deleted_at / deleted_by를 활용.
 
 #### Request
 
@@ -1355,7 +1232,7 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `document_id` | `string` | **필수** | 문서 ID (UUID) |
+| `document_id` | `string` | **필수** | 삭제할 문서 ID (UUID) |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -1366,19 +1243,14 @@ Authorization: Bearer {access_token}
   "message": "문서가 삭제되었습니다.",
   "data": {
     "id": "880e8400-e29b-41d4-a716-446655440003",
-    "deleted_at": "2024-04-14T19:00:00Z",
-    "deleted_by": "550e8400-e29b-41d4-a716-446655440000"
+    "deleted_at": "2024-04-14T22:00:00Z",
+    "deleted_by": "660e8400-e29b-41d4-a716-446655440001"
   }
 }
 ```
 
-#### 에러 응답 (Error Response)
-| 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
-| :--- | :--- | :--- | :--- |
-| **404** | `DOCUMENT_NOT_FOUND` | "문서를 찾을 수 없습니다." | 존재하지 않는 document_id일 때 |
-
 #### 데이터 제약 조건 (Validation)
-1. **논리 삭제**: deleted_at, deleted_by 기록
+1. **논리 삭제**: 물리 삭제 대신 deleted_at, deleted_by 기록 (FR-08-02)
 
 ---
 
@@ -1390,7 +1262,7 @@ Authorization: Bearer {access_token}
 #### API 기본 정보
 - **Method:** `POST`
 - **Endpoint:** `/prompt-profiles`
-- **Description:** LLM 분석 전략 프로파일을 생성합니다.
+- **Description:** profile_key 기반의 분석 전략 프로파일을 생성합니다.
 
 #### Request
 
@@ -1403,13 +1275,10 @@ Authorization: Bearer {access_token}
 ##### B. Request Body
 | 변수명 | 타입 | 필수 여부 | 제약 조건 | 설명 |
 | :--- | :--- | :---: | :--- | :--- |
-| `profile_key` | `string` | **필수** | 최대 100자, 영문+숫자+언더스코어 | 프로파일 고유 키 |
-| `profile_name` | `string` | **필수** | 최대 200자 | 프로파일 이름 |
-| `strategy_type` | `string` | **필수** | - | 분석 전략 유형 |
-| `system_prompt` | `string` | **필수** | - | 시스템 프롬프트 |
-| `user_prompt_template` | `string` | **필수** | - | 사용자 프롬프트 템플릿 |
-| `output_schema` | `object` | 선택 | JSON Schema | LLM 응답 형식 스키마 |
-| `is_active` | `boolean` | 선택 | - | 활성화 여부 (기본값: true) |
+| `profile_key` | `string` | **필수** | 고유값 | 프로파일 식별 키 |
+| `strategy_type` | `string` | **필수** | 분석 전략 타입 | 분석 전략 유형 |
+| `output_schema` | `object` | 선택 | JSON Schema | LLM 응답 형식 정의 |
+| `is_active` | `boolean` | 선택 | 기본값: true | 활성화 여부 |
 
 #### Response
 - **Status Code**: `201 Created`
@@ -1420,11 +1289,18 @@ Authorization: Bearer {access_token}
   "message": "프롬프트 프로파일이 등록되었습니다.",
   "data": {
     "id": "aa0e8400-e29b-41d4-a716-446655440005",
-    "profile_key": "interview_question_generator_v1",
-    "profile_name": "면접 질문 생성기 v1",
-    "strategy_type": "INTERVIEW_QUESTION",
+    "profile_key": "technical_interview_v1",
+    "strategy_type": "TECHNICAL_DEPTH",
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "questions": {
+          "type": "array"
+        }
+      }
+    },
     "is_active": true,
-    "created_at": "2024-04-14T19:30:00Z"
+    "created_at": "2024-04-14T23:00:00Z"
   }
 }
 ```
@@ -1432,12 +1308,12 @@ Authorization: Bearer {access_token}
 #### 에러 응답 (Error Response)
 | 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
 | :--- | :--- | :--- | :--- |
-| **400** | `DUPLICATE_PROFILE_KEY` | "이미 사용 중인 프로파일 키입니다." | 중복된 profile_key로 등록 시 |
-| **400** | `INVALID_SCHEMA` | "유효하지 않은 JSON 스키마입니다." | output_schema 형식 오류 시 |
+| **409** | `DUPLICATE_PROFILE_KEY` | "이미 존재하는 프로파일 키입니다." | 중복된 profile_key 등록 시 |
 
 #### 데이터 제약 조건 (Validation)
-1. **profile_key**: 시스템 내 중복 불가 (Unique Constraint)
-2. **is_active**: 기본값 true
+1. **profile_key**: 시스템 내 중복 불가
+2. **strategy_type**: 분석 전략 구분 (FR-05-02)
+3. **output_schema**: LLM 응답 형식 정의 (FR-05-03)
 
 ---
 
@@ -1447,7 +1323,7 @@ Authorization: Bearer {access_token}
 #### API 기본 정보
 - **Method:** `GET`
 - **Endpoint:** `/prompt-profiles`
-- **Description:** 등록된 프롬프트 프로파일 목록을 조회합니다.
+- **Description:** 등록된 프로파일 목록을 조회합니다.
 
 #### Request
 
@@ -1457,12 +1333,12 @@ Authorization: Bearer {access_token}
 | `Authorization` | `string` | **필수** | `Bearer {token}` | 인증 토큰 |
 
 ##### B. Query Parameters
-| 변수명 | 타입 | 필수 여부 | 기본값 | 설명 |
-| :--- | :--- | :---: | :--- | :--- |
-| `strategy_type` | `string` | 선택 | - | 전략 유형 필터 |
-| `is_active` | `boolean` | 선택 | - | 활성 여부 필터 |
-| `page` | `integer` | 선택 | `1` | 페이지 번호 |
-| `limit` | `integer` | 선택 | `20` | 페이지당 항목 수 (최대 100) |
+| 변수명 | 타입 | 필수 여부 | 설명 |
+| :--- | :--- | :---: | :--- |
+| `is_active` | `boolean` | 선택 | 필터: 활성화 여부 |
+| `strategy_type` | `string` | 선택 | 필터: 전략 유형 |
+| `page` | `integer` | 선택 | 페이지 번호 (기본값: 1) |
+| `limit` | `integer` | 선택 | 페이지당 항목 수 (기본값: 20) |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -1474,11 +1350,10 @@ Authorization: Bearer {access_token}
     "items": [
       {
         "id": "aa0e8400-e29b-41d4-a716-446655440005",
-        "profile_key": "interview_question_generator_v1",
-        "profile_name": "면접 질문 생성기 v1",
-        "strategy_type": "INTERVIEW_QUESTION",
+        "profile_key": "technical_interview_v1",
+        "strategy_type": "TECHNICAL_DEPTH",
         "is_active": true,
-        "created_at": "2024-04-14T19:30:00Z"
+        "created_at": "2024-04-14T23:00:00Z"
       }
     ],
     "pagination": {
@@ -1501,7 +1376,7 @@ Authorization: Bearer {access_token}
 #### API 기본 정보
 - **Method:** `GET`
 - **Endpoint:** `/prompt-profiles/{profile_id}`
-- **Description:** 프롬프트 프로파일의 상세 정보를 조회합니다.
+- **Description:** 프로파일 상세 정보를 조회합니다.
 
 #### Request
 
@@ -1513,7 +1388,7 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `profile_id` | `string` | **필수** | 프로파일 ID (UUID) |
+| `profile_id` | `string` | **필수** | 조회할 프로파일 ID (UUID) |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -1523,18 +1398,18 @@ Authorization: Bearer {access_token}
   "success": true,
   "data": {
     "id": "aa0e8400-e29b-41d4-a716-446655440005",
-    "profile_key": "interview_question_generator_v1",
-    "profile_name": "면접 질문 생성기 v1",
-    "strategy_type": "INTERVIEW_QUESTION",
-    "system_prompt": "당신은 전문 면접관입니다...",
-    "user_prompt_template": "다음 이력서를 분석하여...",
+    "profile_key": "technical_interview_v1",
+    "strategy_type": "TECHNICAL_DEPTH",
     "output_schema": {
       "type": "object",
-      "properties": {}
+      "properties": {
+        "questions": {
+          "type": "array"
+        }
+      }
     },
     "is_active": true,
-    "created_at": "2024-04-14T19:30:00Z",
-    "updated_at": "2024-04-14T19:30:00Z"
+    "created_at": "2024-04-14T23:00:00Z"
   }
 }
 ```
@@ -1550,9 +1425,9 @@ Authorization: Bearer {access_token}
 **FR-05-06: 프롬프트 프로파일 수정**
 
 #### API 기본 정보
-- **Method:** `PUT`
+- **Method:** `PATCH`
 - **Endpoint:** `/prompt-profiles/{profile_id}`
-- **Description:** 프롬프트 프로파일의 전략 유형, 출력 스키마, 활성 여부를 수정합니다.
+- **Description:** 전략 유형, 출력 스키마, 활성 여부를 수정합니다.
 
 #### Request
 
@@ -1565,16 +1440,14 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `profile_id` | `string` | **필수** | 프로파일 ID (UUID) |
+| `profile_id` | `string` | **필수** | 수정할 프로파일 ID (UUID) |
 
 ##### C. Request Body
-| 변수명 | 타입 | 필수 여부 | 제약 조건 | 설명 |
-| :--- | :--- | :---: | :--- | :--- |
-| `profile_name` | `string` | 선택 | 최대 200자 | 프로파일 이름 |
-| `system_prompt` | `string` | 선택 | - | 시스템 프롬프트 |
-| `user_prompt_template` | `string` | 선택 | - | 사용자 프롬프트 템플릿 |
-| `output_schema` | `object` | 선택 | JSON Schema | LLM 응답 형식 스키마 |
-| `is_active` | `boolean` | 선택 | - | 활성화 여부 |
+| 변수명 | 타입 | 필수 여부 | 설명 |
+| :--- | :--- | :---: | :--- |
+| `strategy_type` | `string` | 선택 | 분석 전략 유형 |
+| `output_schema` | `object` | 선택 | LLM 응답 형식 정의 |
+| `is_active` | `boolean` | 선택 | 활성화 여부 |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -1585,69 +1458,25 @@ Authorization: Bearer {access_token}
   "message": "프롬프트 프로파일이 수정되었습니다.",
   "data": {
     "id": "aa0e8400-e29b-41d4-a716-446655440005",
-    "profile_name": "면접 질문 생성기 v1.1",
-    "updated_at": "2024-04-14T20:00:00Z"
-  }
-}
-```
-
-#### 에러 응답 (Error Response)
-| 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
-| :--- | :--- | :--- | :--- |
-| **404** | `PROFILE_NOT_FOUND` | "프로파일을 찾을 수 없습니다." | 존재하지 않는 profile_id일 때 |
-
----
-
-### 5.5 프롬프트 프로파일 활성화 제어
-**FR-05-04: 프로파일 활성화 제어**
-
-#### API 기본 정보
-- **Method:** `PATCH`
-- **Endpoint:** `/prompt-profiles/{profile_id}/status`
-- **Description:** 프로파일의 활성화 여부를 제어합니다.
-
-#### Request
-
-##### A. Headers
-| 필드명 | 타입 | 필수 여부 | 값/예시 | 설명 |
-| :--- | :--- | :---: | :--- | :--- |
-| `Content-Type` | `string` | **필수** | `application/json` | 요청 본문의 데이터 형식 |
-| `Authorization` | `string` | **필수** | `Bearer {token}` | 인증 토큰 |
-
-##### B. Path Parameters
-| 변수명 | 타입 | 필수 여부 | 설명 |
-| :--- | :--- | :---: | :--- |
-| `profile_id` | `string` | **필수** | 프로파일 ID (UUID) |
-
-##### C. Request Body
-| 변수명 | 타입 | 필수 여부 | 제약 조건 | 설명 |
-| :--- | :--- | :---: | :--- | :--- |
-| `is_active` | `boolean` | **필수** | - | 활성화 여부 |
-
-#### Response
-- **Status Code**: `200 OK`
-
-```json
-{
-  "success": true,
-  "message": "프로파일 상태가 변경되었습니다.",
-  "data": {
-    "id": "aa0e8400-e29b-41d4-a716-446655440005",
+    "strategy_type": "BEHAVIORAL",
     "is_active": false,
-    "updated_at": "2024-04-14T20:30:00Z"
+    "updated_at": "2024-04-15T00:00:00Z"
   }
 }
 ```
 
+#### 데이터 제약 조건 (Validation)
+1. **is_active**: 사용 가능 여부 제어 (FR-05-04)
+
 ---
 
-### 5.6 프롬프트 프로파일 삭제
+### 5.5 프롬프트 프로파일 삭제
 **FR-05-07: 프롬프트 프로파일 삭제 처리**
 
 #### API 기본 정보
 - **Method:** `DELETE`
 - **Endpoint:** `/prompt-profiles/{profile_id}`
-- **Description:** 프롬프트 프로파일을 논리 삭제 처리합니다.
+- **Description:** 프로파일을 논리 삭제 처리합니다.
 
 #### Request
 
@@ -1659,7 +1488,7 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `profile_id` | `string` | **필수** | 프로파일 ID (UUID) |
+| `profile_id` | `string` | **필수** | 삭제할 프로파일 ID (UUID) |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -1670,28 +1499,26 @@ Authorization: Bearer {access_token}
   "message": "프롬프트 프로파일이 삭제되었습니다.",
   "data": {
     "id": "aa0e8400-e29b-41d4-a716-446655440005",
-    "deleted_at": "2024-04-14T21:00:00Z",
-    "deleted_by": "550e8400-e29b-41d4-a716-446655440000"
+    "deleted_at": "2024-04-15T01:00:00Z",
+    "deleted_by": "660e8400-e29b-41d4-a716-446655440001"
   }
 }
 ```
 
-#### 에러 응답 (Error Response)
-| 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
-| :--- | :--- | :--- | :--- |
-| **404** | `PROFILE_NOT_FOUND` | "프로파일을 찾을 수 없습니다." | 존재하지 않는 profile_id일 때 |
+#### 데이터 제약 조건 (Validation)
+1. **논리 삭제**: 물리 삭제 대신 deleted_at, deleted_by 기록 (FR-08-02)
 
 ---
 
 ## 6. 면접 질문 관리
 
-### 6.1 면접 질문 생성 실행
+### 6.1 질문 저장
 **FR-06-01: 질문 저장**
 
 #### API 기본 정보
 - **Method:** `POST`
-- **Endpoint:** `/interview-questions/generate`
-- **Description:** LLM을 이용하여 면접 질문을 생성하고 저장합니다.
+- **Endpoint:** `/interview-questions`
+- **Description:** 생성된 면접 질문을 question_text, candidate_id, prompt_profile_id, source_document_id 기준으로 저장합니다.
 
 #### Request
 
@@ -1705,8 +1532,12 @@ Authorization: Bearer {access_token}
 | 변수명 | 타입 | 필수 여부 | 제약 조건 | 설명 |
 | :--- | :--- | :---: | :--- | :--- |
 | `candidate_id` | `string` | **필수** | UUID | 지원자 ID |
-| `profile_id` | `string` | **필수** | UUID | 프롬프트 프로파일 ID |
-| `question_count` | `integer` | 선택 | 1~20 | 생성할 질문 개수 (기본값: 10) |
+| `prompt_profile_id` | `string` | **필수** | UUID | 프롬프트 프로파일 ID |
+| `source_document_id` | `string` | **필수** | UUID | 출처 문서 ID |
+| `question_text` | `string` | **필수** | 최대 1000자 | 면접 질문 내용 |
+| `category` | `string` | 선택 | 질문 유형 | 질문 카테고리 |
+| `expected_answer` | `string` | 선택 | 최대 2000자 | 기대 답변 |
+| `difficulty_level` | `string` | 선택 | EASY, MEDIUM, HARD | 난이도 |
 
 #### Response
 - **Status Code**: `201 Created`
@@ -1714,12 +1545,17 @@ Authorization: Bearer {access_token}
 ```json
 {
   "success": true,
-  "message": "면접 질문 생성이 시작되었습니다.",
+  "message": "면접 질문이 저장되었습니다.",
   "data": {
-    "workflow_run_id": "bb0e8400-e29b-41d4-a716-446655440006",
+    "id": "bb0e8400-e29b-41d4-a716-446655440006",
     "candidate_id": "770e8400-e29b-41d4-a716-446655440002",
-    "status": "PROCESSING",
-    "created_at": "2024-04-14T21:30:00Z"
+    "prompt_profile_id": "aa0e8400-e29b-41d4-a716-446655440005",
+    "source_document_id": "880e8400-e29b-41d4-a716-446655440003",
+    "question_text": "파이썬의 GIL에 대해 설명해주세요.",
+    "category": "TECHNICAL",
+    "expected_answer": "GIL(Global Interpreter Lock)은...",
+    "difficulty_level": "MEDIUM",
+    "created_at": "2024-04-15T02:00:00Z"
   }
 }
 ```
@@ -1728,22 +1564,23 @@ Authorization: Bearer {access_token}
 | 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
 | :--- | :--- | :--- | :--- |
 | **404** | `CANDIDATE_NOT_FOUND` | "지원자를 찾을 수 없습니다." | 존재하지 않는 candidate_id일 때 |
-| **404** | `PROFILE_NOT_FOUND` | "프로파일을 찾을 수 없습니다." | 존재하지 않는 profile_id일 때 |
-| **400** | `NO_DOCUMENT_FOUND` | "지원자의 문서가 없습니다." | 추출된 문서가 없을 때 |
+| **404** | `PROFILE_NOT_FOUND` | "프로파일을 찾을 수 없습니다." | 존재하지 않는 prompt_profile_id일 때 |
+| **404** | `DOCUMENT_NOT_FOUND` | "문서를 찾을 수 없습니다." | 존재하지 않는 source_document_id일 때 |
 
 #### 데이터 제약 조건 (Validation)
-1. **question_count**: 1~20 범위
-2. **비동기 처리**: 결과는 workflow_run_id로 추적
+1. **category**: 질문 유형 구분 (FR-06-02)
+2. **expected_answer**: 질문별 기대 답변 저장 (FR-06-03)
+3. **difficulty_level**: EASY / MEDIUM / HARD 관리 (FR-06-04)
 
 ---
 
-### 6.2 면접 질문 목록 조회
+### 6.2 질문 목록 조회
 **FR-06-05: 질문 조회**
 
 #### API 기본 정보
 - **Method:** `GET`
 - **Endpoint:** `/interview-questions`
-- **Description:** 생성된 면접 질문 목록을 조회합니다.
+- **Description:** 생성된 질문 목록을 조회합니다.
 
 #### Request
 
@@ -1753,14 +1590,14 @@ Authorization: Bearer {access_token}
 | `Authorization` | `string` | **필수** | `Bearer {token}` | 인증 토큰 |
 
 ##### B. Query Parameters
-| 변수명 | 타입 | 필수 여부 | 기본값 | 설명 |
-| :--- | :--- | :---: | :--- | :--- |
-| `candidate_id` | `string` | 선택 | - | 지원자 ID 필터 |
-| `workflow_run_id` | `string` | 선택 | - | 실행 ID 필터 |
-| `category` | `string` | 선택 | - | 질문 카테고리 필터 |
-| `difficulty_level` | `string` | 선택 | - | EASY, MEDIUM, HARD |
-| `page` | `integer` | 선택 | `1` | 페이지 번호 |
-| `limit` | `integer` | 선택 | `20` | 페이지당 항목 수 (최대 100) |
+| 변수명 | 타입 | 필수 여부 | 설명 |
+| :--- | :--- | :---: | :--- |
+| `candidate_id` | `string` | 선택 | 필터: 지원자 ID |
+| `prompt_profile_id` | `string` | 선택 | 필터: 프롬프트 프로파일 ID |
+| `category` | `string` | 선택 | 필터: 질문 카테고리 |
+| `difficulty_level` | `string` | 선택 | 필터: 난이도 |
+| `page` | `integer` | 선택 | 페이지 번호 (기본값: 1) |
+| `limit` | `integer` | 선택 | 페이지당 항목 수 (기본값: 20) |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -1771,22 +1608,22 @@ Authorization: Bearer {access_token}
   "data": {
     "items": [
       {
-        "id": "cc0e8400-e29b-41d4-a716-446655440007",
-        "workflow_run_id": "bb0e8400-e29b-41d4-a716-446655440006",
+        "id": "bb0e8400-e29b-41d4-a716-446655440006",
         "candidate_id": "770e8400-e29b-41d4-a716-446655440002",
+        "prompt_profile_id": "aa0e8400-e29b-41d4-a716-446655440005",
+        "source_document_id": "880e8400-e29b-41d4-a716-446655440003",
+        "question_text": "파이썬의 GIL에 대해 설명해주세요.",
         "category": "TECHNICAL",
-        "question_text": "Spring Boot에서 트랜잭션 관리는 어떻게 수행하나요?",
-        "expected_answer": "@Transactional 어노테이션을 사용하여...",
         "difficulty_level": "MEDIUM",
-        "created_at": "2024-04-14T21:35:00Z"
+        "created_at": "2024-04-15T02:00:00Z"
       }
     ],
     "pagination": {
       "current_page": 1,
-      "total_pages": 1,
-      "total_items": 10,
+      "total_pages": 2,
+      "total_items": 25,
       "items_per_page": 20,
-      "has_next": false,
+      "has_next": true,
       "has_prev": false
     }
   }
@@ -1795,13 +1632,13 @@ Authorization: Bearer {access_token}
 
 ---
 
-### 6.3 면접 질문 상세 조회
+### 6.3 질문 상세 조회
 **FR-06-05: 질문 조회**
 
 #### API 기본 정보
 - **Method:** `GET`
 - **Endpoint:** `/interview-questions/{question_id}`
-- **Description:** 면접 질문의 상세 정보를 조회합니다.
+- **Description:** 질문 상세 정보를 조회합니다.
 
 #### Request
 
@@ -1813,7 +1650,7 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `question_id` | `string` | **필수** | 질문 ID (UUID) |
+| `question_id` | `string` | **필수** | 조회할 질문 ID (UUID) |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -1822,16 +1659,15 @@ Authorization: Bearer {access_token}
 {
   "success": true,
   "data": {
-    "id": "cc0e8400-e29b-41d4-a716-446655440007",
-    "workflow_run_id": "bb0e8400-e29b-41d4-a716-446655440006",
+    "id": "bb0e8400-e29b-41d4-a716-446655440006",
     "candidate_id": "770e8400-e29b-41d4-a716-446655440002",
-    "candidate_name": "이영희",
+    "prompt_profile_id": "aa0e8400-e29b-41d4-a716-446655440005",
+    "source_document_id": "880e8400-e29b-41d4-a716-446655440003",
+    "question_text": "파이썬의 GIL에 대해 설명해주세요.",
     "category": "TECHNICAL",
-    "question_text": "Spring Boot에서 트랜잭션 관리는 어떻게 수행하나요?",
-    "expected_answer": "@Transactional 어노테이션을 사용하여 선언적 트랜잭션 관리를 수행할 수 있습니다...",
+    "expected_answer": "GIL(Global Interpreter Lock)은 파이썬 인터프리터가 한 번에 하나의 스레드만 실행하도록 제한하는 메커니즘입니다...",
     "difficulty_level": "MEDIUM",
-    "created_at": "2024-04-14T21:35:00Z",
-    "updated_at": "2024-04-14T21:35:00Z"
+    "created_at": "2024-04-15T02:00:00Z"
   }
 }
 ```
@@ -1843,13 +1679,13 @@ Authorization: Bearer {access_token}
 
 ---
 
-### 6.4 면접 질문 수정
+### 6.4 질문 수정
 **FR-06-06: 질문 수정**
 
 #### API 기본 정보
-- **Method:** `PUT`
+- **Method:** `PATCH`
 - **Endpoint:** `/interview-questions/{question_id}`
-- **Description:** 면접 질문의 내용, 기대 답변, 난이도를 수정합니다.
+- **Description:** 질문 내용, 기대 답변, 난이도를 수정합니다.
 
 #### Request
 
@@ -1862,13 +1698,13 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `question_id` | `string` | **필수** | 질문 ID (UUID) |
+| `question_id` | `string` | **필수** | 수정할 질문 ID (UUID) |
 
 ##### C. Request Body
 | 변수명 | 타입 | 필수 여부 | 제약 조건 | 설명 |
 | :--- | :--- | :---: | :--- | :--- |
-| `category` | `string` | 선택 | - | 질문 카테고리 |
-| `question_text` | `string` | 선택 | 최대 1000자 | 질문 내용 |
+| `question_text` | `string` | 선택 | 최대 1000자 | 면접 질문 내용 |
+| `category` | `string` | 선택 | 질문 유형 | 질문 카테고리 |
 | `expected_answer` | `string` | 선택 | 최대 2000자 | 기대 답변 |
 | `difficulty_level` | `string` | 선택 | EASY, MEDIUM, HARD | 난이도 |
 
@@ -1878,12 +1714,12 @@ Authorization: Bearer {access_token}
 ```json
 {
   "success": true,
-  "message": "면접 질문이 수정되었습니다.",
+  "message": "질문이 수정되었습니다.",
   "data": {
-    "id": "cc0e8400-e29b-41d4-a716-446655440007",
-    "question_text": "Spring Boot에서 트랜잭션 전파 속성에 대해 설명하세요.",
+    "id": "bb0e8400-e29b-41d4-a716-446655440006",
+    "question_text": "파이썬의 GIL과 멀티스레딩의 한계에 대해 설명해주세요.",
     "difficulty_level": "HARD",
-    "updated_at": "2024-04-14T22:00:00Z"
+    "updated_at": "2024-04-15T03:00:00Z"
   }
 }
 ```
@@ -1895,13 +1731,13 @@ Authorization: Bearer {access_token}
 
 ---
 
-### 6.5 면접 질문 삭제
+### 6.5 질문 삭제
 **FR-06-07: 질문 삭제**
 
 #### API 기본 정보
 - **Method:** `DELETE`
 - **Endpoint:** `/interview-questions/{question_id}`
-- **Description:** 불필요한 면접 질문을 삭제합니다.
+- **Description:** 불필요한 질문을 삭제 또는 비활성 처리합니다.
 
 #### Request
 
@@ -1913,7 +1749,7 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `question_id` | `string` | **필수** | 질문 ID (UUID) |
+| `question_id` | `string` | **필수** | 삭제할 질문 ID (UUID) |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -1921,75 +1757,102 @@ Authorization: Bearer {access_token}
 ```json
 {
   "success": true,
-  "message": "면접 질문이 삭제되었습니다.",
-  "data": {
-    "id": "cc0e8400-e29b-41d4-a716-446655440007",
-    "deleted_at": "2024-04-14T22:30:00Z"
-  }
-}
-```
-
-#### 에러 응답 (Error Response)
-| 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
-| :--- | :--- | :--- | :--- |
-| **404** | `QUESTION_NOT_FOUND` | "질문을 찾을 수 없습니다." | 존재하지 않는 question_id일 때 |
-
----
-
-### 6.6 Workflow 실행 상태 조회
-
-#### API 기본 정보
-- **Method:** `GET`
-- **Endpoint:** `/workflow-runs/{workflow_run_id}`
-- **Description:** 면접 질문 생성 워크플로우의 실행 상태를 조회합니다.
-
-#### Request
-
-##### A. Headers
-| 필드명 | 타입 | 필수 여부 | 값/예시 | 설명 |
-| :--- | :--- | :---: | :--- | :--- |
-| `Authorization` | `string` | **필수** | `Bearer {token}` | 인증 토큰 |
-
-##### B. Path Parameters
-| 변수명 | 타입 | 필수 여부 | 설명 |
-| :--- | :--- | :---: | :--- |
-| `workflow_run_id` | `string` | **필수** | 워크플로우 실행 ID (UUID) |
-
-#### Response
-- **Status Code**: `200 OK`
-
-```json
-{
-  "success": true,
+  "message": "질문이 삭제되었습니다.",
   "data": {
     "id": "bb0e8400-e29b-41d4-a716-446655440006",
-    "candidate_id": "770e8400-e29b-41d4-a716-446655440002",
-    "profile_id": "aa0e8400-e29b-41d4-a716-446655440005",
-    "run_status": "COMPLETED",
-    "started_at": "2024-04-14T21:30:00Z",
-    "completed_at": "2024-04-14T21:35:00Z",
-    "question_count": 10,
-    "total_cost": 0.025
+    "deleted_at": "2024-04-15T04:00:00Z",
+    "deleted_by": "660e8400-e29b-41d4-a716-446655440001"
   }
 }
 ```
 
-#### 에러 응답 (Error Response)
-| 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
-| :--- | :--- | :--- | :--- |
-| **404** | `WORKFLOW_NOT_FOUND` | "워크플로우를 찾을 수 없습니다." | 존재하지 않는 workflow_run_id일 때 |
+#### 데이터 제약 조건 (Validation)
+1. **논리 삭제**: 물리 삭제 대신 deleted_at, deleted_by 기록 (FR-08-02)
 
 ---
 
 ## 7. LLM 로그 관리
 
-### 7.1 LLM 호출 로그 조회
+### 7.1 LLM 호출 로그 저장
+**FR-07-01: LLM 호출 로그 저장**
+
+#### API 기본 정보
+- **Method:** `POST`
+- **Endpoint:** `/llm-logs`
+- **Description:** LLM 호출 시 candidate_id, document_id, prompt_profile_id 기준으로 이력을 저장합니다. "지원자 + 문서 + 프롬프트 조합" 기준.
+
+#### Request
+
+##### A. Headers
+| 필드명 | 타입 | 필수 여부 | 값/예시 | 설명 |
+| :--- | :--- | :---: | :--- | :--- |
+| `Content-Type` | `string` | **필수** | `application/json` | 요청 본문의 데이터 형식 |
+| `Authorization` | `string` | **필수** | `Bearer {token}` | 인증 토큰 |
+
+##### B. Request Body
+| 변수명 | 타입 | 필수 여부 | 제약 조건 | 설명 |
+| :--- | :--- | :---: | :--- | :--- |
+| `candidate_id` | `string` | **필수** | UUID | 지원자 ID |
+| `document_id` | `string` | **필수** | UUID | 문서 ID |
+| `prompt_profile_id` | `string` | **필수** | UUID | 프롬프트 프로파일 ID |
+| `model_name` | `string` | **필수** | 모델명 | 사용한 모델명 |
+| `response_json` | `object` | **필수** | JSON | 구조화된 응답 데이터 |
+| `total_tokens` | `integer` | **필수** | 양수 | 사용한 토큰 수 |
+| `cost_amount` | `number` | **필수** | 양수 | 호출 비용 |
+| `call_status` | `string` | **필수** | SUCCESS, FAIL | 호출 상태 |
+
+#### Response
+- **Status Code**: `201 Created`
+
+```json
+{
+  "success": true,
+  "message": "LLM 호출 로그가 저장되었습니다.",
+  "data": {
+    "id": "cc0e8400-e29b-41d4-a716-446655440007",
+    "candidate_id": "770e8400-e29b-41d4-a716-446655440002",
+    "document_id": "880e8400-e29b-41d4-a716-446655440003",
+    "prompt_profile_id": "aa0e8400-e29b-41d4-a716-446655440005",
+    "model_name": "gpt-4",
+    "response_json": {
+      "questions": [
+        {
+          "text": "파이썬의 GIL에 대해 설명해주세요.",
+          "category": "TECHNICAL"
+        }
+      ]
+    },
+    "total_tokens": 1250,
+    "cost_amount": 0.025,
+    "call_status": "SUCCESS",
+    "created_at": "2024-04-15T05:00:00Z"
+  }
+}
+```
+
+#### 에러 응답 (Error Response)
+| 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
+| :--- | :--- | :--- | :--- |
+| **404** | `CANDIDATE_NOT_FOUND` | "지원자를 찾을 수 없습니다." | 존재하지 않는 candidate_id일 때 |
+| **404** | `DOCUMENT_NOT_FOUND` | "문서를 찾을 수 없습니다." | 존재하지 않는 document_id일 때 |
+| **404** | `PROFILE_NOT_FOUND` | "프로파일을 찾을 수 없습니다." | 존재하지 않는 prompt_profile_id일 때 |
+
+#### 데이터 제약 조건 (Validation)
+1. **model_name**: 사용한 모델명 기록 (FR-07-02)
+2. **response_json**: 구조화된 응답 데이터 저장 (FR-07-03)
+3. **total_tokens**: 사용량 분석 (FR-07-04)
+4. **cost_amount**: 호출 비용 저장 (FR-07-05)
+5. **call_status**: SUCCESS / FAIL 관리 (FR-07-06)
+
+---
+
+### 7.2 LLM 로그 목록 조회
 **FR-07-07: 로그 조회**
 
 #### API 기본 정보
 - **Method:** `GET`
 - **Endpoint:** `/llm-logs`
-- **Description:** LLM 호출 로그를 기간별, 상태별, 모델별로 조회합니다.
+- **Description:** 기간별, 상태별, 모델별 호출 로그를 조회합니다.
 
 #### Request
 
@@ -1999,15 +1862,15 @@ Authorization: Bearer {access_token}
 | `Authorization` | `string` | **필수** | `Bearer {token}` | 인증 토큰 |
 
 ##### B. Query Parameters
-| 변수명 | 타입 | 필수 여부 | 기본값 | 설명 |
-| :--- | :--- | :---: | :--- | :--- |
-| `workflow_run_id` | `string` | 선택 | - | 워크플로우 실행 ID 필터 |
-| `call_status` | `string` | 선택 | - | SUCCESS, FAIL |
-| `model_name` | `string` | 선택 | - | 모델명 필터 |
-| `start_date` | `string` | 선택 | - | 시작 날짜 (YYYY-MM-DD) |
-| `end_date` | `string` | 선택 | - | 종료 날짜 (YYYY-MM-DD) |
-| `page` | `integer` | 선택 | `1` | 페이지 번호 |
-| `limit` | `integer` | 선택 | `20` | 페이지당 항목 수 (최대 100) |
+| 변수명 | 타입 | 필수 여부 | 설명 |
+| :--- | :--- | :---: | :--- |
+| `candidate_id` | `string` | 선택 | 필터: 지원자 ID |
+| `model_name` | `string` | 선택 | 필터: 모델명 |
+| `call_status` | `string` | 선택 | 필터: SUCCESS, FAIL |
+| `start_date` | `string` | 선택 | 필터: 시작일 (YYYY-MM-DD) |
+| `end_date` | `string` | 선택 | 필터: 종료일 (YYYY-MM-DD) |
+| `page` | `integer` | 선택 | 페이지 번호 (기본값: 1) |
+| `limit` | `integer` | 선택 | 페이지당 항목 수 (기본값: 20) |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -2018,29 +1881,24 @@ Authorization: Bearer {access_token}
   "data": {
     "items": [
       {
-        "id": "dd0e8400-e29b-41d4-a716-446655440008",
-        "workflow_run_id": "bb0e8400-e29b-41d4-a716-446655440006",
+        "id": "cc0e8400-e29b-41d4-a716-446655440007",
+        "candidate_id": "770e8400-e29b-41d4-a716-446655440002",
+        "document_id": "880e8400-e29b-41d4-a716-446655440003",
+        "prompt_profile_id": "aa0e8400-e29b-41d4-a716-446655440005",
         "model_name": "gpt-4",
-        "total_tokens": 2500,
+        "total_tokens": 1250,
         "cost_amount": 0.025,
         "call_status": "SUCCESS",
-        "created_at": "2024-04-14T21:32:00Z"
+        "created_at": "2024-04-15T05:00:00Z"
       }
     ],
     "pagination": {
       "current_page": 1,
-      "total_pages": 1,
-      "total_items": 3,
+      "total_pages": 3,
+      "total_items": 50,
       "items_per_page": 20,
-      "has_next": false,
+      "has_next": true,
       "has_prev": false
-    },
-    "summary": {
-      "total_calls": 3,
-      "success_count": 3,
-      "fail_count": 0,
-      "total_tokens": 7500,
-      "total_cost": 0.075
     }
   }
 }
@@ -2048,13 +1906,12 @@ Authorization: Bearer {access_token}
 
 ---
 
-### 7.2 LLM 호출 로그 상세 조회
-**FR-07-01 ~ FR-07-06: LLM 호출 관련 정보**
+### 7.3 LLM 로그 상세 조회
 
 #### API 기본 정보
 - **Method:** `GET`
 - **Endpoint:** `/llm-logs/{log_id}`
-- **Description:** LLM 호출 로그의 상세 정보를 조회합니다.
+- **Description:** LLM 호출 로그 상세 정보를 조회합니다.
 
 #### Request
 
@@ -2066,7 +1923,7 @@ Authorization: Bearer {access_token}
 ##### B. Path Parameters
 | 변수명 | 타입 | 필수 여부 | 설명 |
 | :--- | :--- | :---: | :--- |
-| `log_id` | `string` | **필수** | 로그 ID (UUID) |
+| `log_id` | `string` | **필수** | 조회할 로그 ID (UUID) |
 
 #### Response
 - **Status Code**: `200 OK`
@@ -2075,25 +1932,24 @@ Authorization: Bearer {access_token}
 {
   "success": true,
   "data": {
-    "id": "dd0e8400-e29b-41d4-a716-446655440008",
-    "workflow_run_id": "bb0e8400-e29b-41d4-a716-446655440006",
+    "id": "cc0e8400-e29b-41d4-a716-446655440007",
+    "candidate_id": "770e8400-e29b-41d4-a716-446655440002",
+    "document_id": "880e8400-e29b-41d4-a716-446655440003",
+    "prompt_profile_id": "aa0e8400-e29b-41d4-a716-446655440005",
     "model_name": "gpt-4",
-    "prompt_text": "당신은 전문 면접관입니다...",
     "response_json": {
       "questions": [
         {
+          "text": "파이썬의 GIL에 대해 설명해주세요.",
           "category": "TECHNICAL",
-          "question_text": "...",
-          "expected_answer": "...",
-          "difficulty_level": "MEDIUM"
+          "difficulty": "MEDIUM"
         }
       ]
     },
-    "total_tokens": 2500,
+    "total_tokens": 1250,
     "cost_amount": 0.025,
     "call_status": "SUCCESS",
-    "error_message": null,
-    "created_at": "2024-04-14T21:32:00Z"
+    "created_at": "2024-04-15T05:00:00Z"
   }
 }
 ```
@@ -2105,126 +1961,121 @@ Authorization: Bearer {access_token}
 
 ---
 
-### 7.3 LLM 사용 통계 조회
-
-#### API 기본 정보
-- **Method:** `GET`
-- **Endpoint:** `/llm-logs/statistics`
-- **Description:** LLM 사용 통계를 조회합니다.
-
-#### Request
-
-##### A. Headers
-| 필드명 | 타입 | 필수 여부 | 값/예시 | 설명 |
-| :--- | :--- | :---: | :--- | :--- |
-| `Authorization` | `string` | **필수** | `Bearer {token}` | 인증 토큰 |
-
-##### B. Query Parameters
-| 변수명 | 타입 | 필수 여부 | 기본값 | 설명 |
-| :--- | :--- | :---: | :--- | :--- |
-| `start_date` | `string` | **필수** | - | 시작 날짜 (YYYY-MM-DD) |
-| `end_date` | `string` | **필수** | - | 종료 날짜 (YYYY-MM-DD) |
-| `group_by` | `string` | 선택 | `model` | model, date, status |
-
-#### Response
-- **Status Code**: `200 OK`
-
-```json
-{
-  "success": true,
-  "data": {
-    "period": {
-      "start_date": "2024-04-01",
-      "end_date": "2024-04-30"
-    },
-    "statistics": [
-      {
-        "model_name": "gpt-4",
-        "total_calls": 150,
-        "success_count": 148,
-        "fail_count": 2,
-        "total_tokens": 375000,
-        "total_cost": 3.75,
-        "average_tokens_per_call": 2500
-      },
-      {
-        "model_name": "gpt-3.5-turbo",
-        "total_calls": 300,
-        "success_count": 295,
-        "fail_count": 5,
-        "total_tokens": 450000,
-        "total_cost": 0.90,
-        "average_tokens_per_call": 1500
-      }
-    ],
-    "total_summary": {
-      "total_calls": 450,
-      "success_count": 443,
-      "fail_count": 7,
-      "total_tokens": 825000,
-      "total_cost": 4.65,
-      "success_rate": 0.984
-    }
-  }
-}
-```
-
-#### 에러 응답 (Error Response)
-| 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
-| :--- | :--- | :--- | :--- |
-| **400** | `INVALID_DATE_RANGE` | "유효하지 않은 날짜 범위입니다." | start_date > end_date일 때 |
-
----
-
 ## 부록
 
-### 상태 코드 정의
+### A. 상태값 정의
 
-#### 관리자 상태 (`manager.status`)
-- `ACTIVE`: 활성
-- `INACTIVE`: 비활성
-- `LOCK`: 잠금
+#### A.1 관리자 상태 (manager.status)
+| 값 | 설명 |
+| :--- | :--- |
+| `ACTIVE` | 활성 상태 |
+| `INACTIVE` | 비활성 상태 |
 
-#### 사용자 요청 상태 (`user.request_status`)
-- `REQUESTED`: 요청됨
-- `APPROVED`: 승인됨
-- `REJECTED`: 반려됨
+#### A.2 사용자 요청 상태 (user.request_status)
+| 값 | 설명 |
+| :--- | :--- |
+| `REQUESTED` | 요청됨 |
+| `APPROVED` | 승인됨 |
+| `REJECTED` | 반려됨 |
 
-#### 사용자 상태 (`user.status`)
-- `ACTIVE`: 활성
-- `INACTIVE`: 비활성
+#### A.3 사용자 상태 (user.status)
+| 값 | 설명 |
+| :--- | :--- |
+| `ACTIVE` | 활성 상태 (로그인 가능) |
+| `INACTIVE` | 비활성 상태 (로그인 불가) |
 
-#### 사용자 권한 (`user.role_type`)
-- `VIEWER`: 조회 권한
-- `EDITOR`: 편집 권한
-- `ADMIN`: 관리자 권한
+#### A.4 지원 상태 (candidate.apply_status)
+| 값 | 설명 |
+| :--- | :--- |
+| `APPLIED` | 지원 완료 |
+| `SCREENING` | 서류 심사 중 |
+| `INTERVIEWING` | 면접 진행 중 |
+| `PASSED` | 합격 |
+| `FAILED` | 불합격 |
 
-#### 지원 상태 (`candidate.apply_status`)
-- `APPLIED`: 지원 완료
-- `DOCUMENT_REVIEW`: 서류 검토 중
-- `INTERVIEW_SCHEDULED`: 면접 예정
-- `INTERVIEW_COMPLETED`: 면접 완료
-- `ACCEPTED`: 합격
-- `REJECTED`: 불합격
+#### A.5 문서 타입 (document.document_type)
+| 값 | 설명 |
+| :--- | :--- |
+| `RESUME` | 이력서 |
+| `PORTFOLIO` | 포트폴리오 |
 
-#### 문서 타입 (`document.document_type`)
-- `RESUME`: 이력서
-- `PORTFOLIO`: 포트폴리오
+#### A.6 추출 상태 (document.extract_status)
+| 값 | 설명 |
+| :--- | :--- |
+| `PENDING` | 추출 대기 중 |
+| `READY` | 추출 완료 |
+| `FAILED` | 추출 실패 |
 
-#### 추출 상태 (`document.extract_status`)
-- `PENDING`: 추출 대기 중
-- `READY`: 추출 완료
-- `FAILED`: 추출 실패
+#### A.7 난이도 (interview_question_item.difficulty_level)
+| 값 | 설명 |
+| :--- | :--- |
+| `EASY` | 쉬움 |
+| `MEDIUM` | 보통 |
+| `HARD` | 어려움 |
 
-#### 난이도 (`interview_question_item.difficulty_level`)
-- `EASY`: 쉬움
-- `MEDIUM`: 보통
-- `HARD`: 어려움
-
-#### LLM 호출 상태 (`llm_call_log.call_status`)
-- `SUCCESS`: 성공
-- `FAIL`: 실패
+#### A.8 LLM 호출 상태 (llm_call_log.call_status)
+| 값 | 설명 |
+| :--- | :--- |
+| `SUCCESS` | 성공 |
+| `FAIL` | 실패 |
 
 ---
 
-**최종 수정일**: 2024-04-14
+### B. 데이터 흐름 (Data Flow)
+
+```
+1. 관리자/사용자 계정 생성 및 로그인
+   └─> manager / user
+
+2. 지원자 등록
+   └─> candidate
+
+3. 문서 업로드 및 텍스트 추출
+   └─> document
+       └─> extract_status: PENDING → READY
+
+4. 프롬프트 프로파일 선택
+   └─> prompt_profile
+
+5. LLM 호출 및 응답 로그 기록
+   └─> llm_call_log (candidate + document + prompt_profile)
+
+6. 면접 질문 저장
+   └─> interview_question_item (candidate + prompt_profile + source_document)
+```
+
+---
+
+### C. 참조 무결성 (Foreign Key Constraints)
+
+| 테이블 | FK 컬럼 | 참조 테이블 | 참조 컬럼 |
+| :--- | :--- | :--- | :--- |
+| `user` | `approved_by` | `manager` | `id` |
+| `user` | `created_by` | `manager` | `id` |
+| `candidate` | `resume_doc_id` | `document` | `id` |
+| `candidate` | `portfolio_doc_id` | `document` | `id` |
+| `document` | `candidate_id` | `candidate` | `id` |
+| `interview_question_item` | `candidate_id` | `candidate` | `id` |
+| `interview_question_item` | `prompt_profile_id` | `prompt_profile` | `id` |
+| `interview_question_item` | `source_document_id` | `document` | `id` |
+| `llm_call_log` | `candidate_id` | `candidate` | `id` |
+| `llm_call_log` | `document_id` | `document` | `id` |
+| `llm_call_log` | `prompt_profile_id` | `prompt_profile` | `id` |
+
+---
+
+### D. Audit 컬럼 (공통 적용)
+
+모든 테이블에 공통으로 적용되는 Audit 컬럼:
+
+| 컬럼명 | 타입 | 설명 |
+| :--- | :--- | :--- |
+| `created_at` | `timestamp` | 생성 일시 |
+| `created_by` | `uuid` | 생성자 ID |
+| `deleted_at` | `timestamp` | 삭제 일시 (논리 삭제) |
+| `deleted_by` | `uuid` | 삭제자 ID (논리 삭제) |
+
+**논리 삭제 정책 (FR-08-02)**:
+- 삭제 시 물리 삭제 대신 `deleted_at`, `deleted_by`를 기록
+- 조회 시 `deleted_at IS NULL` 조건으로 필터링
+
