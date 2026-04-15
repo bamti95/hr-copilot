@@ -2,29 +2,26 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
-from dependencies.auth import get_current_active_admin
-from models.admin.admin import Admin
-
-from schemas.admin.admin import AdminResponse
-
-
+from dependencies.auth import get_current_active_manager
+from models.manager import Manager
 from schemas.auth.auth import (
     LoginRequest,
+    LoginResponse,
     LogoutRequest,
-    MeResponse,
     RefreshTokenRequest,
+    RefreshTokenResponse,
 )
-
 from services.auth.auth_service import AuthService
 
-router = APIRouter(prefix="/auth", tags=["인증"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 
-@router.post("/login", summary="로그인")
+
+@router.post("/login", response_model=LoginResponse, summary="관리자 로그인")
 async def login(
     request_body: LoginRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-):
+) -> LoginResponse:
     return await AuthService.login(
         db=db,
         login_id=request_body.login_id,
@@ -34,41 +31,26 @@ async def login(
     )
 
 
-@router.post("/refresh")
+@router.post("/refresh", response_model=RefreshTokenResponse, summary="토큰 재발급")
 async def refresh_token(
     request_body: RefreshTokenRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> RefreshTokenResponse:
     return await AuthService.refresh(
         db=db,
         refresh_token=request_body.refresh_token,
     )
 
 
-@router.get("/me", response_model=MeResponse)
-async def me(
-    admin: Admin = Depends(get_current_active_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    permissions = await AuthService.get_permissions(db, admin.group_id)
-    return MeResponse(
-        admin=AdminResponse.from_entity(admin),
-        permissions=permissions,
-    )
-
-
-@router.post("/logout")
+@router.post("/logout", summary="로그아웃")
 async def logout(
     request_body: LogoutRequest,
-    request: Request,
-    admin: Admin = Depends(get_current_active_admin),
+    manager: Manager = Depends(get_current_active_manager),
     db: AsyncSession = Depends(get_db),
 ):
     await AuthService.logout(
         db=db,
-        admin=admin,
+        manager=manager,
         refresh_token=request_body.refresh_token,
-        ip_address=request.client.host if request.client else None,
-        user_agent=request.headers.get("user-agent"),
     )
-    return {"message": "로그아웃 되었습니다."}
+    return {"message": "로그아웃되었습니다."}

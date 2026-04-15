@@ -1,7 +1,15 @@
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
+
+
+def _parse_bool(value: str | None, default: bool = False) -> bool:
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "y", "yes", "on"}
+
 
 class Settings:
     DB_HOST: str = os.getenv("DB_HOST", "")
@@ -9,6 +17,7 @@ class Settings:
     DB_NAME: str = os.getenv("DB_NAME", "")
     DB_USER: str = os.getenv("DB_USER", "")
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
+    DB_ECHO: bool = _parse_bool(os.getenv("DB_ECHO"), True)
 
     JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "")
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
@@ -32,7 +41,9 @@ class Settings:
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
 
+
 settings = Settings()
+
 
 def get_settings():
     return settings
