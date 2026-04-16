@@ -1,5 +1,6 @@
 import axios from "axios";
 import { authStorage } from "./authStorage";
+import { useGlobalLoadingStore } from "../store/useGlobalLoadingStore";
 
 const API_BASE_URL = "http://127.0.0.1:8000/api/v1";
 
@@ -8,13 +9,22 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  const nextConfig = config as typeof config & {
+    skipGlobalLoading?: boolean;
+    __globalLoadingTracked?: boolean;
+  };
   const token = authStorage.getAccessToken();
 
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    nextConfig.headers.Authorization = `Bearer ${token}`;
   }
 
-  return config;
+  if (!nextConfig.skipGlobalLoading) {
+    useGlobalLoadingStore.getState().start();
+    nextConfig.__globalLoadingTracked = true;
+  }
+
+  return nextConfig;
 });
 
 let refreshPromise: Promise<string | null> | null = null;
@@ -47,9 +57,31 @@ async function requestTokenRefresh() {
 }
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const responseConfig = response.config as typeof response.config & {
+      __globalLoadingTracked?: boolean;
+    };
+
+    if (responseConfig.__globalLoadingTracked) {
+      useGlobalLoadingStore.getState().finish();
+      responseConfig.__globalLoadingTracked = false;
+    }
+
+    return response;
+  },
   async (error) => {
-    const originalRequest = error.config as any;
+    const originalRequest = error.config as {
+      skipAuthRefresh?: boolean;
+      skipGlobalLoading?: boolean;
+      _retry?: boolean;
+      __globalLoadingTracked?: boolean;
+      headers?: Record<string, string>;
+    };
+
+    if (originalRequest?.__globalLoadingTracked) {
+      useGlobalLoadingStore.getState().finish();
+      originalRequest.__globalLoadingTracked = false;
+    }
 
     if (
       error.response?.status !== 401 ||
