@@ -1,30 +1,45 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+ManagerRoleType = Literal[
+    "SUPER_ADMIN",
+    "SYSTEM-MANAGER",
+    "OPS_MANAGER",
+    "RECRUIT_MANAGER",
+    "DOC_REVIEWER",
+    "QUALITY_MANAGER",
+    "PROMPT_MANAGER",
+]
+
+ManagerStatus = Literal["ACTIVE", "INACTIVE", "LOCKED"]
 
 class ManagerCreateRequest(BaseModel):
     login_id: str = Field(..., alias="loginId", min_length=3, max_length=100)
     password: str = Field(..., min_length=8, max_length=100)
     name: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
-    role_type: str = Field(..., alias="roleType", min_length=1, max_length=50)
-    status: str = "ACTIVE"
+    role_type: ManagerRoleType = Field(..., alias="roleType")
+    status: ManagerStatus = "ACTIVE"
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, str_strip_whitespace=True)
 
 
 class ManagerUpdateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
-    role_type: str = Field(..., alias="roleType", min_length=1, max_length=50)
-    status: str = "ACTIVE"
+    role_type: ManagerRoleType = Field(..., alias="roleType")
+    status: ManagerStatus = "ACTIVE"
     password: str | None = Field(None, min_length=8, max_length=100)
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, str_strip_whitespace=True)
 
 
 class ManagerStatusUpdateRequest(BaseModel):
-    status: str
+    status: ManagerStatus
+
+    model_config = ConfigDict(str_strip_whitespace=True)
 
 class ManagerResponse(BaseModel):
     id: int

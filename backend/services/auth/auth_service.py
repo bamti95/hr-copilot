@@ -14,7 +14,7 @@ from core.security import (
 )
 from models.manager import Manager
 from models.manager_refresh_token import ManagerRefreshToken
-from schemas.auth.auth import LoginResponse, RefreshTokenResponse
+from schemas.auth import LoginResponse, RefreshTokenResponse
 from schemas.manager import ManagerResponse
 
 

@@ -62,7 +62,7 @@ async def get_manager_detail(
 async def update_manager(
     manager_id: int,
     request_body: ManagerUpdateRequest,
-    _: Manager = Depends(require_role_type("SUPER_ADMIN")),
+    _: Manager = Depends(require_role_type("SYSTEM-MANAGER")),
     db: AsyncSession = Depends(get_db),
 ) -> ManagerResponse:
     return await ManagerService.update_manager(db=db, manager_id=manager_id, request=request_body)
@@ -72,7 +72,7 @@ async def update_manager(
 async def update_manager_status(
     manager_id: int,
     request_body: ManagerStatusUpdateRequest,
-    _: Manager = Depends(require_role_type("SUPER_ADMIN")),
+    _: Manager = Depends(require_role_type("SYSTEM-MANAGER")),
     db: AsyncSession = Depends(get_db),
 ) -> ManagerResponse:
     return await ManagerService.update_manager_status(
@@ -85,7 +85,7 @@ async def update_manager_status(
 @router.delete("/{manager_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_manager(
     manager_id: int,
-    current_manager: Manager = Depends(require_role_type("SUPER_ADMIN")),
+    current_manager: Manager = Depends(require_role_type("SYSTEM-MANAGER")),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     await ManagerService.delete_manager(db=db, manager_id=manager_id, actor_id=current_manager.id)

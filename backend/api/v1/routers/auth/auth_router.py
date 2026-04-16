@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from dependencies.auth import get_current_active_manager
 from models.manager import Manager
-from schemas.auth.auth import (
+from schemas.auth import (
     LoginRequest,
     LoginResponse,
     LogoutRequest,
