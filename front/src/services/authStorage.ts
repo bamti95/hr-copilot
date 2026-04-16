@@ -1,31 +1,16 @@
-const ACCESS_TOKEN_KEY = "jwtToken";
-const REFRESH_TOKEN_KEY = "refreshToken";
-const PERMISSIONS_KEY = "adminPermissions";
-const ADMIN_KEY = "adminProfile";
+const ACCESS_TOKEN_KEY = "managerAccessToken";
+const REFRESH_TOKEN_KEY = "managerRefreshToken";
+const MANAGER_PROFILE_KEY = "managerProfile";
 
 function getStorageValue(key: string) {
-  const sessionValue = sessionStorage.getItem(key);
-  if (sessionValue !== null) {
-    return sessionValue;
-  }
-
-  const legacyLocalValue = localStorage.getItem(key);
-  if (legacyLocalValue !== null) {
-    sessionStorage.setItem(key, legacyLocalValue);
-    localStorage.removeItem(key);
-    return legacyLocalValue;
-  }
-
-  return null;
+  return localStorage.getItem(key);
 }
 
 function setStorageValue(key: string, value: string) {
-  sessionStorage.setItem(key, value);
-  localStorage.removeItem(key);
+  localStorage.setItem(key, value);
 }
 
 function removeStorageValue(key: string) {
-  sessionStorage.removeItem(key);
   localStorage.removeItem(key);
 }
 
@@ -46,28 +31,18 @@ export const authStorage = {
     setStorageValue(REFRESH_TOKEN_KEY, token);
   },
 
-  getPermissions() {
-    const raw = getStorageValue(PERMISSIONS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  },
-
-  setPermissions(permissions: unknown) {
-    setStorageValue(PERMISSIONS_KEY, JSON.stringify(permissions));
-  },
-
-  getAdmin<T>() {
-    const raw = getStorageValue(ADMIN_KEY);
+  getManager<T>() {
+    const raw = getStorageValue(MANAGER_PROFILE_KEY);
     return raw ? (JSON.parse(raw) as T) : null;
   },
 
-  setAdmin(admin: unknown) {
-    setStorageValue(ADMIN_KEY, JSON.stringify(admin));
+  setManager(manager: unknown) {
+    setStorageValue(MANAGER_PROFILE_KEY, JSON.stringify(manager));
   },
 
   clear() {
     removeStorageValue(ACCESS_TOKEN_KEY);
     removeStorageValue(REFRESH_TOKEN_KEY);
-    removeStorageValue(PERMISSIONS_KEY);
-    removeStorageValue(ADMIN_KEY);
+    removeStorageValue(MANAGER_PROFILE_KEY);
   },
 };

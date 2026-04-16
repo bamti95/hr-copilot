@@ -1,6 +1,5 @@
 import api from "./api";
 import type {
-  AuthMeResponse,
   LoginRequest,
   LogoutRequest,
   RefreshTokenRequest,
@@ -18,7 +17,7 @@ function createRefreshPayload(refreshToken: string) {
 export async function loginAdmin(requestBody: LoginRequest) {
   const response = await api.post<TokenPairResponse>("/auth/login", requestBody, {
     skipAuthRefresh: true,
-  } as any);
+  } as never);
 
   return response.data;
 }
@@ -29,14 +28,9 @@ export async function refreshAdminToken(requestBody: RefreshTokenRequest) {
     createRefreshPayload(requestBody.refreshToken),
     {
       skipAuthRefresh: true,
-    } as any,
+    } as never,
   );
 
-  return response.data;
-}
-
-export async function fetchAdminMe() {
-  const response = await api.get<AuthMeResponse>("/auth/me");
   return response.data;
 }
 
@@ -46,6 +40,6 @@ export async function logoutAdmin(requestBody?: LogoutRequest) {
     requestBody ? createRefreshPayload(requestBody.refreshToken) : undefined,
     {
       skipAuthRefresh: true,
-    } as any,
+    } as never,
   );
 }

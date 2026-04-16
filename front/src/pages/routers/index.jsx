@@ -1,68 +1,49 @@
-// src/router/index.jsx
-import { createBrowserRouter } from "react-router-dom";
-import Layout from "../../layouts/Layout";
-import NotFound from "../NotFound";
-import ErrorPage from "../ErrorPage";
-import Home from "../Home";
-import LoginPage from "../../components/auth/LoginPage";
-import SignupPage from "../../components/auth/SignupPage";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import ProtectedRoute from "../../components/ProtectedRoute";
-import MyPage from "../../components/auth/MyPage";
-import PostList from "../../components/post/PostList";
-import PostWrite from "../../components/post/PostWrite";
-import PostDetail from "../../components/post/PostDetail"
-import Chat from "../../components/chat_prac/Chat";
-import ChatHistory from "../../components/chat_prac/ChatHistory";
-import AiChatPage from "../../components/chat_prac/AiChatPage";
+import AdminLoginPage from "../../features/auth/AdminLogin";
+import { ManagerLayout } from "../../common/layout/ManagerLayout";
+import DashboardPage from "../../features/manager/Dashboard";
+import ManagerPage from "../../features/manager/Manager";
+import CandidatePage from "../../features/manager/Candidate";
+import DocumentPage from "../../features/manager/Document";
+import PromptProfilePage from "../../features/manager/PromptProfile";
+import InterviewSessionPage from "../../features/manager/InterviewSession";
+import InterviewQuestionPage from "../../features/manager/InterviewQuestion";
+import OpsLogPage from "../../features/manager/OpsLog";
 
-// src/router/index.jsx
 const router = createBrowserRouter([
   {
-    path: "/", 
-    element: <Layout />,
-    errorElement: <ErrorPage />, 
+    path: "/",
+    element: <Navigate to="/admin/login" replace />,
+  },
+  {
+    path: "/admin/login",
+    element: <AdminLoginPage />,
+  },
+  {
+    element: <ProtectedRoute />,
     children: [
-      { index: true, element: <Home /> },
       {
-        path: "auth", 
+        path: "/manager",
+        element: <ManagerLayout />,
         children: [
-          { path: "login", element: <LoginPage /> },   // /auth/login
-          { path: "signup", element: <SignupPage /> },  // /auth/signup
-        ],
-      },
-      {
-        path: "board",
-        children: [
-          { path: "posts", element: <PostList /> }, // /board/posts/new
-          { path: "posts/:id", element: <PostDetail /> },
-          {
-            element: <ProtectedRoute />, 
-            children: [
-              { path: "posts/new", element: <PostWrite /> }, // /board/posts/new
-            ],
-          },
-        ],
-      },
-      {
-        path: "chat",
-        children: [
-          { path: "stream", element: <Chat /> },
-          { path: "stream-history", element: <ChatHistory />},
-          { path: "ai", element: <AiChatPage /> },
-        ]
-      },
-      {
-        element: <ProtectedRoute />,
-        children: [
-          { path: "mypage", element: <MyPage /> },      // /mypage
+          { index: true, element: <Navigate to="/manager/managers" replace /> },
+          { path: "dashboard", element: <DashboardPage /> },
+          { path: "managers", element: <ManagerPage /> },
+          { path: "candidates", element: <CandidatePage /> },
+          { path: "documents", element: <DocumentPage /> },
+          { path: "prompt-profiles", element: <PromptProfilePage /> },
+          { path: "interview-sessions", element: <InterviewSessionPage /> },
+          { path: "interview-questions", element: <InterviewQuestionPage /> },
+          { path: "ops-logs", element: <OpsLogPage /> },
         ],
       },
     ],
   },
   {
-    path: "*", 
-    element: <NotFound />,
-  }
+    path: "*",
+    element: <Navigate to="/admin/login" replace />,
+  },
 ]);
 
 export default router;

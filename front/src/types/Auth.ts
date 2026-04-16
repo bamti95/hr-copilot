@@ -1,6 +1,3 @@
-import type { Admin } from "./Admin/Admin";
-import type { AdminGroupMenuPermissionResponse } from "./admin";
-
 export interface LoginRequest {
   login_id: string;
   password: string;
@@ -14,27 +11,21 @@ export interface LogoutRequest {
   refreshToken: string;
 }
 
-export interface AuthMeResponse {
-  admin: {
-    id: number;
-    groupId?: number;
-    group_id?: number;
-    loginId?: string;
-    login_id?: string;
-    name: string;
-    email?: string | null;
-    delTf?: "Y" | "N";
-    del_tf?: "Y" | "N";
-  };
-  permissions: AdminGroupMenuPermissionResponse[];
+export interface ManagerProfile {
+  id: number;
+  loginId?: string;
+  name: string;
+  email: string;
+  roleType?: string | null;
+  status?: string;
+  isDeleted: boolean;
 }
 
 export interface TokenPairResponse {
   accessToken: string;
   refreshToken: string;
   tokenType: string;
-  admin: Admin;
-  permissions: AdminGroupMenuPermissionResponse[];
+  manager: ManagerProfile;
 }
 
 export interface RefreshTokenResponse {

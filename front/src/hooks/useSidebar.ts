@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 
 export function useSidebar() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(
-    () => window.innerWidth >= 768,
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 1024 : false,
   );
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 768) {
+      if (window.innerWidth >= 1024) {
         setIsSidebarOpen(true);
       }
     };
@@ -21,5 +21,6 @@ export function useSidebar() {
     isSidebarOpen,
     toggleSidebar: () => setIsSidebarOpen((current) => !current),
     closeSidebar: () => setIsSidebarOpen(false),
+    openSidebar: () => setIsSidebarOpen(true),
   };
 }

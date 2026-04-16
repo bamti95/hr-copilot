@@ -7,11 +7,11 @@ export function ManagerLayout() {
   const { isSidebarOpen, toggleSidebar, closeSidebar } = useSidebar();
 
   return (
-    <div className={`admin-shell ${isSidebarOpen ? "sidebar-open" : "sidebar-closed"}`}>
+    <div className="flex min-h-screen">
       <ManagerSidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
-      <div className="admin-shell__content">
+      <div className="min-w-0 flex-1 p-3 md:p-6">
         <ManagerHeader onToggleSidebar={toggleSidebar} />
-        <main className="admin-main">
+        <main className="flex flex-col gap-3 md:gap-4">
           <Outlet />
         </main>
       </div>

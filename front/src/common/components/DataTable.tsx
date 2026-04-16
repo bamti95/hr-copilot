@@ -18,12 +18,17 @@ export function DataTable<T>({
   getRowKey,
 }: DataTableProps<T>) {
   return (
-    <div className="data-table-wrap">
-      <table className="data-table">
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse">
         <thead>
           <tr>
             {columns.map((column) => (
-              <th key={column.key}>{column.header}</th>
+              <th
+                key={column.key}
+                className="border-b border-[var(--line)] px-2.5 py-3.5 text-left text-[0.84rem] font-bold whitespace-nowrap text-[var(--muted)]"
+              >
+                {column.header}
+              </th>
             ))}
           </tr>
         </thead>
@@ -31,7 +36,12 @@ export function DataTable<T>({
           {rows.map((row) => (
             <tr key={getRowKey(row)}>
               {columns.map((column) => (
-                <td key={column.key}>{column.render(row)}</td>
+                <td
+                  key={column.key}
+                  className="border-b border-[var(--line)] px-2.5 py-3.5 text-left whitespace-nowrap text-[var(--text)]"
+                >
+                  {column.render(row)}
+                </td>
               ))}
             </tr>
           ))}

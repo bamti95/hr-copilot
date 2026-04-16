@@ -10,6 +10,9 @@ interface CandidateBoardProps {
   onPageChange: (page: number) => void;
 }
 
+const searchInputClassName =
+  "min-h-12 w-full rounded-full border border-[var(--line)] bg-[var(--panel-strong)] px-4 text-[var(--text)] outline-none transition focus:border-[var(--primary)] md:w-[320px]";
+
 export function CandidateBoard({
   data,
   search,
@@ -17,14 +20,16 @@ export function CandidateBoard({
   onPageChange,
 }: CandidateBoardProps) {
   return (
-    <section className="panel">
-      <div className="panel__header panel__header--stack">
+    <section className="rounded-[32px] border border-white/70 bg-[var(--panel)] p-7 shadow-[var(--shadow)] backdrop-blur-[14px]">
+      <div className="mb-[18px] flex flex-col items-start justify-between gap-4">
         <div>
-          <h2>Candidate Pipeline</h2>
-          <p>지원자 정보와 지원 상태를 하나의 파이프라인으로 확인합니다.</p>
+          <h2 className="m-0 text-2xl font-bold text-[var(--text)]">Candidate Pipeline</h2>
+          <p className="mt-2 text-sm text-[var(--muted)]">
+            지원자 정보와 지원 상태를 하나의 파이프라인으로 확인합니다.
+          </p>
         </div>
         <input
-          className="panel__search"
+          className={searchInputClassName}
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder="candidate, status, target job"
