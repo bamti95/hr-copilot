@@ -22,7 +22,6 @@ AsyncSessionLocal = async_sessionmaker(
     expire_on_commit=False,
 )
 
-
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session
@@ -30,11 +29,6 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db() -> None:
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        # 기존 DB는 create_all이 스키마를 바꾸지 않으므로, 모델에만 추가된 컬럼을 여기서 보강합니다.
-        await conn.execute(
-            text(
-                "ALTER TABLE candidate ADD COLUMN IF NOT EXISTS updated_at "
-                "TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()"
-            )
-        )
+        # Schema changes are managed by Alembic migrations.
+        # Keep startup lightweight and fail fast if the database is unreachable.
+        await conn.execute(text("SELECT 1"))

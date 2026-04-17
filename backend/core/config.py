@@ -1,9 +1,9 @@
 import os
 
 from dotenv import load_dotenv
+from urllib.parse import quote_plus
 
 load_dotenv()
-
 
 def _parse_bool(value: str | None, default: bool = False) -> bool:
     if value is None:
@@ -36,12 +36,13 @@ class Settings:
 
     @property
     def DATABASE_URL(self) -> str:
+        user = quote_plus(self.DB_USER)
+        password = quote_plus(self.DB_PASSWORD)
         return (
-            f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}"
+            f"postgresql+asyncpg://{user}:{password}"
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
-
-
+        
 settings = Settings()
 
 
