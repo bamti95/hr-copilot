@@ -8,14 +8,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.candidate import ApplyStatus, Candidate
 from repositories.candidate_repository import CandidateRepository
 from schemas.candidate import (
+    ApplyStatusCountRow,
     CandidateCreateRequest,
     CandidateDeleteResponse,
     CandidateListResponse,
     CandidatePagination,
     CandidateResponse,
+    CandidateStatisticsResponse,
     CandidateStatusPatchRequest,
     CandidateStatusPatchResponse,
     CandidateUpdateRequest,
+    TargetJobCountRow,
 )
 
 
@@ -100,6 +103,30 @@ class CandidateService:
                 total_items=total_items,
                 items_per_page=limit,
             ),
+        )
+
+    @staticmethod
+    async def get_statistics(db: AsyncSession) -> CandidateStatisticsResponse:
+        repo = CandidateRepository(db)
+        total = await repo.count_active_candidates()
+        status_rows = await repo.count_by_apply_status()
+        status_map = dict(status_rows)
+        by_apply_status = [
+            ApplyStatusCountRow(apply_status=s.value, count=status_map.get(s.value, 0))
+            for s in ApplyStatus
+        ]
+        job_rows = await repo.count_by_target_job_distinct_candidates()
+        job_rows_sorted = sorted(job_rows, key=lambda r: (-r[1], r[0]))
+        by_target_job = [
+            TargetJobCountRow(target_job=job, count=cnt) for job, cnt in job_rows_sorted
+        ]
+        with_session = await repo.count_distinct_active_candidates_with_session()
+        without_session = max(0, total - with_session)
+        return CandidateStatisticsResponse(
+            total_candidates=total,
+            by_apply_status=by_apply_status,
+            by_target_job=by_target_job,
+            active_without_interview_session_count=without_session,
         )
 
     @staticmethod

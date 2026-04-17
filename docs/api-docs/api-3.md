@@ -270,3 +270,52 @@ Authorization: Bearer {access_token}
 | :--- | :--- | :--- | :--- |
 | **404** | `CANDIDATE_NOT_FOUND` | "지원자를 찾을 수 없습니다." | 존재하지 않는 지원자 ID일 때 |
 | **400** | `ALREADY_DELETED` | "이미 삭제된 지원자입니다." | deleted_at이 NULL이 아닐 때 |
+
+---
+
+### 3.7 지원자 통계 조회
+
+**Endpoint**: `GET /candidates/statistics`
+
+**설명**: 논리 삭제되지 않은 지원자의 전체 인원, 지원 상태별 인원, 직무별 인원을 집계합니다.
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Query Parameters**: 없음 (전체 스냅샷)
+
+**Response (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "total_candidates": 87,
+    "by_apply_status": [
+      { "apply_status": "APPLIED", "count": 12 },
+      { "apply_status": "SCREENING", "count": 30 },
+      { "apply_status": "INTERVIEW", "count": 25 },
+      { "apply_status": "ACCEPTED", "count": 10 },
+      { "apply_status": "REJECTED", "count": 10 }
+    ],
+    "by_target_job": [
+      { "target_job": "BACKEND_DEVELOPER", "count": 18 },
+      { "target_job": "FRONTEND_DEVELOPER", "count": 14 }
+    ],
+    "active_without_interview_session_count": 22
+  },
+  "message": "지원자 통계 조회 성공"
+}
+```
+
+**Response 필드 설명**:
+- `total_candidates`: 논리 삭제되지 않은 전체 지원자 수
+- `by_apply_status`: 지원 상태별 인원 집계
+- `by_target_job`: 면접 세션의 `target_job` 기준 지원자 수 (지원자 ID 중복 제거)
+- `active_without_interview_session_count`: 활성 지원자 중 삭제되지 않은 면접 세션이 없는 인원
+
+#### 에러 응답 (Error Response)
+| 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
+| :--- | :--- | :--- | :--- |
+| **401** | `UNAUTHORIZED` | "인증이 필요합니다." | 유효하지 않은 토큰일 때 |
