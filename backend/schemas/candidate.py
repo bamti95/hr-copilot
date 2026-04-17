@@ -67,3 +67,20 @@ class CandidateListResponse(BaseModel):
 class CandidateStatusPatchResponse(BaseModel):
     id: int
     apply_status: str
+
+
+class ApplyStatusCountRow(BaseModel):
+    apply_status: str
+    count: int
+
+
+class TargetJobCountRow(BaseModel):
+    target_job: str
+    count: int
+
+
+class CandidateStatisticsResponse(BaseModel):
+    total_candidates: int
+    by_apply_status: list[ApplyStatusCountRow]
+    by_target_job: list[TargetJobCountRow]
+    active_without_interview_session_count: int

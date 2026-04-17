@@ -1,7 +1,8 @@
-from sqlalchemy import func, or_, select
+from sqlalchemy import distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.candidate import Candidate
+from models.interview_session import InterviewSession
 from repositories.base_repository import BaseRepository
 
 
@@ -85,3 +86,46 @@ class CandidateRepository(BaseRepository[Candidate]):
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    async def count_active_candidates(self) -> int:
+        stmt = select(func.count(Candidate.id)).where(Candidate.deleted_at.is_(None))
+        result = await self.db.execute(stmt)
+        return result.scalar_one()
+
+    async def count_by_apply_status(self) -> list[tuple[str, int]]:
+        stmt = (
+            select(Candidate.apply_status, func.count(Candidate.id))
+            .where(Candidate.deleted_at.is_(None))
+            .group_by(Candidate.apply_status)
+        )
+        result = await self.db.execute(stmt)
+        return [(str(row[0]), int(row[1])) for row in result.all()]
+
+    async def count_by_target_job_distinct_candidates(self) -> list[tuple[str, int]]:
+        stmt = (
+            select(
+                InterviewSession.target_job,
+                func.count(distinct(InterviewSession.candidate_id)),
+            )
+            .join(Candidate, Candidate.id == InterviewSession.candidate_id)
+            .where(
+                Candidate.deleted_at.is_(None),
+                InterviewSession.deleted_at.is_(None),
+            )
+            .group_by(InterviewSession.target_job)
+        )
+        result = await self.db.execute(stmt)
+        return [(str(row[0]), int(row[1])) for row in result.all()]
+
+    async def count_distinct_active_candidates_with_session(self) -> int:
+        stmt = (
+            select(func.count(distinct(InterviewSession.candidate_id)))
+            .select_from(InterviewSession)
+            .join(Candidate, Candidate.id == InterviewSession.candidate_id)
+            .where(
+                Candidate.deleted_at.is_(None),
+                InterviewSession.deleted_at.is_(None),
+            )
+        )
+        result = await self.db.execute(stmt)
+        return int(result.scalar_one())

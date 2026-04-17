@@ -10,6 +10,7 @@ from schemas.candidate import (
     CandidateDeleteResponse,
     CandidateListResponse,
     CandidateResponse,
+    CandidateStatisticsResponse,
     CandidateStatusPatchRequest,
     CandidateStatusPatchResponse,
     CandidateUpdateRequest,
@@ -35,6 +36,14 @@ async def list_candidates(
         apply_status=apply_status,
         search=search,
     )
+
+
+@router.get("/statistics", response_model=CandidateStatisticsResponse)
+async def get_candidate_statistics(
+    _: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> CandidateStatisticsResponse:
+    return await CandidateService.get_statistics(db=db)
 
 
 @router.get("/{candidate_id}", response_model=CandidateResponse)
