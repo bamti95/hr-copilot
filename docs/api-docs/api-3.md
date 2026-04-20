@@ -273,7 +273,185 @@ Authorization: Bearer {access_token}
 
 ---
 
-### 3.7 지원자 통계 조회
+### 3.7 지원자 문서 업로드
+
+**Endpoint**: `POST /candidates/{id}/documents`
+
+**설명**: 지원자의 문서(이력서, 자기소개서 등)를 업로드합니다.
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+Content-Type: multipart/form-data
+```
+
+**Path Parameters**:
+- `id` (integer, required): 지원자 ID
+
+**Request Body** (multipart/form-data):
+- `document_types` (array[string], required): 문서 유형 목록 (RESUME, COVER_LETTER, PORTFOLIO, CERTIFICATE, ETC)
+- `files` (array[file], required): 업로드할 파일 목록 (document_types와 1:1 대응)
+
+**Response (201)**:
+```json
+{
+  "success": true,
+  "data": {
+    "uploaded_documents": [
+      {
+        "id": 1,
+        "candidate_id": 10,
+        "document_type": "RESUME",
+        "file_name": "김지원_이력서.pdf",
+        "file_path": "/uploads/candidates/10/resume_20250415.pdf",
+        "file_size": 245678,
+        "uploaded_at": "2025-04-15T10:30:00Z",
+        "uploaded_by": 1
+      },
+      {
+        "id": 2,
+        "candidate_id": 10,
+        "document_type": "COVER_LETTER",
+        "file_name": "김지원_자기소개서.pdf",
+        "file_path": "/uploads/candidates/10/cover_20250415.pdf",
+        "file_size": 123456,
+        "uploaded_at": "2025-04-15T10:30:00Z",
+        "uploaded_by": 1
+      }
+    ]
+  },
+  "message": "지원자 문서 업로드 성공"
+}
+```
+
+#### 에러 응답 (Error Response)
+| 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
+| :--- | :--- | :--- | :--- |
+| **404** | `CANDIDATE_NOT_FOUND` | "지원자를 찾을 수 없습니다." | 존재하지 않는 지원자 ID일 때 |
+| **400** | `INVALID_DOCUMENT_TYPE` | "유효하지 않은 문서 유형입니다." | 잘못된 document_type 값일 때 |
+| **400** | `FILE_COUNT_MISMATCH` | "문서 유형과 파일 개수가 일치하지 않습니다." | document_types와 files 배열 길이가 다를 때 |
+| **400** | `FILE_TOO_LARGE` | "파일 크기가 너무 큽니다." | 파일 크기 제한 초과 시 |
+| **400** | `INVALID_FILE_TYPE` | "지원하지 않는 파일 형식입니다." | 허용되지 않은 파일 확장자일 때 |
+
+---
+
+### 3.8 지원자 문서 다운로드
+
+**Endpoint**: `GET /candidates/{id}/documents/{document_id}/download`
+
+**설명**: 지원자의 특정 문서를 다운로드합니다.
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Path Parameters**:
+- `id` (integer, required): 지원자 ID
+- `document_id` (integer, required): 문서 ID
+
+**Response (200)**:
+- Content-Type: application/octet-stream (또는 파일의 MIME 타입)
+- Content-Disposition: attachment; filename="원본파일명.확장자"
+- 파일 바이너리 데이터
+
+#### 에러 응답 (Error Response)
+| 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
+| :--- | :--- | :--- | :--- |
+| **404** | `CANDIDATE_NOT_FOUND` | "지원자를 찾을 수 없습니다." | 존재하지 않는 지원자 ID일 때 |
+| **404** | `DOCUMENT_NOT_FOUND` | "문서를 찾을 수 없습니다." | 존재하지 않는 문서 ID일 때 |
+| **404** | `FILE_NOT_FOUND` | "파일을 찾을 수 없습니다." | 실제 파일이 서버에 없을 때 |
+
+---
+
+### 3.9 지원자 문서 삭제
+
+**Endpoint**: `DELETE /candidates/{id}/documents/{document_id}`
+
+**설명**: 지원자의 특정 문서를 삭제합니다.
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+```
+
+**Path Parameters**:
+- `id` (integer, required): 지원자 ID
+- `document_id` (integer, required): 문서 ID
+
+**Response (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "candidate_id": 10,
+    "deleted_at": "2025-04-15T11:30:00Z",
+    "deleted_by": 1
+  },
+  "message": "지원자 문서 삭제 성공"
+}
+```
+
+#### 에러 응답 (Error Response)
+| 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
+| :--- | :--- | :--- | :--- |
+| **404** | `CANDIDATE_NOT_FOUND` | "지원자를 찾을 수 없습니다." | 존재하지 않는 지원자 ID일 때 |
+| **404** | `DOCUMENT_NOT_FOUND` | "문서를 찾을 수 없습니다." | 존재하지 않는 문서 ID일 때 |
+| **400** | `ALREADY_DELETED` | "이미 삭제된 문서입니다." | deleted_at이 NULL이 아닐 때 |
+
+---
+
+### 3.10 지원자 문서 교체
+
+**Endpoint**: `PUT /candidates/{id}/documents/{document_id}`
+
+**설명**: 지원자의 특정 문서를 새 파일로 교체합니다.
+
+**Headers**:
+```
+Authorization: Bearer {access_token}
+Content-Type: multipart/form-data
+```
+
+**Path Parameters**:
+- `id` (integer, required): 지원자 ID
+- `document_id` (integer, required): 문서 ID
+
+**Request Body** (multipart/form-data):
+- `document_type` (string, required): 문서 유형 (RESUME, COVER_LETTER, PORTFOLIO, CERTIFICATE, ETC)
+- `file` (file, required): 교체할 파일
+
+**Response (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "candidate_id": 10,
+    "document_type": "RESUME",
+    "file_name": "김지원_이력서_v2.pdf",
+    "file_path": "/uploads/candidates/10/resume_20250415_v2.pdf",
+    "file_size": 267890,
+    "uploaded_at": "2025-04-15T12:00:00Z",
+    "uploaded_by": 1
+  },
+  "message": "지원자 문서 교체 성공"
+}
+```
+
+#### 에러 응답 (Error Response)
+| 상태 코드 | 에러 코드 | 메시지 | 발생 상황 |
+| :--- | :--- | :--- | :--- |
+| **404** | `CANDIDATE_NOT_FOUND` | "지원자를 찾을 수 없습니다." | 존재하지 않는 지원자 ID일 때 |
+| **404** | `DOCUMENT_NOT_FOUND` | "문서를 찾을 수 없습니다." | 존재하지 않는 문서 ID일 때 |
+| **400** | `INVALID_DOCUMENT_TYPE` | "유효하지 않은 문서 유형입니다." | 잘못된 document_type 값일 때 |
+| **400** | `FILE_TOO_LARGE` | "파일 크기가 너무 큽니다." | 파일 크기 제한 초과 시 |
+| **400** | `INVALID_FILE_TYPE` | "지원하지 않는 파일 형식입니다." | 허용되지 않은 파일 확장자일 때 |
+
+---
+
+### 3.11 지원자 통계 조회
 
 **Endpoint**: `GET /candidates/statistics`
 
