@@ -383,7 +383,41 @@ Authorization: Bearer {access_token}
 ```json
 {
   "success": true,
-  "data": {
+  "data": {Headers:
+  
+  Authorization: Bearer {access_token}
+  Content-Type: multipart/form-data
+  Path Parameters:
+  
+  id (integer, required): 지원자 ID
+  document_id (integer, required): 문서 ID
+  Request Body (multipart/form-data):
+  
+  document_type (string, required): 문서 유형 (RESUME, COVER_LETTER, PORTFOLIO, CERTIFICATE, ETC)
+  file (file, required): 교체할 파일
+  Response (200):
+  
+  {
+    "success": true,
+    "data": {
+      "id": 1,
+      "candidate_id": 10,
+      "document_type": "RESUME",
+      "file_name": "김지원_이력서_v2.pdf",
+      "file_path": "/uploads/candidates/10/resume_20250415_v2.pdf",
+      "file_size": 267890,
+      "uploaded_at": "2025-04-15T12:00:00Z",
+      "uploaded_by": 1
+    },
+    "message": "지원자 문서 교체 성공"
+  }
+  에러 응답 (Error Response)
+  상태 코드	에러 코드	메시지	발생 상황
+  404	CANDIDATE_NOT_FOUND	"지원자를 찾을 수 없습니다."	존재하지 않는 지원자 ID일 때
+  404	DOCUMENT_NOT_FOUND	"문서를 찾을 수 없습니다."	존재하지 않는 문서 ID일 때
+  400	INVALID_DOCUMENT_TYPE	"유효하지 않은 문서 유형입니다."	잘못된 document_type 값일 때
+  400	FILE_TOO_LARGE	"파일 크기가 너무 큽니다."	파일 크기 제한 초과 시
+  400	INVALID_FILE_TYPE	"지원하지 않는 파일 형식입니다."	허용되지 않은 파일 확장자일 때
     "id": 1,
     "candidate_id": 10,
     "deleted_at": "2025-04-15T11:30:00Z",

@@ -6,17 +6,16 @@ interface ManagerHeaderProps {
   onToggleSidebar: () => void;
 }
 
-const ghostButtonClassName =
-  "rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm font-medium text-[var(--text)] transition-colors hover:bg-slate-50 dark:bg-[rgba(14,21,33,0.92)] dark:text-white";
-
 export function ManagerHeader({ onToggleSidebar }: ManagerHeaderProps) {
   const navigate = useNavigate();
   const manager = useAuthStore((state) => state.manager);
   const logout = useAuthStore((state) => state.logout);
   const isDark = useThemeStore((state) => state.isDark);
   const toggleDark = useThemeStore((state) => state.toggleDark);
+  const ghostButtonClassName = `rounded-2xl border border-[var(--line)]  px-4 py-3 text-sm font-medium text-[var(--text)] transition-colors ${isDark ? "bg-[#246bff1f] text-white hover:bg-slate-700" : "bg-whites hover:bg-slate-200"}`;
 
-  const displayName = manager?.name || manager?.loginId || manager?.email || "Manager";
+  const displayName =
+    manager?.name || manager?.loginId || manager?.email || "Manager";
 
   const handleLogout = async () => {
     await logout();
@@ -53,10 +52,18 @@ export function ManagerHeader({ onToggleSidebar }: ManagerHeaderProps) {
         <span className="inline-flex min-h-12 min-w-[88px] items-center justify-center rounded-full bg-[#246bff1f] px-3.5 py-3 text-sm font-bold text-[var(--text)]">
           {displayName}
         </span>
-        <button type="button" className={ghostButtonClassName} onClick={toggleDark}>
+        <button
+          type="button"
+          className={ghostButtonClassName}
+          onClick={toggleDark}
+        >
           {isDark ? "라이트 모드" : "다크 모드"}
         </button>
-        <button type="button" className={ghostButtonClassName} onClick={handleLogout}>
+        <button
+          type="button"
+          className={ghostButtonClassName}
+          onClick={handleLogout}
+        >
           로그아웃
         </button>
       </div>
