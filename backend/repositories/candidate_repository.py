@@ -2,6 +2,7 @@ from sqlalchemy import distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.candidate import Candidate
+from models.document import Document
 from models.interview_session import InterviewSession
 from repositories.base_repository import BaseRepository
 
@@ -20,6 +21,31 @@ class CandidateRepository(BaseRepository[Candidate]):
 
     async def find_by_id_any(self, candidate_id: int) -> Candidate | None:
         stmt = select(Candidate).where(Candidate.id == candidate_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def find_active_documents_by_candidate_id(self, candidate_id: int) -> list[Document]:
+        stmt = (
+            select(Document)
+            .where(
+                Document.candidate_id == candidate_id,
+                Document.deleted_at.is_(None),
+            )
+            .order_by(Document.id.desc())
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def find_active_document_by_id(
+        self,
+        candidate_id: int,
+        document_id: int,
+    ) -> Document | None:
+        stmt = select(Document).where(
+            Document.id == document_id,
+            Document.candidate_id == candidate_id,
+            Document.deleted_at.is_(None),
+        )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 

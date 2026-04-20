@@ -1,12 +1,16 @@
+from typing import TYPE_CHECKING
+
 from datetime import date, datetime
 from enum import StrEnum
 
 from sqlalchemy import Date, DateTime, Integer, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models.audit_base import AuditBase
 from models.base import Base
 
+if TYPE_CHECKING:
+    from models.document import Document
 
 class ApplyStatus(StrEnum):
     APPLIED = "APPLIED"
@@ -32,4 +36,8 @@ class Candidate(Base, AuditBase):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+    documents: Mapped[list["Document"]] = relationship(
+        "Document",
+        back_populates="candidate",
     )

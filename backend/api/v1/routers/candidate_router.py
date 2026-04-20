@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Query, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
@@ -7,7 +9,11 @@ from models.candidate import ApplyStatus
 from models.manager import Manager
 from schemas.candidate import (
     CandidateCreateRequest,
+    CandidateDetailResponse,
     CandidateDeleteResponse,
+    CandidateDocumentResponse,
+    CandidateDocumentDeleteResponse,
+    CandidateDocumentUploadResponse,
     CandidateListResponse,
     CandidateResponse,
     CandidateStatisticsResponse,
@@ -46,12 +52,12 @@ async def get_candidate_statistics(
     return await CandidateService.get_statistics(db=db)
 
 
-@router.get("/{candidate_id}", response_model=CandidateResponse)
+@router.get("/{candidate_id}", response_model=CandidateDetailResponse)
 async def get_candidate(
     candidate_id: int,
     _: Manager = Depends(get_current_active_manager),
     db: AsyncSession = Depends(get_db),
-) -> CandidateResponse:
+) -> CandidateDetailResponse:
     return await CandidateService.get_candidate(db=db, candidate_id=candidate_id)
 
 
@@ -93,6 +99,78 @@ async def patch_candidate_status(
         db=db,
         candidate_id=candidate_id,
         request=request_body,
+    )
+
+
+@router.post(
+    "/{candidate_id}/documents",
+    response_model=CandidateDocumentUploadResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_candidate_documents(
+    candidate_id: int,
+    document_types: Annotated[list[str], Form(...)],
+    files: Annotated[list[UploadFile], File(...)],
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> CandidateDocumentUploadResponse:
+    return await CandidateService.upload_candidate_documents(
+        db=db,
+        candidate_id=candidate_id,
+        document_types=document_types,
+        files=files,
+        actor_id=current_manager.id,
+    )
+
+
+@router.get("/{candidate_id}/documents/{document_id}/download")
+async def download_candidate_document(
+    candidate_id: int,
+    document_id: int,
+    _: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+):
+    return await CandidateService.download_candidate_document(
+        db=db,
+        candidate_id=candidate_id,
+        document_id=document_id,
+    )
+
+
+@router.delete(
+    "/{candidate_id}/documents/{document_id}",
+    response_model=CandidateDocumentDeleteResponse,
+)
+async def delete_candidate_document(
+    candidate_id: int,
+    document_id: int,
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> CandidateDocumentDeleteResponse:
+    return await CandidateService.delete_candidate_document(
+        db=db,
+        candidate_id=candidate_id,
+        document_id=document_id,
+        actor_id=current_manager.id,
+    )
+
+
+@router.put("/{candidate_id}/documents/{document_id}", response_model=CandidateDocumentResponse)
+async def replace_candidate_document(
+    candidate_id: int,
+    document_id: int,
+    document_type: Annotated[str, Form(...)],
+    file: Annotated[UploadFile, File(...)],
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> CandidateDocumentResponse:
+    return await CandidateService.replace_candidate_document(
+        db=db,
+        candidate_id=candidate_id,
+        document_id=document_id,
+        document_type=document_type,
+        upload_file=file,
+        actor_id=current_manager.id,
     )
 
 

@@ -2,15 +2,27 @@ import math
 import re
 from datetime import datetime, timezone
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from common.file_util import (
+    build_download_response,
+    delete_file_by_path,
+    resolve_absolute_path,
+    save_upload_file_pairs,
+)
 from models.candidate import ApplyStatus, Candidate
+from models.document import Document
 from repositories.candidate_repository import CandidateRepository
 from schemas.candidate import (
     ApplyStatusCountRow,
     CandidateCreateRequest,
     CandidateDeleteResponse,
+    CandidateDocumentDeleteResponse,
+    CandidateDetailResponse,
+    CandidateDocumentResponse,
+    CandidateDocumentUploadResponse,
     CandidateListResponse,
     CandidatePagination,
     CandidateResponse,
@@ -27,13 +39,13 @@ def _assert_extra_email_rules(email: str) -> None:
     if "@" not in normalized:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="유효하지 않은 이메일 형식입니다.",
+            detail="Invalid email format.",
         )
     local, _, domain = normalized.partition("@")
     if not local or not domain or "." not in domain:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="유효하지 않은 이메일 형식입니다.",
+            detail="Invalid email format.",
         )
 
 
@@ -42,8 +54,32 @@ def _assert_phone_format(phone: str) -> None:
     if len(digits) < 10 or len(digits) > 15:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="유효하지 않은 전화번호 형식입니다.",
+            detail="Invalid phone number format.",
         )
+
+
+def _expand_document_types(document_types: list[str], file_count: int) -> list[str]:
+    normalized_types = [
+        document_type.strip()
+        for document_type in document_types
+        if document_type.strip()
+    ]
+    if not normalized_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one document_type is required.",
+        )
+
+    if len(normalized_types) == 1 and file_count > 1:
+        return normalized_types * file_count
+
+    if len(normalized_types) != file_count:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="document_types count must be 1 or match files count.",
+        )
+
+    return normalized_types
 
 
 class CandidateService:
@@ -60,7 +96,7 @@ class CandidateService:
         if await repo.find_active_by_email(str(request.email)):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="이미 등록된 이메일입니다.",
+                detail="Email already exists.",
             )
 
         entity = Candidate(
@@ -96,7 +132,7 @@ class CandidateService:
         )
         total_pages = math.ceil(total_items / limit) if total_items else 0
         return CandidateListResponse(
-            candidates=[CandidateResponse.model_validate(r) for r in rows],
+            candidates=[CandidateResponse.model_validate(row) for row in rows],
             pagination=CandidatePagination(
                 current_page=page,
                 total_pages=total_pages,
@@ -112,13 +148,17 @@ class CandidateService:
         status_rows = await repo.count_by_apply_status()
         status_map = dict(status_rows)
         by_apply_status = [
-            ApplyStatusCountRow(apply_status=s.value, count=status_map.get(s.value, 0))
-            for s in ApplyStatus
+            ApplyStatusCountRow(
+                apply_status=status_item.value,
+                count=status_map.get(status_item.value, 0),
+            )
+            for status_item in ApplyStatus
         ]
         job_rows = await repo.count_by_target_job_distinct_candidates()
-        job_rows_sorted = sorted(job_rows, key=lambda r: (-r[1], r[0]))
+        job_rows_sorted = sorted(job_rows, key=lambda row: (-row[1], row[0]))
         by_target_job = [
-            TargetJobCountRow(target_job=job, count=cnt) for job, cnt in job_rows_sorted
+            TargetJobCountRow(target_job=job, count=count)
+            for job, count in job_rows_sorted
         ]
         with_session = await repo.count_distinct_active_candidates_with_session()
         without_session = max(0, total - with_session)
@@ -130,15 +170,26 @@ class CandidateService:
         )
 
     @staticmethod
-    async def get_candidate(db: AsyncSession, candidate_id: int) -> CandidateResponse:
+    async def get_candidate(
+        db: AsyncSession,
+        candidate_id: int,
+    ) -> CandidateDetailResponse:
         repo = CandidateRepository(db)
         entity = await repo.find_by_id_not_deleted(candidate_id)
         if not entity:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="지원자를 찾을 수 없습니다.",
+                detail="Candidate not found.",
             )
-        return CandidateResponse.model_validate(entity)
+
+        documents = await repo.find_active_documents_by_candidate_id(candidate_id)
+        return CandidateDetailResponse(
+            **CandidateResponse.model_validate(entity).model_dump(),
+            documents=[
+                CandidateDocumentResponse.model_validate(document)
+                for document in documents
+            ],
+        )
 
     @staticmethod
     async def update_candidate(
@@ -154,13 +205,13 @@ class CandidateService:
         if not entity:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="지원자를 찾을 수 없습니다.",
+                detail="Candidate not found.",
             )
 
         if await repo.find_active_by_email_excluding_id(str(request.email), candidate_id):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="이미 등록된 이메일입니다.",
+                detail="Email already exists.",
             )
 
         entity.name = request.name.strip()
@@ -184,7 +235,7 @@ class CandidateService:
         if not entity:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="지원자를 찾을 수 없습니다.",
+                detail="Candidate not found.",
             )
 
         try:
@@ -192,14 +243,17 @@ class CandidateService:
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="유효하지 않은 상태값입니다.",
+                detail="Invalid apply status.",
             ) from exc
 
         entity.apply_status = next_status.value
         entity.updated_at = datetime.now(timezone.utc)
         await db.commit()
         await repo.refresh(entity)
-        return CandidateStatusPatchResponse(id=entity.id, apply_status=entity.apply_status)
+        return CandidateStatusPatchResponse(
+            id=entity.id,
+            apply_status=entity.apply_status,
+        )
 
     @staticmethod
     async def delete_candidate(
@@ -212,12 +266,12 @@ class CandidateService:
         if not entity:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="지원자를 찾을 수 없습니다.",
+                detail="Candidate not found.",
             )
         if entity.deleted_at is not None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="이미 삭제된 지원자입니다.",
+                detail="Candidate is already deleted.",
             )
 
         now = datetime.now(timezone.utc)
@@ -232,3 +286,193 @@ class CandidateService:
             deleted_at=entity.deleted_at,
             deleted_by=entity.deleted_by,
         )
+
+    @staticmethod
+    async def upload_candidate_documents(
+        db: AsyncSession,
+        candidate_id: int,
+        document_types: list[str],
+        files: list[UploadFile],
+        actor_id: int | None,
+    ) -> CandidateDocumentUploadResponse:
+        repo = CandidateRepository(db)
+        entity = await repo.find_by_id_not_deleted(candidate_id)
+        if not entity:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Candidate not found.",
+            )
+
+        if not files:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="At least one file is required.",
+            )
+
+        expanded_document_types = _expand_document_types(document_types, len(files))
+        saved_files = await save_upload_file_pairs(
+            candidate_id=candidate_id,
+            document_file_pairs=list(zip(expanded_document_types, files, strict=True)),
+        )
+        saved_paths = [resolve_absolute_path(saved.file_path) for saved in saved_files]
+        created_documents: list[Document] = []
+
+        try:
+            for document_type, saved in zip(
+                expanded_document_types,
+                saved_files,
+                strict=True,
+            ):
+                document = Document(
+                    document_type=document_type.strip().upper(),
+                    title=saved.title,
+                    original_file_name=saved.original_file_name,
+                    stored_file_name=saved.stored_file_name,
+                    file_path=saved.file_path,
+                    file_ext=saved.file_ext,
+                    mime_type=saved.mime_type,
+                    file_size=saved.file_size,
+                    candidate_id=candidate_id,
+                    extract_status="PENDING",
+                    created_by=actor_id,
+                )
+                await repo.add(document)
+                created_documents.append(document)
+
+            await repo.flush()
+            await db.commit()
+
+            for document in created_documents:
+                await repo.refresh(document)
+        except Exception:
+            await db.rollback()
+            for saved_path in saved_paths:
+                try:
+                    saved_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            raise
+
+        return CandidateDocumentUploadResponse(
+            candidate_id=candidate_id,
+            count=len(created_documents),
+            documents=[
+                CandidateDocumentResponse.model_validate(document)
+                for document in created_documents
+            ],
+        )
+
+    @staticmethod
+    async def download_candidate_document(
+        db: AsyncSession,
+        candidate_id: int,
+        document_id: int,
+    ) -> FileResponse:
+        repo = CandidateRepository(db)
+        entity = await repo.find_by_id_not_deleted(candidate_id)
+        if not entity:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Candidate not found.",
+            )
+
+        document = await repo.find_active_document_by_id(candidate_id, document_id)
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found.",
+            )
+
+        return build_download_response(
+            file_path=document.file_path,
+            download_name=document.original_file_name,
+            media_type=document.mime_type,
+        )
+
+    @staticmethod
+    async def delete_candidate_document(
+        db: AsyncSession,
+        candidate_id: int,
+        document_id: int,
+        actor_id: int | None,
+    ) -> CandidateDocumentDeleteResponse:
+        repo = CandidateRepository(db)
+        entity = await repo.find_by_id_not_deleted(candidate_id)
+        if not entity:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Candidate not found.",
+            )
+
+        document = await repo.find_active_document_by_id(candidate_id, document_id)
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found.",
+            )
+
+        now = datetime.now(timezone.utc)
+        document.deleted_at = now
+        document.deleted_by = actor_id
+
+        await db.commit()
+        await repo.refresh(document)
+        delete_file_by_path(document.file_path)
+        return CandidateDocumentDeleteResponse(id=document.id, deleted_at=now)
+
+    @staticmethod
+    async def replace_candidate_document(
+        db: AsyncSession,
+        candidate_id: int,
+        document_id: int,
+        document_type: str,
+        upload_file: UploadFile,
+        actor_id: int | None,
+    ) -> CandidateDocumentResponse:
+        repo = CandidateRepository(db)
+        entity = await repo.find_by_id_not_deleted(candidate_id)
+        if not entity:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Candidate not found.",
+            )
+
+        document = await repo.find_active_document_by_id(candidate_id, document_id)
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found.",
+            )
+
+        [saved_file] = await save_upload_file_pairs(
+            candidate_id=candidate_id,
+            document_file_pairs=[(document_type, upload_file)],
+        )
+        old_file_path = document.file_path
+
+        try:
+            document.document_type = document_type.strip().upper()
+            document.title = saved_file.title
+            document.original_file_name = saved_file.original_file_name
+            document.stored_file_name = saved_file.stored_file_name
+            document.file_path = saved_file.file_path
+            document.file_ext = saved_file.file_ext
+            document.mime_type = saved_file.mime_type
+            document.file_size = saved_file.file_size
+            document.extract_status = "PENDING"
+            document.extracted_text = None
+            document.deleted_at = None
+            document.deleted_by = None
+            document.created_by = actor_id if actor_id is not None else document.created_by
+
+            await db.commit()
+            await repo.refresh(document)
+        except Exception:
+            await db.rollback()
+            delete_file_by_path(saved_file.file_path)
+            raise
+
+        if old_file_path != document.file_path:
+            delete_file_by_path(old_file_path)
+
+        return CandidateDocumentResponse.model_validate(document)

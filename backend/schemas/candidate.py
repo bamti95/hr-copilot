@@ -2,6 +2,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+
 class CandidateCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
@@ -44,6 +45,26 @@ class CandidateResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class CandidateDocumentResponse(BaseModel):
+    id: int
+    document_type: str
+    title: str
+    original_file_name: str
+    stored_file_name: str
+    file_path: str
+    file_ext: str | None = None
+    mime_type: str | None = None
+    file_size: int | None = None
+    extract_status: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CandidateDetailResponse(CandidateResponse):
+    documents: list[CandidateDocumentResponse] = Field(default_factory=list)
+
+
 class CandidateDeleteResponse(BaseModel):
     id: int
     deleted_at: datetime
@@ -62,6 +83,19 @@ class CandidatePagination(BaseModel):
 class CandidateListResponse(BaseModel):
     candidates: list[CandidateResponse]
     pagination: CandidatePagination
+
+
+class CandidateDocumentUploadResponse(BaseModel):
+    candidate_id: int
+    count: int
+    documents: list[CandidateDocumentResponse]
+
+
+class CandidateDocumentDeleteResponse(BaseModel):
+    id: int
+    deleted_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CandidateStatusPatchResponse(BaseModel):
