@@ -21,6 +21,7 @@ async def list_prompt_profiles(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     search: str | None = Query(None),
+    target_job: str | None = Query(None, max_length=50),
     _: Manager = Depends(get_current_active_manager),
     db: AsyncSession = Depends(get_db),
 ) -> PromptProfileListResponse:
@@ -29,6 +30,7 @@ async def list_prompt_profiles(
         page=page,
         limit=limit,
         search=search,
+        target_job=target_job,
     )
 
 

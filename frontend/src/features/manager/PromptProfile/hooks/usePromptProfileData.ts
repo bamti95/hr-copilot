@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getErrorMessage } from "../../../../utils/getErrorMessage";
+import { DEFAULT_PROMPT_PROFILE_OUTPUT_SCHEMA } from "../constants/defaultOutputSchema";
 import {
   createPromptProfile,
   deletePromptProfile,
@@ -12,18 +13,7 @@ import type {
   PromptProfileResponse,
 } from "../types";
 import { buildAgentSystemPrompt, validateAgentConfigForCreate } from "../utils/buildAgentSystemPrompt";
-
-const emptyForm = (): PromptProfileFormState => ({
-  profileKey: "",
-  systemPrompt: "",
-  outputSchema: "",
-  agentName: "",
-  department: "",
-  jobTitle: "",
-  mustHaveStack: "",
-  niceToHaveStack: "",
-  qualifications: "",
-});
+import { emptyPromptProfileForm } from "../utils/promptProfileFormDefaults";
 
 export function usePromptProfileData() {
   const [data, setData] = useState<PromptProfileListResponse>({
@@ -38,7 +28,7 @@ export function usePromptProfileData() {
   const [errorMessage, setErrorMessage] = useState("");
   const [dialogMode, setDialogMode] = useState<"closed" | "create" | "edit">("closed");
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState<PromptProfileFormState>(emptyForm());
+  const [form, setForm] = useState<PromptProfileFormState>(emptyPromptProfileForm());
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
@@ -94,7 +84,7 @@ export function usePromptProfileData() {
   };
 
   const openCreate = () => {
-    setForm(emptyForm());
+    setForm(emptyPromptProfileForm());
     setEditingId(null);
     setFormError("");
     setDialogMode("create");
@@ -102,10 +92,10 @@ export function usePromptProfileData() {
 
   const openEdit = (row: PromptProfileResponse) => {
     setForm({
-      ...emptyForm(),
+      ...emptyPromptProfileForm(),
       profileKey: row.profileKey,
       systemPrompt: row.systemPrompt,
-      outputSchema: row.outputSchema ?? "",
+      outputSchema: DEFAULT_PROMPT_PROFILE_OUTPUT_SCHEMA,
     });
     setEditingId(row.id);
     setFormError("");
@@ -115,7 +105,7 @@ export function usePromptProfileData() {
   const closeDialog = () => {
     setDialogMode("closed");
     setEditingId(null);
-    setForm(emptyForm());
+    setForm(emptyPromptProfileForm());
     setFormError("");
   };
 
@@ -146,12 +136,13 @@ export function usePromptProfileData() {
         await createPromptProfile({
           profileKey: form.profileKey.trim(),
           systemPrompt,
-          outputSchema: form.outputSchema.trim() || undefined,
+          outputSchema: DEFAULT_PROMPT_PROFILE_OUTPUT_SCHEMA,
+          targetJob: form.jobTitle.trim() || null,
         });
       } else if (dialogMode === "edit" && editingId !== null) {
         await updatePromptProfile(editingId, {
           systemPrompt: form.systemPrompt.trim(),
-          outputSchema: form.outputSchema,
+          outputSchema: DEFAULT_PROMPT_PROFILE_OUTPUT_SCHEMA,
         });
       }
       closeDialog();

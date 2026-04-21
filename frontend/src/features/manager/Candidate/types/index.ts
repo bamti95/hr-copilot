@@ -19,6 +19,25 @@ export interface CandidateListRequest {
   limit: number;
   search?: string;
   applyStatus?: CandidateApplyStatus;
+  /** 면접 세션의 target_job과 정확히 일치하는 지원자만 */
+  targetJob?: string;
+}
+
+export interface ApplyStatusCountRow {
+  applyStatus: string;
+  count: number;
+}
+
+export interface TargetJobCountRow {
+  targetJob: string;
+  count: number;
+}
+
+export interface CandidateStatisticsResponse {
+  totalCandidates: number;
+  byApplyStatus: ApplyStatusCountRow[];
+  byTargetJob: TargetJobCountRow[];
+  activeWithoutInterviewSessionCount: number;
 }
 
 export interface CandidateCreateRequest {

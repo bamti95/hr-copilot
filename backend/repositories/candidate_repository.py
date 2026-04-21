@@ -1,4 +1,4 @@
-from sqlalchemy import distinct, func, or_, select
+from sqlalchemy import distinct, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.candidate import Candidate
@@ -101,6 +101,7 @@ class CandidateRepository(BaseRepository[Candidate]):
         self,
         apply_status: str | None,
         search: str | None,
+        target_job: str | None = None,
     ) -> list:
         conditions = [Candidate.deleted_at.is_(None)]
         if apply_status:
@@ -113,14 +114,26 @@ class CandidateRepository(BaseRepository[Candidate]):
                     Candidate.email.ilike(term),
                 )
             )
+        if target_job and target_job.strip():
+            job = target_job.strip()
+            conditions.append(
+                exists(
+                    select(1).where(
+                        InterviewSession.candidate_id == Candidate.id,
+                        InterviewSession.target_job == job,
+                        InterviewSession.deleted_at.is_(None),
+                    )
+                )
+            )
         return conditions
 
     async def count_list(
         self,
         apply_status: str | None = None,
         search: str | None = None,
+        target_job: str | None = None,
     ) -> int:
-        conditions = self._list_conditions(apply_status, search)
+        conditions = self._list_conditions(apply_status, search, target_job)
         stmt = select(func.count(Candidate.id)).where(*conditions)
         result = await self.db.execute(stmt)
         return result.scalar_one()
@@ -131,8 +144,9 @@ class CandidateRepository(BaseRepository[Candidate]):
         limit: int,
         apply_status: str | None = None,
         search: str | None = None,
+        target_job: str | None = None,
     ) -> list[Candidate]:
-        conditions = self._list_conditions(apply_status, search)
+        conditions = self._list_conditions(apply_status, search, target_job)
         offset = (page - 1) * limit
         stmt = (
             select(Candidate)

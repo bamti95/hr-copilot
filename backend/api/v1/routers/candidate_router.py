@@ -33,6 +33,7 @@ async def list_candidates(
     limit: int = Query(20, ge=1, le=100),
     apply_status: ApplyStatus | None = Query(None),
     search: str | None = Query(None),
+    target_job: str | None = Query(None, max_length=50),
     _: Manager = Depends(get_current_active_manager),
     db: AsyncSession = Depends(get_db),
 ) -> CandidateListResponse:
@@ -42,6 +43,7 @@ async def list_candidates(
         limit=limit,
         apply_status=apply_status,
         search=search,
+        target_job=target_job,
     )
 
 

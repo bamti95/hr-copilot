@@ -200,15 +200,22 @@ class CandidateService:
         limit: int,
         apply_status: ApplyStatus | None,
         search: str | None,
+        target_job: str | None,
     ) -> CandidateListResponse:
         repo = CandidateRepository(db)
         status_str = apply_status.value if apply_status else None
-        total_items = await repo.count_list(apply_status=status_str, search=search)
+        job_filter = target_job.strip() if target_job and target_job.strip() else None
+        total_items = await repo.count_list(
+            apply_status=status_str,
+            search=search,
+            target_job=job_filter,
+        )
         rows = await repo.find_list(
             page=page,
             limit=limit,
             apply_status=status_str,
             search=search,
+            target_job=job_filter,
         )
         total_pages = math.ceil(total_items / limit) if total_items else 0
         return CandidateListResponse(

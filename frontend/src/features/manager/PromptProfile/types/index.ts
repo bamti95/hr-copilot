@@ -4,6 +4,7 @@ export interface PromptProfileListRequest {
   page: number;
   limit: number;
   search?: string;
+  targetJob?: string;
 }
 
 export interface PromptProfileResponse {
@@ -11,6 +12,7 @@ export interface PromptProfileResponse {
   profileKey: string;
   systemPrompt: string;
   outputSchema: string | null;
+  targetJob: string | null;
   createdAt: string;
   createdBy: number | null;
   updatedAt: string;
@@ -24,6 +26,7 @@ export interface PromptProfileCreateRequest {
   profileKey: string;
   systemPrompt: string;
   outputSchema?: string | null;
+  targetJob?: string | null;
 }
 
 export interface PromptProfileUpdateRequest {
@@ -41,8 +44,9 @@ export interface PromptProfileFormState {
   agentName: string;
   department: string;
   jobTitle: string;
-  /** 2. 기술 요건 — 쉼표로 구분해 입력 (태그) */
-  mustHaveStack: string;
-  niceToHaveStack: string;
-  qualifications: string;
+  /** 2. 기술 요건 — 칩 태그 (내부 값은 # 없이) */
+  mustHaveStack: string[];
+  niceToHaveStack: string[];
+  requiredCertificates: string[];
+  requiredEducation: string[];
 }

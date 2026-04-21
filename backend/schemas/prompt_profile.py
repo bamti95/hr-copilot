@@ -7,6 +7,7 @@ class PromptProfileCreateRequest(BaseModel):
     profile_key: str = Field(..., min_length=1, max_length=100)
     system_prompt: str = Field(..., min_length=1)
     output_schema: str | None = None
+    target_job: str | None = Field(default=None, max_length=50)
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -23,6 +24,7 @@ class PromptProfileResponse(BaseModel):
     profile_key: str
     system_prompt: str
     output_schema: str | None
+    target_job: str | None = None
     created_at: datetime
     created_by: int | None = None
     updated_at: datetime

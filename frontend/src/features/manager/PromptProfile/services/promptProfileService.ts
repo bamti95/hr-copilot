@@ -13,6 +13,7 @@ interface PromptProfileApiResponse {
   profile_key: string;
   system_prompt: string;
   output_schema: string | null;
+  target_job?: string | null;
   created_at: string;
   created_by: number | null;
   updated_at: string;
@@ -36,6 +37,7 @@ function mapPromptProfile(response: PromptProfileApiResponse): PromptProfileResp
     profileKey: response.profile_key,
     systemPrompt: response.system_prompt,
     outputSchema: response.output_schema,
+    targetJob: response.target_job ?? null,
     createdAt: response.created_at,
     createdBy: response.created_by,
     updatedAt: response.updated_at,
@@ -61,6 +63,7 @@ export async function fetchPromptProfileList(
       page: request.page,
       limit: request.limit,
       search: request.search?.trim() || undefined,
+      target_job: request.targetJob?.trim() || undefined,
     },
   });
 
@@ -83,6 +86,10 @@ function toCreatePayload(body: PromptProfileCreateRequest) {
       body.outputSchema === undefined || body.outputSchema === null
         ? null
         : body.outputSchema.trim() || null,
+    target_job:
+      body.targetJob === undefined || body.targetJob === null
+        ? null
+        : body.targetJob.trim() || null,
   };
 }
 
