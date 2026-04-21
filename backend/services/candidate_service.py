@@ -66,6 +66,10 @@ def _assert_phone_format(phone: str) -> None:
         )
 
 
+def _phone_digits(phone: str) -> str:
+    return re.sub(r"\D", "", phone)
+
+
 def _expand_document_types(document_types: list[str], file_count: int) -> list[str]:
     normalized_types = [
         document_type.strip()
@@ -165,7 +169,14 @@ class CandidateService:
         if await repo.find_active_by_email(str(request.email)):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already exists.",
+                detail="이미 등록된 이메일입니다.",
+            )
+
+        phone_digits = _phone_digits(request.phone)
+        if await repo.find_active_by_phone_digits(phone_digits):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 등록된 전화번호입니다.",
             )
 
         entity = Candidate(
@@ -303,7 +314,14 @@ class CandidateService:
         if await repo.find_active_by_email_excluding_id(str(request.email), candidate_id):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already exists.",
+                detail="이미 등록된 이메일입니다.",
+            )
+
+        phone_digits = _phone_digits(request.phone)
+        if await repo.find_active_by_phone_digits_excluding_id(phone_digits, candidate_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 등록된 전화번호입니다.",
             )
 
         entity.name = request.name.strip()

@@ -7,6 +7,11 @@ from models.interview_session import InterviewSession
 from repositories.base_repository import BaseRepository
 
 
+def _candidate_phone_digits_expr():
+    """PostgreSQL: digits-only form of candidate.phone for duplicate checks."""
+    return func.regexp_replace(Candidate.phone, "[^0-9]", "", "g")
+
+
 class CandidateRepository(BaseRepository[Candidate]):
     def __init__(self, db: AsyncSession):
         super().__init__(db, Candidate)
@@ -65,6 +70,27 @@ class CandidateRepository(BaseRepository[Candidate]):
     async def find_active_by_email_excluding_id(self, email: str, exclude_id: int) -> Candidate | None:
         stmt = select(Candidate).where(
             func.lower(Candidate.email) == email.strip().lower(),
+            Candidate.deleted_at.is_(None),
+            Candidate.id != exclude_id,
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def find_active_by_phone_digits(self, phone_digits: str) -> Candidate | None:
+        stmt = select(Candidate).where(
+            _candidate_phone_digits_expr() == phone_digits,
+            Candidate.deleted_at.is_(None),
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def find_active_by_phone_digits_excluding_id(
+        self,
+        phone_digits: str,
+        exclude_id: int,
+    ) -> Candidate | None:
+        stmt = select(Candidate).where(
+            _candidate_phone_digits_expr() == phone_digits,
             Candidate.deleted_at.is_(None),
             Candidate.id != exclude_id,
         )
