@@ -1,6 +1,8 @@
 import { useMemo, type ReactNode } from "react";
 import type { PromptProfileFormState } from "../types";
 import { buildAgentSystemPrompt } from "../utils/buildAgentSystemPrompt";
+import { CERTIFICATE_SUGGESTIONS, EDUCATION_SUGGESTIONS, SKILL_STACK_SUGGESTIONS } from "../utils/chipPresets";
+import { HashtagChipField } from "./HashtagChipField";
 
 export type PromptProfileDialogMode = "closed" | "create" | "edit";
 
@@ -70,8 +72,8 @@ export function PromptProfileFormModal({
           </h2>
           <p className="text-sm text-[var(--muted)]">
             {isCreate
-              ? "기본 정보·기술 요건을 입력하면 시스템 프롬프트가 자동으로 합성됩니다. Output schema는 유효한 JSON 문자열이어야 합니다."
-              : "시스템 프롬프트와 Output schema를 직접 수정할 수 있습니다."}
+              ? "기본 정보·기술 요건을 입력하면 시스템 프롬프트가 자동으로 합성됩니다."
+              : "시스템 프롬프트를 직접 수정할 수 있습니다."}
           </p>
         </div>
 
@@ -137,43 +139,35 @@ export function PromptProfileFormModal({
 
               <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel-strong)]/60 p-5">
                 <SectionLabel>2. 기술 및 자격 요건 (Technical Requirements)</SectionLabel>
-                <div className="mt-4 grid gap-4">
-                  <label className="text-sm font-medium text-[var(--text)]">
-                    필수 기술 스택 (Must-have)
-                    <input
-                      className={fieldClassName}
-                      value={form.mustHaveStack}
-                      onChange={(e) => onFieldChange("mustHaveStack", e.target.value)}
-                      disabled={isSaving}
-                      placeholder="Python, FastAPI, PostgreSQL"
-                    />
-                    <span className="mt-1 block text-xs text-[var(--muted)]">
-                      쉼표(,)로 구분해 태그처럼 입력합니다.
-                    </span>
-                  </label>
-                  <label className="text-sm font-medium text-[var(--text)]">
-                    우대 기술 스택 (Nice-to-have)
-                    <input
-                      className={fieldClassName}
-                      value={form.niceToHaveStack}
-                      onChange={(e) => onFieldChange("niceToHaveStack", e.target.value)}
-                      disabled={isSaving}
-                      placeholder="Docker, AWS, Redis"
-                    />
-                    <span className="mt-1 block text-xs text-[var(--muted)]">
-                      선택 · 쉼표로 구분
-                    </span>
-                  </label>
-                  <label className="text-sm font-medium text-[var(--text)]">
-                    필수 자격 및 학력
-                    <input
-                      className={fieldClassName}
-                      value={form.qualifications}
-                      onChange={(e) => onFieldChange("qualifications", e.target.value)}
-                      disabled={isSaving}
-                      placeholder="예: 정보처리기사, 관련 전공 무관 등"
-                    />
-                  </label>
+                <div className="mt-4 grid gap-5">
+                  <HashtagChipField
+                    label="필수 기술 스택 (Must-have)"
+                    suggestions={SKILL_STACK_SUGGESTIONS}
+                    value={form.mustHaveStack}
+                    onChange={(next) => onFieldChange("mustHaveStack", next)}
+                    disabled={isSaving}
+                  />
+                  <HashtagChipField
+                    label="우대 기술 스택 (Nice-to-have)"
+                    suggestions={SKILL_STACK_SUGGESTIONS}
+                    value={form.niceToHaveStack}
+                    onChange={(next) => onFieldChange("niceToHaveStack", next)}
+                    disabled={isSaving}
+                  />
+                  <HashtagChipField
+                    label="필수 자격증"
+                    suggestions={CERTIFICATE_SUGGESTIONS}
+                    value={form.requiredCertificates}
+                    onChange={(next) => onFieldChange("requiredCertificates", next)}
+                    disabled={isSaving}
+                  />
+                  <HashtagChipField
+                    label="필수 학력"
+                    suggestions={EDUCATION_SUGGESTIONS}
+                    value={form.requiredEducation}
+                    onChange={(next) => onFieldChange("requiredEducation", next)}
+                    disabled={isSaving}
+                  />
                 </div>
               </div>
 
@@ -201,17 +195,6 @@ export function PromptProfileFormModal({
               />
             </label>
           )}
-
-          <label className="text-sm font-medium text-[var(--text)]">
-            Output schema (JSON 문자열, 선택)
-            <textarea
-              className={`${fieldClassName} min-h-[100px] resize-y font-mono text-sm`}
-              value={form.outputSchema}
-              onChange={(e) => onFieldChange("outputSchema", e.target.value)}
-              disabled={isSaving}
-              placeholder='예: {"questions": [{"question_text": "string"}]}'
-            />
-          </label>
         </div>
 
         <div className="mt-8 flex flex-wrap justify-end gap-3 border-t border-[var(--line)] pt-6">

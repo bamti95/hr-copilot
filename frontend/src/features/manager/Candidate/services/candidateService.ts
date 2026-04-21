@@ -7,10 +7,10 @@ import type {
   CandidateDocumentResponse,
   CandidateDocumentReplaceRequest,
   CandidateDocumentUploadRequest,
-  CandidateDocumentUploadResponse,
   CandidateListRequest,
   CandidateListResponse,
   CandidateResponse,
+  CandidateStatisticsResponse,
   CandidateStatusPatchRequest,
   CandidateUpdateRequest,
 } from "../types";
@@ -59,6 +59,13 @@ interface CandidateListApiResponse {
     total_items: number;
     items_per_page: number;
   };
+}
+
+interface CandidateStatisticsApiResponse {
+  total_candidates: number;
+  by_apply_status: { apply_status: string; count: number }[];
+  by_target_job: { target_job: string; count: number }[];
+  active_without_interview_session_count: number;
 }
 
 interface CandidateDocumentUploadApiResponse {
@@ -126,6 +133,26 @@ function toCandidatePayload(requestBody: CandidateCreateRequest | CandidateUpdat
   };
 }
 
+function mapCandidateStatistics(response: CandidateStatisticsApiResponse): CandidateStatisticsResponse {
+  return {
+    totalCandidates: response.total_candidates,
+    byApplyStatus: response.by_apply_status.map((row) => ({
+      applyStatus: row.apply_status,
+      count: row.count,
+    })),
+    byTargetJob: response.by_target_job.map((row) => ({
+      targetJob: row.target_job,
+      count: row.count,
+    })),
+    activeWithoutInterviewSessionCount: response.active_without_interview_session_count,
+  };
+}
+
+export async function fetchCandidateStatistics(): Promise<CandidateStatisticsResponse> {
+  const response = await api.get<CandidateStatisticsApiResponse>("/candidates/statistics");
+  return mapCandidateStatistics(response.data);
+}
+
 export async function fetchCandidateList(
   request: CandidateListRequest,
 ): Promise<CandidateListResponse> {
@@ -135,6 +162,7 @@ export async function fetchCandidateList(
       limit: request.limit,
       search: request.search || undefined,
       apply_status: request.applyStatus || undefined,
+      target_job: request.targetJob?.trim() || undefined,
     },
   });
 

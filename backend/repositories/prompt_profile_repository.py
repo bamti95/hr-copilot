@@ -30,7 +30,7 @@ class PromptProfileRepository(BaseRepository[PromptProfile]):
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    def _list_conditions(self, search: str | None) -> list:
+    def _list_conditions(self, search: str | None, target_job: str | None = None) -> list:
         conditions = [PromptProfile.deleted_at.is_(None)]
         if search and search.strip():
             term = f"%{search.strip()}%"
@@ -40,10 +40,12 @@ class PromptProfileRepository(BaseRepository[PromptProfile]):
                     PromptProfile.system_prompt.ilike(term),
                 )
             )
+        if target_job and target_job.strip():
+            conditions.append(PromptProfile.target_job == target_job.strip())
         return conditions
 
-    async def count_list(self, search: str | None = None) -> int:
-        conditions = self._list_conditions(search)
+    async def count_list(self, search: str | None = None, target_job: str | None = None) -> int:
+        conditions = self._list_conditions(search, target_job)
         stmt = select(func.count(PromptProfile.id)).where(*conditions)
         result = await self.db.execute(stmt)
         return result.scalar_one()
@@ -53,8 +55,9 @@ class PromptProfileRepository(BaseRepository[PromptProfile]):
         page: int,
         limit: int,
         search: str | None = None,
+        target_job: str | None = None,
     ) -> list[PromptProfile]:
-        conditions = self._list_conditions(search)
+        conditions = self._list_conditions(search, target_job)
         offset = (page - 1) * limit
         stmt = (
             select(PromptProfile)

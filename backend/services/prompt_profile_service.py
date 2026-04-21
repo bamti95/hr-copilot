@@ -85,10 +85,12 @@ class PromptProfileService:
                 "이미 존재하는 프로파일 키입니다.",
             )
 
+        target_job = request.target_job.strip() if request.target_job and request.target_job.strip() else None
         entity = PromptProfile(
             profile_key=request.profile_key.strip(),
             system_prompt=request.system_prompt.strip(),
             output_schema=output_schema,
+            target_job=target_job,
             created_by=actor_id,
             updated_at=now,
         )
@@ -113,10 +115,12 @@ class PromptProfileService:
         page: int,
         limit: int,
         search: str | None,
+        target_job: str | None,
     ) -> PromptProfileListResponse:
         repo = PromptProfileRepository(db)
-        total_items = await repo.count_list(search=search)
-        rows = await repo.find_list(page=page, limit=limit, search=search)
+        job_filter = target_job.strip() if target_job and target_job.strip() else None
+        total_items = await repo.count_list(search=search, target_job=job_filter)
+        rows = await repo.find_list(page=page, limit=limit, search=search, target_job=job_filter)
         total_pages = math.ceil(total_items / limit) if total_items else 0
         return PromptProfileListResponse(
             prompt_profiles=[PromptProfileResponse.model_validate(row) for row in rows],

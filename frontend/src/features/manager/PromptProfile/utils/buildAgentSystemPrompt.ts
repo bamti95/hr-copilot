@@ -1,27 +1,20 @@
 import type { PromptProfileFormState } from "../types";
 
-/** 쉼표·한글 쉼표·顿号 등으로 구분된 스택 문자열을 태그 배열로 분리합니다. */
-export function splitStackInput(raw: string): string[] {
-  return raw
-    .split(/[,，、]/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
 function formatList(items: string[], emptyLabel: string) {
   if (items.length === 0) {
     return emptyLabel;
   }
-  return items.join(", ");
+  return items.map((s) => s.trim()).filter(Boolean).join(", ");
 }
 
 /**
  * AI 채용 에이전트 설정 폼 값을 하나의 시스템 프롬프트 문자열로 합성합니다.
  */
 export function buildAgentSystemPrompt(form: PromptProfileFormState): string {
-  const must = splitStackInput(form.mustHaveStack);
-  const nice = splitStackInput(form.niceToHaveStack);
-  const qualifications = form.qualifications.trim();
+  const must = form.mustHaveStack.map((s) => s.trim()).filter(Boolean);
+  const nice = form.niceToHaveStack.map((s) => s.trim()).filter(Boolean);
+  const certs = form.requiredCertificates.map((s) => s.trim()).filter(Boolean);
+  const edu = form.requiredEducation.map((s) => s.trim()).filter(Boolean);
   const agentName = form.agentName.trim();
   const department = form.department.trim();
   const jobTitle = form.jobTitle.trim();
@@ -36,7 +29,8 @@ export function buildAgentSystemPrompt(form: PromptProfileFormState): string {
 ## 2. 기술 및 자격 요건 (Technical Requirements)
 - 필수 기술 스택 (Must-have): ${formatList(must, "(미입력)")}
 - 우대 기술 스택 (Nice-to-have): ${formatList(nice, "(해당 없음 또는 미입력)")}
-- 필수 자격 및 학력: ${qualifications || "(미입력)"}`;
+- 필수 자격증: ${formatList(certs, "(미입력)")}
+- 필수 학력: ${formatList(edu, "(미입력)")}`;
 }
 
 export function validateAgentConfigForCreate(form: PromptProfileFormState): string | null {
@@ -52,8 +46,8 @@ export function validateAgentConfigForCreate(form: PromptProfileFormState): stri
   if (!form.jobTitle.trim()) {
     return "채용 직무를 입력해 주세요.";
   }
-  if (splitStackInput(form.mustHaveStack).length === 0) {
-    return "필수 기술 스택을 한 가지 이상 입력해 주세요. (쉼표로 구분)";
+  if (form.mustHaveStack.filter((s) => s.trim()).length === 0) {
+    return "필수 기술 스택을 한 가지 이상 선택하거나 추가해 주세요.";
   }
   return null;
 }

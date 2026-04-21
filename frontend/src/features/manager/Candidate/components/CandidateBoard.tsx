@@ -1,25 +1,34 @@
+import { useLayoutEffect, useRef } from "react";
 import { Pagination } from "../../../../common/components/Pagination";
 import { StatusPill } from "../../../../common/components/StatusPill";
 import type {
   CandidateApplyStatus,
   CandidateListResponse,
   CandidateResponse,
+  CandidateStatisticsResponse,
 } from "../types";
 
 interface CandidateBoardProps {
   data: CandidateListResponse;
+  statistics: CandidateStatisticsResponse | null;
   isLoading: boolean;
   search: string;
   statusFilter: CandidateApplyStatus | "ALL";
+  jobFilter: string;
   pageSize: number;
+  selectedIds: number[];
   onSearchChange: (value: string) => void;
   onSearchSubmit: () => void;
   onStatusFilterChange: (value: CandidateApplyStatus | "ALL") => void;
+  onJobFilterChange: (value: string) => void;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   onCreate: () => void;
   onView: (candidateId: number) => void;
   onDelete: (row: CandidateResponse) => void;
+  onToggleSelect: (candidateId: number) => void;
+  onSelectAllOnPage: () => void;
+  onOpenPromptProfileWizard: () => void;
 }
 
 const inputClassName =
@@ -38,29 +47,51 @@ function formatDateTime(value: string) {
 
 export function CandidateBoard({
   data,
+  statistics,
   isLoading,
   search,
   statusFilter,
+  jobFilter,
   pageSize,
+  selectedIds,
   onSearchChange,
   onSearchSubmit,
   onStatusFilterChange,
+  onJobFilterChange,
   onPageChange,
   onPageSizeChange,
   onCreate,
   onView,
   onDelete,
+  onToggleSelect,
+  onSelectAllOnPage,
+  onOpenPromptProfileWizard,
 }: CandidateBoardProps) {
+  const idsOnPage = data.items.map((r) => r.id);
+  const allOnPageSelected =
+    idsOnPage.length > 0 && idsOnPage.every((id) => selectedIds.includes(id));
+  const someOnPageSelected = idsOnPage.some((id) => selectedIds.includes(id));
+  const jobSelected = Boolean(jobFilter.trim());
+  const canPromptFlow = jobSelected && selectedIds.length > 0;
+
+  const headerCheckboxRef = useRef<HTMLInputElement>(null);
+  useLayoutEffect(() => {
+    const el = headerCheckboxRef.current;
+    if (el) {
+      el.indeterminate = !allOnPageSelected && someOnPageSelected;
+    }
+  }, [allOnPageSelected, someOnPageSelected]);
+
   return (
     <section className="rounded-[32px] border border-white/70 bg-[var(--panel)] p-7 shadow-[var(--shadow)] backdrop-blur-[14px]">
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-[var(--text)]">지원자 관리</h2>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          지원자 목록을 빠르게 조회하고, 상세 페이지에서 기본 정보와 문서를 함께 관리할 수 있습니다.
+          지원 직무로 필터한 뒤 지원자를 선택하고, 프롬프트 프로필 생성으로 직무별 프로필을 연결할 수 있습니다.
         </p>
       </div>
 
-      <div className="mb-4 grid gap-3 rounded-[24px] border border-white/70 bg-[var(--panel-strong)] p-4 xl:grid-cols-[minmax(0,1fr)_180px_150px_100px_auto] xl:items-end">
+      <div className="mb-4 grid gap-3 rounded-[24px] border border-white/70 bg-[var(--panel-strong)] p-4 xl:grid-cols-[minmax(0,1fr)_160px_160px_150px_100px_auto_auto] xl:items-end">
         <label className="text-sm font-medium text-[var(--text)]">
           검색어
           <input
@@ -74,6 +105,23 @@ export function CandidateBoard({
             }}
             placeholder="이름 또는 이메일로 검색"
           />
+        </label>
+
+        <label className="text-sm font-medium text-[var(--text)]">
+          지원 직무
+          <select
+            className={inputClassName}
+            value={jobFilter}
+            onChange={(event) => onJobFilterChange(event.target.value)}
+            disabled={isLoading}
+          >
+            <option value="">전체</option>
+            {(statistics?.byTargetJob ?? []).map((row) => (
+              <option key={row.targetJob} value={row.targetJob}>
+                {row.targetJob} ({row.count})
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="text-sm font-medium text-[var(--text)]">
@@ -124,6 +172,22 @@ export function CandidateBoard({
         >
           신규 등록
         </button>
+
+        <button
+          type="button"
+          className={`${buttonClassName} border-violet-300 bg-violet-50 px-3 text-violet-900 hover:bg-violet-100`}
+          onClick={onOpenPromptProfileWizard}
+          disabled={!canPromptFlow || isLoading}
+          title={
+            !jobSelected
+              ? "지원 직무를 먼저 선택하세요."
+              : selectedIds.length === 0
+                ? "지원자를 한 명 이상 선택하세요."
+                : undefined
+          }
+        >
+          프롬프트 프로필 생성
+        </button>
       </div>
 
       <div className="mb-4 text-right text-sm text-[var(--muted)]">
@@ -134,28 +198,41 @@ export function CandidateBoard({
         <table className="w-full border-collapse">
           <thead className="bg-white/60">
             <tr>
-              {[
-                "ID",
-                "이름",
-                "이메일",
-                "전화번호",
-                "생년월일",
-                "지원 상태",
-                "등록일",
-                "액션",
-              ].map((label) => (
-                <th
-                  key={label}
-                  className="border-b border-[var(--line)] px-3 py-3 text-left text-[0.84rem] font-bold whitespace-nowrap text-[var(--muted)]"
-                >
-                  {label}
-                </th>
-              ))}
+              <th className="border-b border-[var(--line)] px-2 py-3 text-left text-[0.84rem] font-bold whitespace-nowrap text-[var(--muted)] w-10">
+                <input
+                  ref={headerCheckboxRef}
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-[var(--line)]"
+                  checked={allOnPageSelected}
+                  onChange={onSelectAllOnPage}
+                  disabled={isLoading || !jobSelected || data.items.length === 0}
+                  title={!jobSelected ? "직무를 선택하면 전체 선택을 사용할 수 있습니다." : undefined}
+                />
+              </th>
+              {["ID", "이름", "이메일", "전화번호", "생년월일", "지원 상태", "등록일", "액션"].map(
+                (label) => (
+                  <th
+                    key={label}
+                    className="border-b border-[var(--line)] px-3 py-3 text-left text-[0.84rem] font-bold whitespace-nowrap text-[var(--muted)]"
+                  >
+                    {label}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
           <tbody>
             {data.items.map((row) => (
               <tr key={row.id} className="transition hover:bg-slate-50/70">
+                <td className="border-b border-[var(--line)] px-2 py-3 whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-[var(--line)]"
+                    checked={selectedIds.includes(row.id)}
+                    onChange={() => onToggleSelect(row.id)}
+                    disabled={isLoading || !jobSelected}
+                  />
+                </td>
                 <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
                   {row.id}
                 </td>
@@ -202,7 +279,7 @@ export function CandidateBoard({
             {data.items.length === 0 ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="px-3 py-10 text-center text-sm text-[var(--muted)]"
                 >
                   조회된 지원자가 없습니다.
