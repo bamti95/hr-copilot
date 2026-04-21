@@ -1,8 +1,15 @@
-import { Navigate, RouterProvider, createBrowserRouter } from "react-router-dom";
+import {
+  Navigate,
+  RouterProvider,
+  createBrowserRouter,
+  useParams,
+} from "react-router-dom";
 import { ProtectedRoute } from "../../components/common/ProtectedRoute";
 import { ManagerLayout } from "../../common/layout/ManagerLayout";
 import ManagerLoginPage from "../../features/auth/ManagerLoginPage";
 import CandidatePage from "../../features/manager/Candidate";
+import CandidateDetailPage from "../../features/manager/Candidate/pages/CandidateDetailPage";
+import CandidateDocumentPage from "../../features/manager/Candidate/pages/CandidateDocumentPage";
 import DashboardPage from "../../features/manager/Dashboard";
 import DocumentPage from "../../features/manager/Document";
 import InterviewQuestionPage from "../../features/manager/InterviewQuestion";
@@ -31,6 +38,12 @@ const router = createBrowserRouter([
           { path: "dashboard", element: <DashboardPage /> },
           { path: "managers", element: <ManagerPage /> },
           { path: "candidates", element: <CandidatePage /> },
+          { path: "candidates/new", element: <CandidateDetailPage mode="create" /> },
+          { path: "candidates/:candidateId", element: <CandidateRouteDetailPage /> },
+          {
+            path: "candidates/:candidateId/documents/:documentId",
+            element: <CandidateRouteDocumentPage />,
+          },
           { path: "documents", element: <DocumentPage /> },
           { path: "prompt-profiles", element: <PromptProfilePage /> },
           { path: "interview-sessions", element: <InterviewSessionPage /> },
@@ -48,4 +61,20 @@ const router = createBrowserRouter([
 
 export function AppRouter() {
   return <RouterProvider router={router} />;
+}
+
+function CandidateRouteDetailPage() {
+  const { candidateId: candidateIdParam } = useParams();
+  const candidateId = candidateIdParam ? Number(candidateIdParam) : undefined;
+  return <CandidateDetailPage mode="detail" candidateId={candidateId} />;
+}
+
+function CandidateRouteDocumentPage() {
+  const { candidateId: candidateIdParam, documentId: documentIdParam } = useParams();
+  const candidateId = candidateIdParam ? Number(candidateIdParam) : undefined;
+  const documentId = documentIdParam ? Number(documentIdParam) : undefined;
+
+  return (
+    <CandidateDocumentPage candidateId={candidateId} documentId={documentId} />
+  );
 }

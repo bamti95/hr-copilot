@@ -3,6 +3,7 @@ import type { PagingMeta } from "../../../../common/types/pagination";
 import type {
   CandidateCreateRequest,
   CandidateDetailResponse,
+  CandidateDocumentDetailResponse,
   CandidateDocumentResponse,
   CandidateDocumentReplaceRequest,
   CandidateDocumentUploadRequest,
@@ -40,6 +41,10 @@ interface CandidateDocumentApiResponse {
   file_size: number | null;
   extract_status: string;
   created_at: string;
+}
+
+interface CandidateDocumentDetailApiResponse extends CandidateDocumentApiResponse {
+  extracted_text: string | null;
 }
 
 interface CandidateDetailApiResponse extends CandidateApiResponse {
@@ -91,6 +96,15 @@ function mapDocument(response: CandidateDocumentApiResponse): CandidateDocumentR
     fileSize: response.file_size,
     extractStatus: response.extract_status,
     createdAt: response.created_at,
+  };
+}
+
+function mapDocumentDetail(
+  response: CandidateDocumentDetailApiResponse,
+): CandidateDocumentDetailResponse {
+  return {
+    ...mapDocument(response),
+    extractedText: response.extracted_text,
   };
 }
 
@@ -228,6 +242,17 @@ export async function downloadCandidateDocument(
   anchor.click();
   anchor.remove();
   window.URL.revokeObjectURL(blobUrl);
+}
+
+export async function fetchCandidateDocumentDetail(
+  candidateId: number,
+  documentId: number,
+): Promise<CandidateDocumentDetailResponse> {
+  const response = await api.get<CandidateDocumentDetailApiResponse>(
+    `/candidates/${candidateId}/documents/${documentId}`,
+  );
+
+  return mapDocumentDetail(response.data);
 }
 
 export async function deleteCandidateDocument(

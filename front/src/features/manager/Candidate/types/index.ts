@@ -53,6 +53,11 @@ export interface CandidateDocumentResponse {
   createdAt: string;
 }
 
+export interface CandidateDocumentDetailResponse
+  extends CandidateDocumentResponse {
+  extractedText: string | null;
+}
+
 export interface CandidateResponse {
   id: number;
   name: string;

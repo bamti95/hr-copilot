@@ -1,11 +1,12 @@
 import { useState } from "react";
 import {
+  ArrowLeft,
   Download,
+  FileText,
   Paperclip,
   RefreshCcw,
   Trash2,
   Upload,
-  X,
 } from "lucide-react";
 import { StatusPill } from "../../../../common/components/StatusPill";
 import type {
@@ -17,12 +18,10 @@ import type {
   CandidatePendingDocument,
 } from "../types";
 
-type CandidateModalMode = "create" | "detail" | null;
 type ValidationErrors = Partial<Record<keyof CandidateFormState, string>>;
 
 interface CandidateDetailModalProps {
-  isOpen: boolean;
-  modalMode: CandidateModalMode;
+  mode: "create" | "detail";
   detail: CandidateDetailResponse | null;
   form: CandidateFormState;
   validationErrors: ValidationErrors;
@@ -37,7 +36,7 @@ interface CandidateDetailModalProps {
     value: CandidateFormState[K],
   ) => void;
   onSave: () => void;
-  onClose: () => void;
+  onBack: () => void;
   onDelete: () => void;
   onAddFiles: (files: FileList | File[] | null) => void;
   onPendingDocumentTypeChange: (
@@ -51,6 +50,7 @@ interface CandidateDetailModalProps {
     document: CandidateDocumentResponse,
     file: File | null,
   ) => void;
+  onOpenDocument: (document: CandidateDocumentResponse) => void;
 }
 
 const fieldClassName =
@@ -60,10 +60,11 @@ const pendingCardClassName =
   "grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-[minmax(0,1fr)_220px_auto] md:items-center";
 
 function formatDateTime(value?: string) {
-  if (!value) return "-";
+  if (!value) {
+    return "-";
+  }
 
   const date = new Date(value);
-
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, "0");
   const dd = String(date.getDate()).padStart(2, "0");
@@ -90,8 +91,7 @@ function formatFileSize(value: number | null) {
 }
 
 export function CandidateDetailModal({
-  isOpen,
-  modalMode,
+  mode,
   detail,
   form,
   validationErrors,
@@ -103,7 +103,7 @@ export function CandidateDetailModal({
   documentTypeOptions,
   onFieldChange,
   onSave,
-  onClose,
+  onBack,
   onDelete,
   onAddFiles,
   onPendingDocumentTypeChange,
@@ -111,54 +111,53 @@ export function CandidateDetailModal({
   onDocumentDownload,
   onExistingDocumentDelete,
   onExistingDocumentReplace,
+  onOpenDocument,
 }: CandidateDetailModalProps) {
   const [isDragOver, setIsDragOver] = useState(false);
 
-  if (!isOpen || !modalMode) {
-    return null;
-  }
-
-  const isCreateMode = modalMode === "create";
+  const isCreateMode = mode === "create";
   const title = isCreateMode ? "지원자 신규 등록" : "지원자 상세 정보";
   const remainingDocumentSlots = Math.max(0, 3 - pendingDocuments.length);
+  const documents = detail?.documents ?? [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="relative max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-white/70 bg-[var(--panel)] p-7 shadow-2xl">
-        <div className="mb-6 flex flex-col gap-4 border-b border-[var(--line)] pb-5 md:flex-row md:items-start md:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">
-              {isCreateMode ? "Create" : "Detail"}
-            </p>
-            <h2 className="mt-2 text-2xl font-bold text-[var(--text)]">{title}</h2>
-            <p className="mt-2 text-sm text-[var(--muted)]">
-              기본 정보, 지원 상태, 첨부 문서를 한 곳에서 관리합니다.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 self-end md:self-start">
-            {!isCreateMode ? <StatusPill status={form.applyStatus} /> : null}
+    <div className="space-y-6">
+      <section className="rounded-[32px] border border-white/70 bg-[var(--panel)] p-7 shadow-[var(--shadow)] backdrop-blur-[14px]">
+        <div className="flex flex-col gap-4 border-b border-[var(--line)] pb-5 md:flex-row md:items-start md:justify-between">
+          <div className="flex items-start gap-4">
             <button
               type="button"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600"
-              onClick={onClose}
-              disabled={isSaving}
-              aria-label="닫기"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+              onClick={onBack}
+              aria-label="목록으로 이동"
             >
-              <X size={22} />
+              <ArrowLeft className="h-5 w-5" />
             </button>
+
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-600">
+                {isCreateMode ? "Create" : "Detail"}
+              </p>
+              <h2 className="mt-2 text-2xl font-bold text-[var(--text)]">{title}</h2>
+              <p className="mt-2 text-sm text-[var(--muted)]">
+                기본 정보와 지원 문서를 한 화면에서 정리하고, 문서 상세 페이지로 이어서 확인할 수 있습니다.
+              </p>
+            </div>
           </div>
+
+          {!isCreateMode ? <StatusPill status={form.applyStatus} /> : null}
         </div>
 
         {isDetailLoading ? (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-[var(--muted)]">
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-[var(--muted)]">
             지원자 상세 정보를 불러오는 중입니다.
           </div>
         ) : (
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-            <section className="space-y-4">
+          <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+            <section className="space-y-6">
               <div className="rounded-[28px] border border-white/70 bg-[var(--panel-strong)] p-5">
                 <h3 className="text-lg font-bold text-[var(--text)]">기본 정보</h3>
+
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <label className="block text-sm font-medium text-slate-700">
                     이름
@@ -231,18 +230,18 @@ export function CandidateDetailModal({
                   {!isCreateMode && detail ? (
                     <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
                       <p>등록일: {formatDateTime(detail.createdAt)}</p>
-                      <p className="mt-1">최종 수정일: {formatDateTime(detail.updatedAt)}</p>
+                      <p className="mt-1">최종 수정: {formatDateTime(detail.updatedAt)}</p>
                     </div>
                   ) : null}
                 </div>
               </div>
 
-              <div className="rounded-[28px] border border-white/70 bg-(--panel-strong) p-5">
+              <div className="rounded-[28px] border border-white/70 bg-[var(--panel-strong)] p-5">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-(--text)">문서 등록</h3>
-                    <p className="mt-1 text-sm text-(--muted)">
-                      자기소개서, 포트폴리오 등 문서를 다중 업로드할 수 있습니다.
+                    <h3 className="text-lg font-bold text-[var(--text)]">문서 등록</h3>
+                    <p className="mt-1 text-sm text-[var(--muted)]">
+                      자기소개서, 포트폴리오 등 지원 문서를 최대 3개까지 한 번에 등록할 수 있습니다.
                     </p>
                   </div>
 
@@ -287,13 +286,13 @@ export function CandidateDetailModal({
                 >
                   <Upload className="mx-auto h-6 w-6 text-emerald-600" />
                   <p className="mt-3 text-sm font-semibold text-slate-900">
-                    파일을 이 영역에 드래그 앤 드롭하거나 위 버튼으로 선택해 주세요.
+                    파일을 이 영역에 드래그하거나 버튼으로 선택해주세요.
                   </p>
                   <p className="mt-2 text-xs text-slate-500">
-                    최대 3개까지 등록할 수 있고, 저장 전에 아래 목록에서 업로드 예정 파일을 확인할 수 있습니다.
+                    저장 전 아래 목록에서 어떤 파일이 업로드될지 바로 확인할 수 있습니다.
                   </p>
                   <p className="mt-2 text-xs font-semibold text-emerald-700">
-                    현재 {pendingDocuments.length}개 선택됨 / 추가 가능 {remainingDocumentSlots}개
+                    현재 {pendingDocuments.length}개 선택 / 추가 가능 {remainingDocumentSlots}개
                   </p>
                 </div>
 
@@ -308,7 +307,7 @@ export function CandidateDetailModal({
                               {document.file.name}
                             </p>
                             <p className="mt-1 text-xs text-slate-500">
-                              업로드 예정 · {formatFileSize(document.file.size)}
+                              업로드 예정 파일 · {formatFileSize(document.file.size)}
                             </p>
                           </div>
                         </div>
@@ -345,28 +344,28 @@ export function CandidateDetailModal({
                   </div>
                 ) : (
                   <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white/70 px-4 py-8 text-center text-sm text-[var(--muted)]">
-                    아직 추가된 신규 문서가 없습니다.
+                    아직 추가한 신규 문서가 없습니다.
                   </div>
                 )}
               </div>
             </section>
 
-            <section className="rounded-[28px] border border-white/70 bg-(--panel-strong) p-5">
+            <section className="rounded-[28px] border border-white/70 bg-[var(--panel-strong)] p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-(--text)">등록 문서</h3>
-                  <p className="mt-1 text-sm text-(--muted)">
-                    기존 문서는 다운로드, 삭제, 파일 교체까지 바로 처리할 수 있습니다.
+                  <h3 className="text-lg font-bold text-[var(--text)]">등록 문서</h3>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    문서 메타 정보를 보고, 필요하면 상세 페이지에서 추출 텍스트까지 확인할 수 있습니다.
                   </p>
                 </div>
                 <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-                  {detail?.documents.length ?? 0} files
+                  {documents.length} files
                 </span>
               </div>
 
               <div className="mt-4 space-y-3">
-                {detail?.documents.length ? (
-                  detail.documents.map((document) => {
+                {documents.length > 0 ? (
+                  documents.map((document) => {
                     const isMutating = activeDocumentActionId === document.id;
 
                     return (
@@ -384,50 +383,56 @@ export function CandidateDetailModal({
                                 {document.documentType} · {formatFileSize(document.fileSize)}
                               </p>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <StatusPill status={document.extractStatus} />
-                              <button
-                                type="button"
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
-                                onClick={() => onExistingDocumentDelete(document)}
-                                disabled={isSaving}
-                                aria-label="기존 문서 삭제"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            </div>
+                            <StatusPill status={document.extractStatus} />
                           </div>
 
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <p className="text-xs text-slate-500">
-                              등록일 {formatDateTime(document.createdAt)}
-                            </p>
+                          <p className="text-xs text-slate-500">
+                            등록일 {formatDateTime(document.createdAt)}
+                          </p>
 
-                            <div className="flex flex-wrap items-center gap-2 justify-end sm:ml-auto">
-                              <button
-                                type="button"
-                                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 text-sm font-semibold text-sky-700 hover:bg-sky-100"
-                                onClick={() => onDocumentDownload(document)}
-                              >
-                                <Download className="h-4 w-4" />
-                                다운로드
-                              </button>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                              onClick={() => onOpenDocument(document)}
+                            >
+                              <FileText className="h-4 w-4" />
+                              문서 상세
+                            </button>
 
-                              <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100">
-                                <RefreshCcw className="h-4 w-4" />
-                                {isMutating ? "교체 중..." : "파일 교체"}
-                                <input
-                                  type="file"
-                                  className="hidden"
-                                  disabled={isSaving}
-                                  onChange={(event) => {
-                                    const nextFile = event.target.files?.[0] ?? null;
-                                    onExistingDocumentReplace(document, nextFile);
-                                    event.target.value = "";
-                                  }}
-                                />
-                              </label>
-                            </div>
+                            <button
+                              type="button"
+                              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 text-sm font-semibold text-sky-700 hover:bg-sky-100"
+                              onClick={() => onDocumentDownload(document)}
+                            >
+                              <Download className="h-4 w-4" />
+                              다운로드
+                            </button>
+
+                            <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                              <RefreshCcw className="h-4 w-4" />
+                              {isMutating ? "교체 중..." : "파일 교체"}
+                              <input
+                                type="file"
+                                className="hidden"
+                                disabled={isSaving}
+                                onChange={(event) => {
+                                  const nextFile = event.target.files?.[0] ?? null;
+                                  onExistingDocumentReplace(document, nextFile);
+                                  event.target.value = "";
+                                }}
+                              />
+                            </label>
+
+                            <button
+                              type="button"
+                              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                              onClick={() => onExistingDocumentDelete(document)}
+                              disabled={isSaving}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              삭제
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -435,7 +440,9 @@ export function CandidateDetailModal({
                   })
                 ) : (
                   <div className="rounded-2xl border border-dashed border-slate-300 bg-white/70 px-4 py-10 text-center text-sm text-[var(--muted)]">
-                    등록된 문서가 없습니다.
+                    {isCreateMode
+                      ? "지원자를 먼저 저장하면 등록된 문서가 여기에 표시됩니다."
+                      : "등록된 문서가 없습니다."}
                   </div>
                 )}
               </div>
@@ -443,7 +450,7 @@ export function CandidateDetailModal({
           </div>
         )}
 
-        <div className="mt-6 flex flex-wrap justify-between gap-3 border-t border-(--line) pt-5">
+        <div className="mt-6 flex flex-wrap justify-between gap-3 border-t border-[var(--line)] pt-5">
           <div>
             {!isCreateMode && detail ? (
               <button
@@ -461,10 +468,10 @@ export function CandidateDetailModal({
             <button
               type="button"
               className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700"
-              onClick={onClose}
+              onClick={onBack}
               disabled={isSaving}
             >
-              닫기
+              목록으로
             </button>
             <button
               type="button"
@@ -472,15 +479,11 @@ export function CandidateDetailModal({
               onClick={onSave}
               disabled={isSaving || isDetailLoading}
             >
-              {isSaving
-                ? "저장 중..."
-                : isCreateMode
-                  ? "지원자 등록"
-                  : "변경 사항 저장"}
+              {isSaving ? "저장 중..." : isCreateMode ? "지원자 등록" : "변경사항 저장"}
             </button>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

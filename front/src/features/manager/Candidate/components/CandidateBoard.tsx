@@ -12,7 +12,6 @@ interface CandidateBoardProps {
   search: string;
   statusFilter: CandidateApplyStatus | "ALL";
   pageSize: number;
-  selectedCandidateId: number | null;
   onSearchChange: (value: string) => void;
   onSearchSubmit: () => void;
   onStatusFilterChange: (value: CandidateApplyStatus | "ALL") => void;
@@ -24,7 +23,7 @@ interface CandidateBoardProps {
 }
 
 const inputClassName =
-  "h-12 w-full rounded-2xl border border-[var(--line)] bg-[var(--panel-strong)] px-4 text-[var(--text)] outline-none transition focus:border-[var(--primary)]";
+  "mt-2 h-12 w-full rounded-2xl border border-[var(--line)] bg-[var(--panel-strong)] px-4 text-[var(--text)] outline-none transition focus:border-[var(--primary)]";
 
 const buttonClassName =
   "inline-flex h-10 items-center justify-center rounded-xl border px-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
@@ -43,7 +42,6 @@ export function CandidateBoard({
   search,
   statusFilter,
   pageSize,
-  selectedCandidateId,
   onSearchChange,
   onSearchSubmit,
   onStatusFilterChange,
@@ -56,10 +54,9 @@ export function CandidateBoard({
   return (
     <section className="rounded-[32px] border border-white/70 bg-[var(--panel)] p-7 shadow-[var(--shadow)] backdrop-blur-[14px]">
       <div className="mb-5">
-        <h2 className="m-0 text-2xl font-bold text-[var(--text)]">지원자 관리</h2>
+        <h2 className="text-2xl font-bold text-[var(--text)]">지원자 관리</h2>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          후보자 목록을 조회하고, 상세 모달에서 기본 정보 수정과 지원 상태 변경,
-          문서 등록 및 다운로드를 함께 처리합니다.
+          지원자 목록을 빠르게 조회하고, 상세 페이지에서 기본 정보와 문서를 함께 관리할 수 있습니다.
         </p>
       </div>
 
@@ -67,7 +64,7 @@ export function CandidateBoard({
         <label className="text-sm font-medium text-[var(--text)]">
           검색어
           <input
-            className={`${inputClassName} mt-2`}
+            className={inputClassName}
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
             onKeyDown={(event) => {
@@ -75,14 +72,14 @@ export function CandidateBoard({
                 onSearchSubmit();
               }
             }}
-            placeholder="이름, 이메일로 검색"
+            placeholder="이름 또는 이메일로 검색"
           />
         </label>
 
         <label className="text-sm font-medium text-[var(--text)]">
           지원 상태
           <select
-            className={`${inputClassName} mt-2`}
+            className={inputClassName}
             value={statusFilter}
             onChange={(event) =>
               onStatusFilterChange(event.target.value as CandidateApplyStatus | "ALL")
@@ -100,7 +97,7 @@ export function CandidateBoard({
         <label className="text-sm font-medium text-[var(--text)]">
           페이지 크기
           <select
-            className={`${inputClassName} mt-2`}
+            className={inputClassName}
             value={pageSize}
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
           >
@@ -157,50 +154,51 @@ export function CandidateBoard({
             </tr>
           </thead>
           <tbody>
-            {data.items.map((row) => {
-              const isSelected = selectedCandidateId === row.id;
-
-              return (
-                <tr
-                  key={row.id}
-                  className={isSelected ? "bg-emerald-50/60" : "transition hover:bg-slate-50/70"}
-                >
-                  <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">{row.id}</td>
-                  <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap font-semibold text-[var(--text)]">
-                    {row.name}
-                  </td>
-                  <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">{row.email}</td>
-                  <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">{row.phone}</td>
-                  <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">{formatDate(row.birthDate)}</td>
-                  <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
-                    <StatusPill status={row.applyStatus} />
-                  </td>
-                  <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
-                    {formatDateTime(row.createdAt)}
-                  </td>
-                  <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        className={`${buttonClassName} border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100`}
-                        onClick={() => onView(row.id)}
-                        disabled={isLoading}
-                      >
-                        수정
-                      </button>
-                      <button
-                        type="button"
-                        className={`${buttonClassName} border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100`}
-                        onClick={() => onDelete(row)}
-                        disabled={isLoading}
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+            {data.items.map((row) => (
+              <tr key={row.id} className="transition hover:bg-slate-50/70">
+                <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
+                  {row.id}
+                </td>
+                <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap font-semibold text-[var(--text)]">
+                  {row.name}
+                </td>
+                <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
+                  {row.email}
+                </td>
+                <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
+                  {row.phone}
+                </td>
+                <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
+                  {formatDate(row.birthDate)}
+                </td>
+                <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
+                  <StatusPill status={row.applyStatus} />
+                </td>
+                <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
+                  {formatDateTime(row.createdAt)}
+                </td>
+                <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className={`${buttonClassName} border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100`}
+                      onClick={() => onView(row.id)}
+                      disabled={isLoading}
+                    >
+                      상세
+                    </button>
+                    <button
+                      type="button"
+                      className={`${buttonClassName} border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100`}
+                      onClick={() => onDelete(row)}
+                      disabled={isLoading}
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
             {data.items.length === 0 ? (
               <tr>
                 <td
