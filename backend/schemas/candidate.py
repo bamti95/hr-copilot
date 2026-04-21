@@ -61,6 +61,12 @@ class CandidateDocumentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class CandidateDocumentDetailResponse(CandidateDocumentResponse):
+    extracted_text: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class CandidateDetailResponse(CandidateResponse):
     documents: list[CandidateDocumentResponse] = Field(default_factory=list)
 

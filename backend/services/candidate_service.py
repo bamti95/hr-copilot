@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import math
 import re
 from datetime import datetime, timezone
@@ -9,9 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from common.file_util import (
     build_download_response,
     delete_file_by_path,
+    extract_text_from_file,
     resolve_absolute_path,
     save_upload_file_pairs,
 )
+from core.database import AsyncSessionLocal
 from models.candidate import ApplyStatus, Candidate
 from models.document import Document
 from repositories.candidate_repository import CandidateRepository
@@ -20,6 +24,7 @@ from schemas.candidate import (
     CandidateCreateRequest,
     CandidateDeleteResponse,
     CandidateDocumentDeleteResponse,
+    CandidateDocumentDetailResponse,
     CandidateDetailResponse,
     CandidateDocumentResponse,
     CandidateDocumentUploadResponse,
@@ -32,6 +37,9 @@ from schemas.candidate import (
     CandidateUpdateRequest,
     TargetJobCountRow,
 )
+
+logger = logging.getLogger(__name__)
+DOCUMENT_EXTRACTION_CONCURRENCY = 2
 
 
 def _assert_extra_email_rules(email: str) -> None:
@@ -83,6 +91,67 @@ def _expand_document_types(document_types: list[str], file_count: int) -> list[s
 
 
 class CandidateService:
+    @staticmethod
+    async def run_document_extraction(document_ids: list[int]) -> None:
+        if not document_ids:
+            return
+
+        semaphore = asyncio.Semaphore(DOCUMENT_EXTRACTION_CONCURRENCY)
+
+        async def process_document(document_id: int) -> None:
+            async with semaphore:
+                async with AsyncSessionLocal() as db:
+                    repo = CandidateRepository(db)
+                    document = await repo.find_document_by_id_any(document_id)
+                    if not document or document.deleted_at is not None:
+                        logger.info(
+                            "Skipping extraction for document_id=%s because document is missing or deleted",
+                            document_id,
+                        )
+                        return
+
+                    try:
+                        extraction = await asyncio.to_thread(
+                            extract_text_from_file,
+                            document.file_path,
+                            document.file_ext,
+                        )
+                        document.extracted_text = extraction.extracted_text
+                        document.extract_status = extraction.extract_status
+
+                        if extraction.extract_status == "FAILED":
+                            logger.warning(
+                                "Background extraction finished without text for document_id=%s file_path=%s strategy=%s source_type=%s quality=%.4f",
+                                document_id,
+                                document.file_path,
+                                extraction.extract_strategy,
+                                extraction.source_type,
+                                extraction.extract_quality_score,
+                            )
+                        else:
+                            logger.info(
+                                "Background extraction succeeded for document_id=%s file_path=%s text_length=%s strategy=%s source_type=%s document_type=%s quality=%.4f",
+                                document_id,
+                                document.file_path,
+                                len(extraction.extracted_text or ""),
+                                extraction.extract_strategy,
+                                extraction.source_type,
+                                extraction.document_type,
+                                extraction.extract_quality_score,
+                            )
+
+                        await db.commit()
+                    except Exception:
+                        logger.exception(
+                            "Background extraction failed for document_id=%s",
+                            document_id,
+                        )
+                        document.extract_status = "FAILED"
+                        document.extracted_text = None
+                        await db.commit()
+
+        await asyncio.gather(*(process_document(document_id) for document_id in document_ids))
+
     @staticmethod
     async def create_candidate(
         db: AsyncSession,
@@ -190,6 +259,29 @@ class CandidateService:
                 for document in documents
             ],
         )
+
+    @staticmethod
+    async def get_candidate_document(
+        db: AsyncSession,
+        candidate_id: int,
+        document_id: int,
+    ) -> CandidateDocumentDetailResponse:
+        repo = CandidateRepository(db)
+        entity = await repo.find_by_id_not_deleted(candidate_id)
+        if not entity:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Candidate not found.",
+            )
+
+        document = await repo.find_active_document_by_id(candidate_id, document_id)
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found.",
+            )
+
+        return CandidateDocumentDetailResponse.model_validate(document)
 
     @staticmethod
     async def update_candidate(
@@ -333,6 +425,7 @@ class CandidateService:
                     mime_type=saved.mime_type,
                     file_size=saved.file_size,
                     candidate_id=candidate_id,
+                    extracted_text=None,
                     extract_status="PENDING",
                     created_by=actor_id,
                 )
@@ -344,6 +437,7 @@ class CandidateService:
 
             for document in created_documents:
                 await repo.refresh(document)
+
         except Exception:
             await db.rollback()
             for saved_path in saved_paths:
@@ -459,14 +553,15 @@ class CandidateService:
             document.file_ext = saved_file.file_ext
             document.mime_type = saved_file.mime_type
             document.file_size = saved_file.file_size
-            document.extract_status = "PENDING"
             document.extracted_text = None
+            document.extract_status = "PENDING"
             document.deleted_at = None
             document.deleted_by = None
             document.created_by = actor_id if actor_id is not None else document.created_by
 
             await db.commit()
             await repo.refresh(document)
+
         except Exception:
             await db.rollback()
             delete_file_by_path(saved_file.file_path)

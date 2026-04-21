@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
@@ -10,6 +10,7 @@ from models.manager import Manager
 from schemas.candidate import (
     CandidateCreateRequest,
     CandidateDetailResponse,
+    CandidateDocumentDetailResponse,
     CandidateDeleteResponse,
     CandidateDocumentResponse,
     CandidateDocumentDeleteResponse,
@@ -59,6 +60,23 @@ async def get_candidate(
     db: AsyncSession = Depends(get_db),
 ) -> CandidateDetailResponse:
     return await CandidateService.get_candidate(db=db, candidate_id=candidate_id)
+
+
+@router.get(
+    "/{candidate_id}/documents/{document_id}",
+    response_model=CandidateDocumentDetailResponse,
+)
+async def get_candidate_document(
+    candidate_id: int,
+    document_id: int,
+    _: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> CandidateDocumentDetailResponse:
+    return await CandidateService.get_candidate_document(
+        db=db,
+        candidate_id=candidate_id,
+        document_id=document_id,
+    )
 
 
 @router.post("", response_model=CandidateResponse, status_code=status.HTTP_201_CREATED)
@@ -111,16 +129,26 @@ async def upload_candidate_documents(
     candidate_id: int,
     document_types: Annotated[list[str], Form(...)],
     files: Annotated[list[UploadFile], File(...)],
+    background_tasks: BackgroundTasks,
     current_manager: Manager = Depends(get_current_active_manager),
     db: AsyncSession = Depends(get_db),
 ) -> CandidateDocumentUploadResponse:
-    return await CandidateService.upload_candidate_documents(
+    response = await CandidateService.upload_candidate_documents(
         db=db,
         candidate_id=candidate_id,
         document_types=document_types,
         files=files,
         actor_id=current_manager.id,
     )
+
+    document_ids = [document.id for document in response.documents]
+    if document_ids:
+        background_tasks.add_task(
+            CandidateService.run_document_extraction,
+            document_ids,
+        )
+
+    return response
 
 
 @router.get("/{candidate_id}/documents/{document_id}/download")
@@ -161,10 +189,11 @@ async def replace_candidate_document(
     document_id: int,
     document_type: Annotated[str, Form(...)],
     file: Annotated[UploadFile, File(...)],
+    background_tasks: BackgroundTasks,
     current_manager: Manager = Depends(get_current_active_manager),
     db: AsyncSession = Depends(get_db),
 ) -> CandidateDocumentResponse:
-    return await CandidateService.replace_candidate_document(
+    response = await CandidateService.replace_candidate_document(
         db=db,
         candidate_id=candidate_id,
         document_id=document_id,
@@ -172,6 +201,11 @@ async def replace_candidate_document(
         upload_file=file,
         actor_id=current_manager.id,
     )
+    background_tasks.add_task(
+        CandidateService.run_document_extraction,
+        [response.id],
+    )
+    return response
 
 
 @router.delete("/{candidate_id}", response_model=CandidateDeleteResponse)

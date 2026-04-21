@@ -49,6 +49,11 @@ class CandidateRepository(BaseRepository[Candidate]):
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def find_document_by_id_any(self, document_id: int) -> Document | None:
+        stmt = select(Document).where(Document.id == document_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def find_active_by_email(self, email: str) -> Candidate | None:
         stmt = select(Candidate).where(
             func.lower(Candidate.email) == email.strip().lower(),
