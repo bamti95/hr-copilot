@@ -8,7 +8,6 @@ import type { InterviewQuestionResponse } from "../../features/manager/Interview
 import type { InterviewSessionResponse } from "../../features/manager/InterviewSession/types";
 import type { ManagerResponse } from "../../features/manager/Manager/types";
 import type { OpsLogResponse } from "../../features/manager/OpsLog/types";
-import type { PromptProfileResponse } from "../../features/manager/PromptProfile/types";
 
 export const managerNavItems = [
   { label: "대시보드", path: "/manager/dashboard", icon: "◈" },
@@ -58,12 +57,6 @@ export const documentList: DocumentResponse[] = [
   { id: 203, title: "Ronald Richards CoverLetter.pdf", documentType: "COVER_LETTER", candidateName: "Ronald Richards", extractStatus: "FAILED", uploadedAt: "2026-04-15 17:20" },
   { id: 204, title: "Marvin McKinney Resume.pdf", documentType: "RESUME", candidateName: "Marvin McKinney", extractStatus: "COMPLETED", uploadedAt: "2026-04-15 15:44" },
   { id: 205, title: "Jerome Bell Resume.pdf", documentType: "RESUME", candidateName: "Jerome Bell", extractStatus: "PENDING", uploadedAt: "2026-04-15 14:31" },
-];
-
-export const promptProfileList: PromptProfileResponse[] = [
-  { id: 301, profileKey: "frontend_senior_v2", persona: "Senior Frontend Interviewer", outputSchema: "question, rationale, scoreGuide", status: "ACTIVE" },
-  { id: 302, profileKey: "backend_platform_v1", persona: "Platform Tech Lead", outputSchema: "question, followUp, expectation", status: "ACTIVE" },
-  { id: 303, profileKey: "pm_behavioral_v1", persona: "Hiring Manager", outputSchema: "question, competency, answerSignal", status: "REVIEW" },
 ];
 
 export const interviewSessionList: InterviewSessionResponse[] = [

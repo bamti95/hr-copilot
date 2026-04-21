@@ -13,6 +13,9 @@ function toReadableMessage(detail: unknown): string | undefined {
 
   if (detail && typeof detail === "object") {
     const record = detail as Record<string, unknown>;
+    if (typeof record.message === "string" && record.message.trim().length > 0) {
+      return record.message.trim();
+    }
     const loc = Array.isArray(record.loc)
       ? record
           .loc
