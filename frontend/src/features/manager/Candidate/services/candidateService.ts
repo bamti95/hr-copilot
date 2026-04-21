@@ -7,6 +7,7 @@ import type {
   CandidateDocumentResponse,
   CandidateDocumentReplaceRequest,
   CandidateDocumentUploadRequest,
+  CandidateDocumentUploadResponse,
   CandidateListRequest,
   CandidateListResponse,
   CandidateResponse,
@@ -14,6 +15,10 @@ import type {
   CandidateStatusPatchRequest,
   CandidateUpdateRequest,
 } from "../types";
+
+interface CandidateRequestOptions {
+  skipGlobalLoading?: boolean;
+}
 
 interface CandidateApiResponse {
   id: number;
@@ -148,8 +153,15 @@ function mapCandidateStatistics(response: CandidateStatisticsApiResponse): Candi
   };
 }
 
-export async function fetchCandidateStatistics(): Promise<CandidateStatisticsResponse> {
-  const response = await api.get<CandidateStatisticsApiResponse>("/candidates/statistics");
+export async function fetchCandidateStatistics(
+  options?: CandidateRequestOptions,
+): Promise<CandidateStatisticsResponse> {
+  const response = await api.get<CandidateStatisticsApiResponse>(
+    "/candidates/statistics",
+    {
+      skipGlobalLoading: options?.skipGlobalLoading,
+    },
+  );
   return mapCandidateStatistics(response.data);
 }
 
@@ -174,9 +186,13 @@ export async function fetchCandidateList(
 
 export async function fetchCandidateDetail(
   candidateId: number,
+  options?: CandidateRequestOptions,
 ): Promise<CandidateDetailResponse> {
   const response = await api.get<CandidateDetailApiResponse>(
     `/candidates/${candidateId}`,
+    {
+      skipGlobalLoading: options?.skipGlobalLoading,
+    },
   );
 
   return {
@@ -275,9 +291,13 @@ export async function downloadCandidateDocument(
 export async function fetchCandidateDocumentDetail(
   candidateId: number,
   documentId: number,
+  options?: CandidateRequestOptions,
 ): Promise<CandidateDocumentDetailResponse> {
   const response = await api.get<CandidateDocumentDetailApiResponse>(
     `/candidates/${candidateId}/documents/${documentId}`,
+    {
+      skipGlobalLoading: options?.skipGlobalLoading,
+    },
   );
 
   return mapDocumentDetail(response.data);

@@ -35,6 +35,7 @@ export default function CandidateDetailPage({
     activeDocumentActionId,
     isSaving,
     isDetailLoading,
+    isExtractRefreshing,
     errorMessage,
     handleBack,
     handleSave,
@@ -75,6 +76,7 @@ export default function CandidateDetailPage({
         activeDocumentActionId={activeDocumentActionId}
         isSaving={isSaving}
         isDetailLoading={isDetailLoading}
+        isExtractRefreshing={isExtractRefreshing}
         statusOptions={statusOptions}
         documentTypeOptions={documentTypeOptions}
         onFieldChange={updateField}

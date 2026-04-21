@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Download,
   FileText,
+  LoaderCircle,
   Paperclip,
   RefreshCcw,
   Trash2,
@@ -29,6 +30,7 @@ interface CandidateDetailModalProps {
   activeDocumentActionId: number | null;
   isSaving: boolean;
   isDetailLoading: boolean;
+  isExtractRefreshing: boolean;
   statusOptions: readonly CandidateApplyStatus[];
   documentTypeOptions: readonly CandidateDocumentType[];
   onFieldChange: <K extends keyof CandidateFormState>(
@@ -99,6 +101,7 @@ export function CandidateDetailModal({
   activeDocumentActionId,
   isSaving,
   isDetailLoading,
+  isExtractRefreshing,
   statusOptions,
   documentTypeOptions,
   onFieldChange,
@@ -119,6 +122,21 @@ export function CandidateDetailModal({
   const title = isCreateMode ? "지원자 신규 등록" : "지원자 상세 정보";
   const remainingDocumentSlots = Math.max(0, 3 - pendingDocuments.length);
   const documents = detail?.documents ?? [];
+  const hasPendingExtraction = documents.some(
+    (document) => document.extractStatus === "PENDING",
+  );
+  const pendingExtractionCount = documents.filter(
+    (document) => document.extractStatus === "PENDING",
+  ).length;
+  const successExtractionCount = documents.filter(
+    (document) => document.extractStatus === "SUCCESS",
+  ).length;
+  const failedExtractionCount = documents.filter(
+    (document) => document.extractStatus === "FAILED",
+  ).length;
+  const completedExtractionCount =
+    successExtractionCount + failedExtractionCount;
+  const isInteractionLocked = hasPendingExtraction || isSaving;
 
   return (
     <div className="space-y-6">
@@ -148,6 +166,14 @@ export function CandidateDetailModal({
           {!isCreateMode ? <StatusPill status={form.applyStatus} /> : null}
         </div>
 
+        {hasPendingExtraction ? (
+          <div className="mt-5 inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+            <LoaderCircle className="h-4 w-4 animate-spin" />
+            <span>문서 추출 처리 중입니다. 완료될 때까지 수정, 삭제, 재업로드가 잠시 잠깁니다.</span>
+            {isExtractRefreshing ? <span>· 상태 확인 중</span> : null}
+          </div>
+        ) : null}
+
         {isDetailLoading ? (
           <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-[var(--muted)]">
             지원자 상세 정보를 불러오는 중입니다.
@@ -156,7 +182,7 @@ export function CandidateDetailModal({
           <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
             <section className="space-y-6">
               <div className="rounded-[28px] border border-white/70 bg-[var(--panel-strong)] p-5">
-                <h3 className="text-lg font-bold text-[var(--text)]">기본 정보</h3>
+                <h3 className="text-lg font-bold text-(--text)">기본 정보</h3>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <label className="block text-sm font-medium text-slate-700">
@@ -164,6 +190,7 @@ export function CandidateDetailModal({
                     <input
                       className={fieldClassName}
                       value={form.name}
+                      disabled={isInteractionLocked}
                       onChange={(event) => onFieldChange("name", event.target.value)}
                       placeholder="지원자 이름"
                     />
@@ -177,6 +204,7 @@ export function CandidateDetailModal({
                     <input
                       className={fieldClassName}
                       value={form.email}
+                      disabled={isInteractionLocked}
                       onChange={(event) => onFieldChange("email", event.target.value)}
                       placeholder="example@company.com"
                     />
@@ -190,6 +218,7 @@ export function CandidateDetailModal({
                     <input
                       className={fieldClassName}
                       value={form.phone}
+                      disabled={isInteractionLocked}
                       onChange={(event) => onFieldChange("phone", event.target.value)}
                       placeholder="010-0000-0000"
                     />
@@ -204,6 +233,7 @@ export function CandidateDetailModal({
                       type="date"
                       className={fieldClassName}
                       value={form.birthDate}
+                      disabled={isInteractionLocked}
                       onChange={(event) => onFieldChange("birthDate", event.target.value)}
                     />
                   </label>
@@ -215,6 +245,7 @@ export function CandidateDetailModal({
                     <select
                       className={fieldClassName}
                       value={form.applyStatus}
+                      disabled={isInteractionLocked}
                       onChange={(event) =>
                         onFieldChange("applyStatus", event.target.value as CandidateApplyStatus)
                       }
@@ -228,10 +259,10 @@ export function CandidateDetailModal({
                   </label>
 
                   {!isCreateMode && detail ? (
-                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-                      <p>등록일: {formatDateTime(detail.createdAt)}</p>
-                      <p className="mt-1">최종 수정: {formatDateTime(detail.updatedAt)}</p>
-                    </div>
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                    <p className="text-xs text-slate-400">등록일</p>
+                    <p className="mt-1">{formatDateTime(detail.createdAt)}</p>
+                  </div>
                   ) : null}
                 </div>
               </div>
@@ -239,8 +270,8 @@ export function CandidateDetailModal({
               <div className="rounded-[28px] border border-white/70 bg-[var(--panel-strong)] p-5">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-[var(--text)]">문서 등록</h3>
-                    <p className="mt-1 text-sm text-[var(--muted)]">
+                    <h3 className="text-lg font-bold text-(--text)">문서 등록</h3>
+                    <p className="mt-1 text-sm text-(--muted)">
                       자기소개서, 포트폴리오 등 지원 문서를 최대 3개까지 한 번에 등록할 수 있습니다.
                     </p>
                   </div>
@@ -252,6 +283,7 @@ export function CandidateDetailModal({
                       type="file"
                       className="hidden"
                       multiple
+                      disabled={isInteractionLocked}
                       onChange={(event) => {
                         onAddFiles(event.target.files);
                         event.target.value = "";
@@ -280,6 +312,9 @@ export function CandidateDetailModal({
                   }}
                   onDrop={(event) => {
                     event.preventDefault();
+                    if (isInteractionLocked) {
+                      return;
+                    }
                     setIsDragOver(false);
                     onAddFiles(Array.from(event.dataTransfer.files));
                   }}
@@ -315,6 +350,7 @@ export function CandidateDetailModal({
                         <select
                           className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900"
                           value={document.documentType}
+                          disabled={isInteractionLocked}
                           onChange={(event) =>
                             onPendingDocumentTypeChange(
                               document.id,
@@ -333,6 +369,7 @@ export function CandidateDetailModal({
                           <button
                             type="button"
                             className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600 transition hover:bg-rose-100"
+                            disabled={isInteractionLocked}
                             onClick={() => onPendingDocumentRemove(document.id)}
                             aria-label="파일 제거"
                           >
@@ -363,6 +400,35 @@ export function CandidateDetailModal({
                 </span>
               </div>
 
+              {documents.length > 0 ? (
+                <div className="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 md:grid-cols-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      완료
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-slate-900">
+                      {completedExtractionCount} / {documents.length}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      추출 중
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-amber-600">
+                      {pendingExtractionCount}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      실패
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-rose-600">
+                      {failedExtractionCount}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="mt-4 space-y-3">
                 {documents.length > 0 ? (
                   documents.map((document) => {
@@ -390,6 +456,12 @@ export function CandidateDetailModal({
                             등록일 {formatDateTime(document.createdAt)}
                           </p>
 
+                          {document.extractStatus === "PENDING" ? (
+                            <div className="inline-flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+                              <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                              <span>추출 처리 중입니다. 완료되면 상태가 자동으로 갱신됩니다.</span>
+                            </div>
+                          ) : null}
                           <div className="flex flex-wrap items-center gap-2">
                             <button
                               type="button"
@@ -415,7 +487,7 @@ export function CandidateDetailModal({
                               <input
                                 type="file"
                                 className="hidden"
-                                disabled={isSaving}
+                                disabled={isInteractionLocked}
                                 onChange={(event) => {
                                   const nextFile = event.target.files?.[0] ?? null;
                                   onExistingDocumentReplace(document, nextFile);
@@ -428,7 +500,7 @@ export function CandidateDetailModal({
                               type="button"
                               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                               onClick={() => onExistingDocumentDelete(document)}
-                              disabled={isSaving}
+                              disabled={isInteractionLocked}
                             >
                               <Trash2 className="h-4 w-4" />
                               삭제
@@ -457,7 +529,7 @@ export function CandidateDetailModal({
                 type="button"
                 className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700"
                 onClick={onDelete}
-                disabled={isSaving}
+                disabled={isInteractionLocked}
               >
                 지원자 삭제
               </button>
@@ -477,7 +549,7 @@ export function CandidateDetailModal({
               type="button"
               className="rounded-2xl bg-linear-to-r from-emerald-500 to-teal-500 px-4 py-3 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(16,185,129,0.22)] disabled:cursor-not-allowed disabled:opacity-60"
               onClick={onSave}
-              disabled={isSaving || isDetailLoading}
+              disabled={isInteractionLocked || isDetailLoading}
             >
               {isSaving ? "저장 중..." : isCreateMode ? "지원자 등록" : "변경사항 저장"}
             </button>

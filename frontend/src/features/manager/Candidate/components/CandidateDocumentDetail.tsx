@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, FileText } from "lucide-react";
+import { ArrowLeft, Download, FileText, LoaderCircle } from "lucide-react";
 import { StatusPill } from "../../../../common/components/StatusPill";
 import type {
   CandidateDetailResponse,
@@ -9,6 +9,7 @@ interface CandidateDocumentDetailProps {
   candidate: CandidateDetailResponse | null;
   document: CandidateDocumentDetailResponse | null;
   isLoading: boolean;
+  isExtractRefreshing: boolean;
   onBack: () => void;
   onDownload: () => void;
 }
@@ -64,9 +65,11 @@ export function CandidateDocumentDetail({
   candidate,
   document,
   isLoading,
+  isExtractRefreshing,
   onBack,
   onDownload,
 }: CandidateDocumentDetailProps) {
+  const isPending = document?.extractStatus === "PENDING";
   return (
     <section className="rounded-[32px] border border-white/70 bg-[var(--panel)] p-7 shadow-[var(--shadow)] backdrop-blur-[14px]">
       <div className="flex flex-col gap-4 border-b border-[var(--line)] pb-5 md:flex-row md:items-start md:justify-between">
@@ -146,6 +149,13 @@ export function CandidateDocumentDetail({
                   <p className="mt-1 text-sm font-semibold text-slate-900">
                     {document?.extractStatus ?? "-"}
                   </p>
+                  {isPending ? (
+                    <div className="mt-2 inline-flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+                      <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                      <span>추출 처리 중</span>
+                      {isExtractRefreshing ? <span>· 상태 확인 중</span> : null}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -169,6 +179,12 @@ export function CandidateDocumentDetail({
                 <p className="mt-1 text-sm text-[var(--muted)]">
                   OCR 및 텍스트 추출 결과를 확인하는 영역입니다.
                 </p>
+                {isPending ? (
+                  <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">
+                    <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                    <span>문서 추출이 진행 중입니다. 완료되면 본문이 자동으로 표시됩니다.</span>
+                  </div>
+                ) : null}
               </div>
             </div>
 

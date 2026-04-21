@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { type InternalAxiosRequestConfig } from "axios";
 import { authStorage } from "./authStorage";
 import { useGlobalLoadingStore } from "../store/useGlobalLoadingStore";
 
@@ -9,10 +9,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const nextConfig = config as typeof config & {
-    skipGlobalLoading?: boolean;
-    __globalLoadingTracked?: boolean;
-  };
+  const nextConfig = config as InternalAxiosRequestConfig;
   const token = authStorage.getAccessToken();
 
   if (token) {
@@ -58,9 +55,7 @@ async function requestTokenRefresh() {
 
 api.interceptors.response.use(
   (response) => {
-    const responseConfig = response.config as typeof response.config & {
-      __globalLoadingTracked?: boolean;
-    };
+    const responseConfig = response.config as InternalAxiosRequestConfig;
 
     if (responseConfig.__globalLoadingTracked) {
       useGlobalLoadingStore.getState().finish();
@@ -70,11 +65,9 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
-    const originalRequest = error.config as {
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
       skipAuthRefresh?: boolean;
-      skipGlobalLoading?: boolean;
       _retry?: boolean;
-      __globalLoadingTracked?: boolean;
       headers?: Record<string, string>;
     };
 

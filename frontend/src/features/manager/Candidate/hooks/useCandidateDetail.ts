@@ -87,13 +87,20 @@ export function useCandidateDetail({
   const [activeDocumentActionId, setActiveDocumentActionId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(!isCreateMode);
+  const [isExtractRefreshing, setIsExtractRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const refreshCandidateDetail = async (targetCandidateId: number) => {
+  const refreshCandidateDetail = async (
+    targetCandidateId: number,
+    options?: { syncForm?: boolean },
+  ) => {
+    const shouldSyncForm = options?.syncForm ?? true;
     const refreshedDetail = await fetchCandidateDetail(targetCandidateId);
     setDetail(refreshedDetail);
-    setForm(toFormState(refreshedDetail));
-    setInitialForm(toFormState(refreshedDetail));
+    if (shouldSyncForm) {
+      setForm(toFormState(refreshedDetail));
+      setInitialForm(toFormState(refreshedDetail));
+    }
   };
 
   useEffect(() => {
@@ -151,6 +158,50 @@ export function useCandidateDetail({
       active = false;
     };
   }, [candidateId, isCreateMode]);
+
+  useEffect(() => {
+    if (
+      isCreateMode ||
+      !candidateId ||
+      !detail?.documents.some((document) => document.extractStatus === "PENDING")
+    ) {
+      return;
+    }
+
+    let active = true;
+
+    const intervalId = window.setInterval(() => {
+      if (isSaving) {
+        return;
+      }
+
+      void (async () => {
+        try {
+          setIsExtractRefreshing(true);
+          const refreshedDetail = await fetchCandidateDetail(candidateId, {
+            skipGlobalLoading: true,
+          });
+
+          if (!active) {
+            return;
+          }
+
+          setDetail(refreshedDetail);
+        } catch {
+          // Keep the current editing state stable if polling fails.
+        } finally {
+          if (active) {
+            setIsExtractRefreshing(false);
+          }
+        }
+      })();
+    }, 3000);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [candidateId, detail, isCreateMode, isSaving]);
 
   const validateForm = () => {
     const nextErrors: ValidationErrors = {};
@@ -408,6 +459,7 @@ export function useCandidateDetail({
     activeDocumentActionId,
     isSaving,
     isDetailLoading,
+    isExtractRefreshing,
     errorMessage,
     isCreateMode,
     handleBack,

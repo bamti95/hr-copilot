@@ -24,6 +24,7 @@ export function useCandidateDocumentDetail({
   const [candidate, setCandidate] = useState<CandidateDetailResponse | null>(null);
   const [document, setDocument] = useState<CandidateDocumentDetailResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExtractRefreshing, setIsExtractRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
@@ -72,6 +73,46 @@ export function useCandidateDocumentDetail({
     };
   }, [candidateId, documentId]);
 
+  useEffect(() => {
+    if (!candidateId || !documentId || document?.extractStatus !== "PENDING") {
+      return;
+    }
+
+    let active = true;
+
+    const intervalId = window.setInterval(() => {
+      void (async () => {
+        try {
+          setIsExtractRefreshing(true);
+          const [candidateResponse, documentResponse] = await Promise.all([
+            fetchCandidateDetail(candidateId, { skipGlobalLoading: true }),
+            fetchCandidateDocumentDetail(candidateId, documentId, {
+              skipGlobalLoading: true,
+            }),
+          ]);
+
+          if (!active) {
+            return;
+          }
+
+          setCandidate(candidateResponse);
+          setDocument(documentResponse);
+        } catch {
+          // Ignore transient polling failures and preserve the last known state.
+        } finally {
+          if (active) {
+            setIsExtractRefreshing(false);
+          }
+        }
+      })();
+    }, 2500);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [candidateId, documentId, document?.extractStatus]);
+
   const handleBack = () => {
     if (candidateId) {
       navigate(`/manager/candidates/${candidateId}`);
@@ -101,6 +142,7 @@ export function useCandidateDocumentDetail({
     candidate,
     document,
     isLoading,
+    isExtractRefreshing,
     errorMessage,
     handleBack,
     handleDownload,

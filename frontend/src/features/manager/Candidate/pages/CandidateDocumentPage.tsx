@@ -15,6 +15,7 @@ export default function CandidateDocumentPage({
     candidate,
     document,
     isLoading,
+    isExtractRefreshing,
     errorMessage,
     handleBack,
     handleDownload,
@@ -41,6 +42,7 @@ export default function CandidateDocumentPage({
         candidate={candidate}
         document={document}
         isLoading={isLoading}
+        isExtractRefreshing={isExtractRefreshing}
         onBack={handleBack}
         onDownload={() => void handleDownload()}
       />
