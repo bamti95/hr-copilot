@@ -38,7 +38,7 @@ async def list_sessions(
 @router.get("/{session_id}", response_model=SessionSingleResponse)
 async def get_session(
     session_id: int,
-    _: Manager = Depends(get_current_active_manager),
+    _: Manager = Depends(get_current_active_manager), 
     service: SessionService = Depends(get_session_service),
 ) -> SessionSingleResponse:
     data = await service.get_session(session_id=session_id)

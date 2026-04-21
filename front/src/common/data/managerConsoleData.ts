@@ -5,7 +5,6 @@ import type {
 import type { CandidateResponse } from "../../features/manager/Candidate/types";
 import type { DocumentResponse } from "../../features/manager/Document/types";
 import type { InterviewQuestionResponse } from "../../features/manager/InterviewQuestion/types";
-import type { InterviewSessionResponse } from "../../features/manager/InterviewSession/types";
 import type { ManagerResponse } from "../../features/manager/Manager/types";
 import type { OpsLogResponse } from "../../features/manager/OpsLog/types";
 
@@ -59,11 +58,10 @@ export const documentList: DocumentResponse[] = [
   { id: 205, title: "Jerome Bell Resume.pdf", documentType: "RESUME", candidateName: "Jerome Bell", extractStatus: "PENDING", uploadedAt: "2026-04-15 14:31" },
 ];
 
-export const interviewSessionList: InterviewSessionResponse[] = [
-  { id: 401, candidateName: "Jane Cooper", targetJob: "Frontend Engineer", difficultyLevel: "MID", questionCount: 8, status: "ACTIVE" },
-  { id: 402, candidateName: "Floyd Miles", targetJob: "AI Product Manager", difficultyLevel: "SENIOR", questionCount: 10, status: "PROCESSING" },
-  { id: 403, candidateName: "Ronald Richards", targetJob: "Backend Engineer", difficultyLevel: "MID", questionCount: 6, status: "REVIEW" },
-  { id: 404, candidateName: "Kathryn Murphy", targetJob: "Recruiter", difficultyLevel: "JUNIOR", questionCount: 7, status: "ACTIVE" },
+export const promptProfileList: PromptProfileResponse[] = [
+  { id: 301, profileKey: "frontend_senior_v2", persona: "Senior Frontend Interviewer", outputSchema: "question, rationale, scoreGuide", status: "ACTIVE" },
+  { id: 302, profileKey: "backend_platform_v1", persona: "Platform Tech Lead", outputSchema: "question, followUp, expectation", status: "ACTIVE" },
+  { id: 303, profileKey: "pm_behavioral_v1", persona: "Hiring Manager", outputSchema: "question, competency, answerSignal", status: "REVIEW" },
 ];
 
 export const interviewQuestionList: InterviewQuestionResponse[] = [
