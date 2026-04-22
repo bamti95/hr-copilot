@@ -137,7 +137,7 @@ export function usePromptProfileData() {
           profileKey: form.profileKey.trim(),
           systemPrompt,
           outputSchema: DEFAULT_PROMPT_PROFILE_OUTPUT_SCHEMA,
-          targetJob: form.jobTitle.trim() || null,
+          targetJob: form.targetJob || null,
         });
       } else if (dialogMode === "edit" && editingId !== null) {
         await updatePromptProfile(editingId, {

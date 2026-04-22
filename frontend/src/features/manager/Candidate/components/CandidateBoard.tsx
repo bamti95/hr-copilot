@@ -1,9 +1,9 @@
 import { useLayoutEffect, useRef } from "react";
 import { Pagination } from "../../../../common/components/Pagination";
 import { StatusPill } from "../../../../common/components/StatusPill";
+import { getJobPositionLabel } from "../../common/candidateJobPosition";
 import type {
   CandidateApplyStatus,
-  CandidateJobPosition,
   CandidateListResponse,
   CandidateResponse,
   CandidateStatisticsResponse,
@@ -38,24 +38,12 @@ const inputClassName =
 const buttonClassName =
   "inline-flex h-10 items-center justify-center rounded-xl border px-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
 
-const JOB_POSITION_LABEL: Record<CandidateJobPosition, string> = {
-  STRATEGY_PLANNING: "기획·전략",
-  HR: "인사·HR",
-  MARKETING: "마케팅·광고·MD",
-  AI_DEV_DATA: "AI·개발·데이터",
-  SALES: "영업",
-};
-
 function formatDate(value: string | null) {
   return value ? value.slice(0, 10) : "-";
 }
 
 function formatDateTime(value: string) {
   return value.replace("T", " ").slice(0, 16);
-}
-
-function getJobPositionLabel(jobPosition: string) {
-  return JOB_POSITION_LABEL[jobPosition as CandidateJobPosition] ?? jobPosition;
 }
 
 export function CandidateBoard({

@@ -1,4 +1,5 @@
 import type { PagedListResponse } from "../../../../common/types/pagination";
+import type { CandidateJobPosition } from "../../Candidate/types";
 
 export interface PromptProfileListRequest {
   page: number;
@@ -43,7 +44,8 @@ export interface PromptProfileFormState {
   /** 1. 기본 정보 */
   agentName: string;
   department: string;
-  jobTitle: string;
+  /** 지원 직무 enum; 생성 시 API `targetJob`에 그대로 저장 */
+  targetJob: CandidateJobPosition | "";
   /** 2. 기술 요건 — 칩 태그 (내부 값은 # 없이) */
   mustHaveStack: string[];
   niceToHaveStack: string[];

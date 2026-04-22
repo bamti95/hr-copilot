@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { getErrorMessage } from "../../../../utils/getErrorMessage";
+import {
+  getJobPositionLabel,
+  isMatchingPromptProfile,
+} from "../../common/candidateJobPosition";
 import { fetchPromptProfileList } from "../../PromptProfile/services/promptProfileService";
 import type { DifficultyLevel, PromptProfileOption } from "../types";
 
@@ -7,6 +11,8 @@ interface CandidateAnalysisSessionCreateModalProps {
   open: boolean;
   selectedCount: number;
   targetJob: string;
+  /** 부모에서 프로필 저장 후 증가시키면 목록을 다시 불러옵니다. */
+  profileListVersion: number;
   isSubmitting: boolean;
   onClose: () => void;
   onConfirm: (payload: {
@@ -14,6 +20,7 @@ interface CandidateAnalysisSessionCreateModalProps {
     promptProfileId: number | null;
     promptProfileSnapshot: Record<string, unknown> | null;
   }) => void;
+  onOpenCreatePromptProfile: (presetTargetJob: string) => void;
 }
 
 const buttonClassName =
@@ -29,14 +36,6 @@ const difficultyOptions: Array<{
   { value: "SENIOR", label: "SENIOR", description: "심화 판단 중심" },
 ];
 
-const JOB_POSITION_LABEL: Record<string, string> = {
-  STRATEGY_PLANNING: "기획·전략",
-  HR: "인사·HR",
-  MARKETING: "마케팅·광고·MD",
-  AI_DEV_DATA: "AI·개발·데이터",
-  SALES: "영업",
-};
-
 function toPromptProfileOption(row: {
   id: number;
   profileKey: string;
@@ -51,40 +50,15 @@ function toPromptProfileOption(row: {
   };
 }
 
-function getJobAliases(targetJob: string) {
-  const trimmed = targetJob.trim();
-  const koreanLabel = JOB_POSITION_LABEL[trimmed];
-
-  return new Set(
-    [trimmed, koreanLabel]
-      .filter((value): value is string => Boolean(value))
-      .map((value) => value.toLowerCase()),
-  );
-}
-
-function isMatchingPromptProfile(
-  profile: PromptProfileOption,
-  targetJob: string,
-) {
-  if (!profile.targetJob) {
-    return false;
-  }
-
-  const aliases = getJobAliases(targetJob);
-  return aliases.has(profile.targetJob.trim().toLowerCase());
-}
-
-function getJobPositionLabel(targetJob: string) {
-  return JOB_POSITION_LABEL[targetJob] ?? targetJob;
-}
-
 export function CandidateAnalysisSessionCreateModal({
   open,
   selectedCount,
   targetJob,
+  profileListVersion,
   isSubmitting,
   onClose,
   onConfirm,
+  onOpenCreatePromptProfile,
 }: CandidateAnalysisSessionCreateModalProps) {
   const [items, setItems] = useState<PromptProfileOption[]>([]);
   const [selectedPromptProfileId, setSelectedPromptProfileId] = useState<number | null>(null);
@@ -109,20 +83,29 @@ export function CandidateAnalysisSessionCreateModal({
         setLoading(true);
         setError("");
 
+        const trimmedJob = targetJob.trim();
+
         const filteredResponse = await fetchPromptProfileList({
           page: 1,
           limit: 100,
-          targetJob: targetJob.trim() || undefined,
+          targetJob: trimmedJob || undefined,
         });
         if (!active) {
           return;
         }
 
-        let nextItems = filteredResponse.items.map(toPromptProfileOption);
+        const mappedFirst = filteredResponse.items.map(toPromptProfileOption);
+        const scopedFirst = trimmedJob
+          ? mappedFirst.filter(
+              (item) =>
+                item.targetJob === null ||
+                isMatchingPromptProfile(item, trimmedJob),
+            )
+          : mappedFirst;
 
-        // Fallback: prompt profiles may have been saved with Korean job labels
-        // or without a target_job filterable by the current enum value.
-        if (nextItems.length === 0) {
+        let nextItems = scopedFirst;
+
+        if (nextItems.length === 0 && trimmedJob) {
           const unfilteredResponse = await fetchPromptProfileList({
             page: 1,
             limit: 100,
@@ -133,18 +116,27 @@ export function CandidateAnalysisSessionCreateModal({
 
           const unfilteredItems = unfilteredResponse.items.map(toPromptProfileOption);
           const matchedItems = unfilteredItems.filter((item) =>
-            isMatchingPromptProfile(item, targetJob),
+            isMatchingPromptProfile(item, trimmedJob),
           );
           const commonItems = unfilteredItems.filter((item) => item.targetJob === null);
 
           nextItems =
             matchedItems.length > 0
-              ? [...matchedItems, ...commonItems.filter((item) => !matchedItems.some((matched) => matched.id === item.id))]
-              : unfilteredItems;
+              ? [
+                  ...matchedItems,
+                  ...commonItems.filter(
+                    (item) => !matchedItems.some((matched) => matched.id === item.id),
+                  ),
+                ]
+              : commonItems;
         }
 
         setItems(nextItems);
-        setSelectedPromptProfileId(nextItems[0]?.id ?? null);
+
+        const jobSpecificPick = nextItems.find(
+          (item) => item.targetJob && isMatchingPromptProfile(item, trimmedJob),
+        );
+        setSelectedPromptProfileId(jobSpecificPick?.id ?? nextItems[0]?.id ?? null);
       } catch (loadError) {
         if (!active) {
           return;
@@ -166,7 +158,17 @@ export function CandidateAnalysisSessionCreateModal({
     return () => {
       active = false;
     };
-  }, [open, targetJob]);
+  }, [open, targetJob, profileListVersion]);
+
+  const hasJobSpecificProfileMatch = useMemo(
+    () =>
+      Boolean(targetJob.trim()) &&
+      items.some(
+        (item) =>
+          item.targetJob !== null && isMatchingPromptProfile(item, targetJob),
+      ),
+    [items, targetJob],
+  );
 
   const selectedPromptProfile = useMemo(
     () => items.find((item) => item.id === selectedPromptProfileId) ?? null,
@@ -191,6 +193,10 @@ export function CandidateAnalysisSessionCreateModal({
         : null,
     });
   };
+
+  const trimmedTargetJob = targetJob.trim();
+  const showNoJobMatchHint =
+    Boolean(trimmedTargetJob) && !loading && !hasJobSpecificProfileMatch;
 
   return (
     <div
@@ -227,6 +233,23 @@ export function CandidateAnalysisSessionCreateModal({
             </div>
           </div>
         </div>
+
+        {showNoJobMatchHint ? (
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <p>
+              선택한 직무({getJobPositionLabel(trimmedTargetJob)})에 맞는 전용 프롬프트
+              프로필이 없습니다. 공통 프로필만 있거나 목록이 비어 있을 수 있습니다.
+            </p>
+            <button
+              type="button"
+              className={`${buttonClassName} mt-3 border-transparent bg-[var(--primary)] text-white hover:opacity-90`}
+              onClick={() => onOpenCreatePromptProfile(trimmedTargetJob)}
+              disabled={isSubmitting}
+            >
+              이 직무용 프로필 등록
+            </button>
+          </div>
+        ) : null}
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <label className="text-sm font-medium text-[var(--text)]">

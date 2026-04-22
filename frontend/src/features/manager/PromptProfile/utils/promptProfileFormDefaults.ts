@@ -8,7 +8,7 @@ export function emptyPromptProfileForm(partial?: Partial<PromptProfileFormState>
     outputSchema: DEFAULT_PROMPT_PROFILE_OUTPUT_SCHEMA,
     agentName: "",
     department: "",
-    jobTitle: "",
+    targetJob: "",
     mustHaveStack: [],
     niceToHaveStack: [],
     requiredCertificates: [],

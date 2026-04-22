@@ -1,4 +1,6 @@
 import { useMemo, type ReactNode } from "react";
+import type { CandidateJobPosition } from "../../Candidate/types";
+import { CANDIDATE_JOB_POSITION_OPTIONS } from "../../common/candidateJobPosition";
 import type { PromptProfileFormState } from "../types";
 import { buildAgentSystemPrompt } from "../utils/buildAgentSystemPrompt";
 import { CERTIFICATE_SUGGESTIONS, EDUCATION_SUGGESTIONS, SKILL_STACK_SUGGESTIONS } from "../utils/chipPresets";
@@ -124,16 +126,27 @@ export function PromptProfileFormModal({
                       placeholder="예: 플랫폼 개발본부"
                     />
                   </label>
-                  {/* <label className="text-sm font-medium text-[var(--text)]">
+                  <label className="text-sm font-medium text-[var(--text)]">
                     채용 직무
-                    <input
+                    <select
                       className={fieldClassName}
-                      value={form.jobTitle}
-                      onChange={(e) => onFieldChange("jobTitle", e.target.value)}
+                      value={form.targetJob}
+                      onChange={(e) =>
+                        onFieldChange(
+                          "targetJob",
+                          e.target.value as CandidateJobPosition | "",
+                        )
+                      }
                       disabled={isSaving}
-                      placeholder="예: 주니어 백엔드 개발자"
-                    />
-                  </label> */}
+                    >
+                      <option value="">선택</option>
+                      {CANDIDATE_JOB_POSITION_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
               </div>
 
