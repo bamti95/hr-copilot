@@ -18,8 +18,14 @@ class ApplyStatus(StrEnum):
     INTERVIEW = "INTERVIEW"
     ACCEPTED = "ACCEPTED"
     REJECTED = "REJECTED"
-
-
+    
+class JobPosition(StrEnum):
+    STRATEGY_PLANNING = "STRATEGY_PLANNING"   # 기획·전략
+    HR = "HR"                                 # 인사·HR
+    MARKETING = "MARKETING"                   # 마케팅·광고·MD
+    AI_DEV_DATA = "AI_DEV_DATA"               # AI·개발·데이터
+    SALES = "SALES"                           # 영업
+    
 class Candidate(Base, AuditBase):
     __tablename__ = "candidate"
 
@@ -27,6 +33,12 @@ class Candidate(Base, AuditBase):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str] = mapped_column(String(50), nullable=False)
+    
+    job_position: Mapped[str] = mapped_column(
+        String(50),
+        nullable=True
+    )
+    
     birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     apply_status: Mapped[str] = mapped_column(
         String(30), nullable=False, default=ApplyStatus.APPLIED.value

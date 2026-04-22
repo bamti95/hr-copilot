@@ -2,22 +2,23 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from models.candidate import JobPosition
+
 
 class CandidateCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
     phone: str = Field(..., min_length=1, max_length=50)
+    job_position: JobPosition | None
     birth_date: date | None = None
-
     model_config = ConfigDict(str_strip_whitespace=True)
-
 
 class CandidateUpdateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
     phone: str = Field(..., min_length=1, max_length=50)
+    job_position: JobPosition | None
     birth_date: date | None = None
-
     model_config = ConfigDict(str_strip_whitespace=True)
 
 
@@ -25,7 +26,6 @@ class CandidateStatusPatchRequest(BaseModel):
     """apply_status는 서비스에서 ApplyStatus로 검증합니다 (잘못된 값은 HTTP 400)."""
 
     apply_status: str = Field(..., min_length=1, max_length=30)
-
     model_config = ConfigDict(str_strip_whitespace=True)
 
 
@@ -35,6 +35,7 @@ class CandidateResponse(BaseModel):
     email: str
     phone: str
     birth_date: date | None = None
+    job_position: str | None
     apply_status: str
     created_at: datetime
     created_by: int | None = None
@@ -115,7 +116,7 @@ class ApplyStatusCountRow(BaseModel):
 
 
 class TargetJobCountRow(BaseModel):
-    target_job: str
+    job_position: str
     count: int
 
 
