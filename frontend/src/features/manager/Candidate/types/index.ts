@@ -7,6 +7,13 @@ export type CandidateApplyStatus =
   | "ACCEPTED"
   | "REJECTED";
 
+export type CandidateJobPosition =
+  | "STRATEGY_PLANNING"
+  | "HR"
+  | "MARKETING"
+  | "AI_DEV_DATA"
+  | "SALES";
+
 export type CandidateDocumentType =
   | "RESUME"
   | "PORTFOLIO"
@@ -33,6 +40,44 @@ export interface TargetJobCountRow {
   count: number;
 }
 
+export type DifficultyLevel = "JUNIOR" | "INTERMEDIATE" | "SENIOR";
+
+export type AnalysisSessionStatus =
+  | "DRAFT"
+  | "READY"
+  | "PROCESSING"
+  | "COMPLETED"
+  | "FAILED";
+
+export interface PromptProfileOption {
+  id: number;
+  profileKey: string;
+  targetJob: string | null;
+  systemPromptPreview: string;
+}
+
+export interface AnalysisSessionCreateRequest {
+  candidateIds: number[];
+  targetJob: string;
+  difficultyLevel?: DifficultyLevel | null;
+  promptProfileId?: number | string | null;
+  promptProfileSnapshot?: Record<string, unknown> | null;
+}
+
+export interface AnalysisSessionCreateItem {
+  sessionId: number;
+  candidateId: number;
+  targetJob: string;
+  difficultyLevel: DifficultyLevel | null;
+  promptProfileId?: number | string | null;
+  status: AnalysisSessionStatus;
+  createdAt?: string;
+}
+
+export interface AnalysisSessionCreateResponse {
+  items: AnalysisSessionCreateItem[];
+}
+
 export interface CandidateStatisticsResponse {
   totalCandidates: number;
   byApplyStatus: ApplyStatusCountRow[];
@@ -44,6 +89,7 @@ export interface CandidateCreateRequest {
   name: string;
   email: string;
   phone: string;
+  jobPosition: CandidateJobPosition | null;
   birthDate: string | null;
 }
 
@@ -51,6 +97,7 @@ export interface CandidateUpdateRequest {
   name: string;
   email: string;
   phone: string;
+  jobPosition: CandidateJobPosition | null;
   birthDate: string | null;
 }
 
@@ -83,6 +130,7 @@ export interface CandidateResponse {
   email: string;
   phone: string;
   birthDate: string | null;
+  jobPosition: CandidateJobPosition | null;
   applyStatus: CandidateApplyStatus;
   createdAt: string;
   createdBy: number | null;
@@ -101,6 +149,7 @@ export interface CandidateFormState {
   name: string;
   email: string;
   phone: string;
+  jobPosition: CandidateJobPosition | "";
   birthDate: string;
   applyStatus: CandidateApplyStatus;
 }

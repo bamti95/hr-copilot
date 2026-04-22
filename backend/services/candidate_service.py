@@ -16,7 +16,7 @@ from common.file_util import (
     save_upload_file_pairs,
 )
 from core.database import AsyncSessionLocal
-from models.candidate import ApplyStatus, Candidate
+from models.candidate import ApplyStatus, Candidate, JobPosition
 from models.document import Document
 from repositories.candidate_repository import CandidateRepository
 from schemas.candidate import (
@@ -183,6 +183,7 @@ class CandidateService:
             name=request.name.strip(),
             email=str(request.email).strip(),
             phone=request.phone.strip(),
+            job_position=request.job_position.value if request.job_position else None,
             birth_date=request.birth_date,
             apply_status=ApplyStatus.APPLIED.value,
             created_by=actor_id,
@@ -242,7 +243,11 @@ class CandidateService:
             for status_item in ApplyStatus
         ]
         job_rows = await repo.count_by_target_job_distinct_candidates()
-        job_rows_sorted = sorted(job_rows, key=lambda row: (-row[1], row[0]))
+        job_map = {job: count for job, count in job_rows}
+        job_rows_sorted = [
+            (job_item.value, job_map.get(job_item.value, 0))
+            for job_item in JobPosition
+        ]
         by_target_job = [
             TargetJobCountRow(target_job=job, count=count)
             for job, count in job_rows_sorted
@@ -334,6 +339,7 @@ class CandidateService:
         entity.name = request.name.strip()
         entity.email = str(request.email).strip()
         entity.phone = request.phone.strip()
+        entity.job_position = request.job_position.value if request.job_position else None
         entity.birth_date = request.birth_date
         entity.updated_at = datetime.now(timezone.utc)
 

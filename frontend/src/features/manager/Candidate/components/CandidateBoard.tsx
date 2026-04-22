@@ -3,6 +3,7 @@ import { Pagination } from "../../../../common/components/Pagination";
 import { StatusPill } from "../../../../common/components/StatusPill";
 import type {
   CandidateApplyStatus,
+  CandidateJobPosition,
   CandidateListResponse,
   CandidateResponse,
   CandidateStatisticsResponse,
@@ -28,7 +29,7 @@ interface CandidateBoardProps {
   onDelete: (row: CandidateResponse) => void;
   onToggleSelect: (candidateId: number) => void;
   onSelectAllOnPage: () => void;
-  onOpenPromptProfileWizard: () => void;
+  onOpenAnalysisSessionCreateModal: () => void;
 }
 
 const inputClassName =
@@ -37,12 +38,24 @@ const inputClassName =
 const buttonClassName =
   "inline-flex h-10 items-center justify-center rounded-xl border px-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
 
+const JOB_POSITION_LABEL: Record<CandidateJobPosition, string> = {
+  STRATEGY_PLANNING: "기획·전략",
+  HR: "인사·HR",
+  MARKETING: "마케팅·광고·MD",
+  AI_DEV_DATA: "AI·개발·데이터",
+  SALES: "영업",
+};
+
 function formatDate(value: string | null) {
   return value ? value.slice(0, 10) : "-";
 }
 
 function formatDateTime(value: string) {
   return value.replace("T", " ").slice(0, 16);
+}
+
+function getJobPositionLabel(jobPosition: string) {
+  return JOB_POSITION_LABEL[jobPosition as CandidateJobPosition] ?? jobPosition;
 }
 
 export function CandidateBoard({
@@ -65,20 +78,21 @@ export function CandidateBoard({
   onDelete,
   onToggleSelect,
   onSelectAllOnPage,
-  onOpenPromptProfileWizard,
+  onOpenAnalysisSessionCreateModal,
 }: CandidateBoardProps) {
-  const idsOnPage = data.items.map((r) => r.id);
+  const idsOnPage = data.items.map((row) => row.id);
   const allOnPageSelected =
     idsOnPage.length > 0 && idsOnPage.every((id) => selectedIds.includes(id));
   const someOnPageSelected = idsOnPage.some((id) => selectedIds.includes(id));
   const jobSelected = Boolean(jobFilter.trim());
-  const canPromptFlow = jobSelected && selectedIds.length > 0;
+  const canCreateAnalysisSession =
+    jobSelected && selectedIds.length > 0 && !isLoading;
 
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
   useLayoutEffect(() => {
-    const el = headerCheckboxRef.current;
-    if (el) {
-      el.indeterminate = !allOnPageSelected && someOnPageSelected;
+    const element = headerCheckboxRef.current;
+    if (element) {
+      element.indeterminate = !allOnPageSelected && someOnPageSelected;
     }
   }, [allOnPageSelected, someOnPageSelected]);
 
@@ -87,7 +101,8 @@ export function CandidateBoard({
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-[var(--text)]">지원자 관리</h2>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          지원 직무로 필터한 뒤 지원자를 선택하고, 프롬프트 프로필 생성으로 직무별 프로필을 연결할 수 있습니다.
+          직무와 지원 상태로 지원자를 필터링하고, 선택한 지원자 기준으로 분석 세션을
+          생성할 수 있습니다.
         </p>
       </div>
 
@@ -118,7 +133,7 @@ export function CandidateBoard({
             <option value="">전체</option>
             {(statistics?.byTargetJob ?? []).map((row) => (
               <option key={row.targetJob} value={row.targetJob}>
-                {row.targetJob} ({row.count})
+                {getJobPositionLabel(row.targetJob)} ({row.count})
               </option>
             ))}
           </select>
@@ -176,37 +191,39 @@ export function CandidateBoard({
         <button
           type="button"
           className={`${buttonClassName} border-violet-300 bg-violet-50 px-3 text-violet-900 hover:bg-violet-100`}
-          onClick={onOpenPromptProfileWizard}
-          disabled={!canPromptFlow || isLoading}
+          onClick={onOpenAnalysisSessionCreateModal}
+          disabled={!canCreateAnalysisSession}
           title={
             !jobSelected
-              ? "지원 직무를 먼저 선택하세요."
+              ? "직무를 먼저 선택하세요."
               : selectedIds.length === 0
                 ? "지원자를 한 명 이상 선택하세요."
                 : undefined
           }
         >
-          프롬프트 프로필 생성
+          분석 세션 생성
         </button>
       </div>
 
-      <div className="mb-4 text-right text-sm text-[var(--muted)]">
-        총 {data.paging.totalCount}건 / {Math.max(data.paging.totalPages, 1)} 페이지
+      <div className="mb-4 flex items-center justify-between gap-3 text-sm text-[var(--muted)]">
+        <span>
+          총 {data.paging.totalCount}건 / {Math.max(data.paging.totalPages, 1)} 페이지
+        </span>
+        <span>선택된 지원자 {selectedIds.length}명</span>
       </div>
 
       <div className="overflow-x-auto rounded-[24px] border border-white/70">
         <table className="w-full border-collapse">
           <thead className="bg-white/60">
             <tr>
-              <th className="border-b border-[var(--line)] px-2 py-3 text-left text-[0.84rem] font-bold whitespace-nowrap text-[var(--muted)] w-10">
+              <th className="w-10 border-b border-[var(--line)] px-2 py-3 text-left text-[0.84rem] font-bold whitespace-nowrap text-[var(--muted)]">
                 <input
                   ref={headerCheckboxRef}
                   type="checkbox"
                   className="h-4 w-4 rounded border-[var(--line)]"
                   checked={allOnPageSelected}
                   onChange={onSelectAllOnPage}
-                  disabled={isLoading || !jobSelected || data.items.length === 0}
-                  title={!jobSelected ? "직무를 선택하면 전체 선택을 사용할 수 있습니다." : undefined}
+                  disabled={isLoading || data.items.length === 0}
                 />
               </th>
               {["ID", "이름", "이메일", "전화번호", "생년월일", "지원 상태", "등록일", "액션"].map(
@@ -230,7 +247,7 @@ export function CandidateBoard({
                     className="h-4 w-4 rounded border-[var(--line)]"
                     checked={selectedIds.includes(row.id)}
                     onChange={() => onToggleSelect(row.id)}
-                    disabled={isLoading || !jobSelected}
+                    disabled={isLoading}
                   />
                 </td>
                 <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">

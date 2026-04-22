@@ -26,6 +26,7 @@ interface CandidateApiResponse {
   email: string;
   phone: string;
   birth_date: string | null;
+  job_position: CandidateResponse["jobPosition"];
   apply_status: CandidateResponse["applyStatus"];
   created_at: string;
   created_by: number | null;
@@ -86,6 +87,7 @@ function mapCandidate(response: CandidateApiResponse): CandidateResponse {
     email: response.email,
     phone: response.phone,
     birthDate: response.birth_date,
+    jobPosition: response.job_position,
     applyStatus: response.apply_status,
     createdAt: response.created_at,
     createdBy: response.created_by,
@@ -134,6 +136,7 @@ function toCandidatePayload(requestBody: CandidateCreateRequest | CandidateUpdat
     name: requestBody.name,
     email: requestBody.email,
     phone: requestBody.phone,
+    job_position: requestBody.jobPosition,
     birth_date: requestBody.birthDate || null,
   };
 }

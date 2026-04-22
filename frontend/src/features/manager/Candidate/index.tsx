@@ -1,7 +1,6 @@
 import { PageIntro } from "../../../common/components/PageIntro";
-import { PromptProfileFormModal } from "../PromptProfile/components/PromptProfileFormModal";
+import { CandidateAnalysisSessionCreateModal } from "./components/CandidateAnalysisSessionCreateModal";
 import { CandidateBoard } from "./components/CandidateBoard";
-import { CandidatePromptProfileActionModal } from "./components/CandidatePromptProfileActionModal";
 import { useCandidateData } from "./hooks/useCandidateData";
 
 export default function CandidatePage() {
@@ -16,11 +15,8 @@ export default function CandidatePage() {
     isLoading,
     errorMessage,
     successMessage,
-    promptWizardOpen,
-    promptCreateOpen,
-    promptForm,
-    promptFormError,
-    promptSaving,
+    isAnalysisSessionCreateModalOpen,
+    isCreatingAnalysisSessions,
     setSearchInput,
     setStatusFilter,
     setPage,
@@ -32,13 +28,9 @@ export default function CandidatePage() {
     handleDelete,
     toggleSelect,
     selectAllOnPage,
-    openPromptWizard,
-    closePromptWizard,
-    openPromptCreateFromWizard,
-    closePromptCreate,
-    handlePromptFieldChange,
-    handlePromptCreateSave,
-    handlePickExistingProfile,
+    openAnalysisSessionCreateModal,
+    closeAnalysisSessionCreateModal,
+    createAnalysisSessions,
   } = useCandidateData();
 
   return (
@@ -46,7 +38,7 @@ export default function CandidatePage() {
       <PageIntro
         eyebrow="candidate"
         title="지원자 관리"
-        description="지원자 목록을 조회하고, 페이지 전환형 상세 화면에서 기본 정보와 문서를 함께 관리합니다."
+        description="지원자 목록을 조회하고, 필터와 선택 상태를 기준으로 분석 세션 생성을 준비할 수 있습니다."
       />
 
       {errorMessage ? (
@@ -87,25 +79,16 @@ export default function CandidatePage() {
         onDelete={(row) => void handleDelete(row.id, row.name)}
         onToggleSelect={toggleSelect}
         onSelectAllOnPage={selectAllOnPage}
-        onOpenPromptProfileWizard={openPromptWizard}
+        onOpenAnalysisSessionCreateModal={openAnalysisSessionCreateModal}
       />
 
-      <CandidatePromptProfileActionModal
-        open={promptWizardOpen}
+      <CandidateAnalysisSessionCreateModal
+        open={isAnalysisSessionCreateModalOpen}
+        selectedCount={selectedIds.length}
         targetJob={jobFilter.trim()}
-        onClose={closePromptWizard}
-        onPickExisting={handlePickExistingProfile}
-        onCreateNew={openPromptCreateFromWizard}
-      />
-
-      <PromptProfileFormModal
-        mode={promptCreateOpen ? "create" : "closed"}
-        form={promptForm}
-        isSaving={promptSaving}
-        formError={promptFormError}
-        onClose={closePromptCreate}
-        onFieldChange={handlePromptFieldChange}
-        onSubmit={() => void handlePromptCreateSave()}
+        isSubmitting={isCreatingAnalysisSessions}
+        onClose={closeAnalysisSessionCreateModal}
+        onConfirm={(payload) => void createAnalysisSessions(payload)}
       />
     </div>
   );

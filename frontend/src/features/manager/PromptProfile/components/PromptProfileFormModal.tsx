@@ -124,7 +124,7 @@ export function PromptProfileFormModal({
                       placeholder="예: 플랫폼 개발본부"
                     />
                   </label>
-                  <label className="text-sm font-medium text-[var(--text)]">
+                  {/* <label className="text-sm font-medium text-[var(--text)]">
                     채용 직무
                     <input
                       className={fieldClassName}
@@ -133,7 +133,7 @@ export function PromptProfileFormModal({
                       disabled={isSaving}
                       placeholder="예: 주니어 백엔드 개발자"
                     />
-                  </label>
+                  </label> */}
                 </div>
               </div>
 

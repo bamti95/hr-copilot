@@ -13,7 +13,6 @@ import {
   uploadCandidateDocuments,
 } from "../services/candidateService";
 import type {
-  CandidateApplyStatus,
   CandidateCreateRequest,
   CandidateDetailResponse,
   CandidateDocumentResponse,
@@ -23,12 +22,14 @@ import type {
 } from "../types";
 
 type ValidationErrors = Partial<Record<keyof CandidateFormState, string>>;
+
 const MAX_PENDING_DOCUMENT_COUNT = 3;
 
 const emptyForm: CandidateFormState = {
   name: "",
   email: "",
   phone: "",
+  jobPosition: "",
   birthDate: "",
   applyStatus: "APPLIED",
 };
@@ -44,6 +45,7 @@ function toRequestPayload(
     name: normalizeValue(form.name),
     email: normalizeValue(form.email),
     phone: normalizeValue(form.phone),
+    jobPosition: form.jobPosition || null,
     birthDate: normalizeValue(form.birthDate) || null,
   };
 }
@@ -53,6 +55,7 @@ function toFormState(detail: CandidateDetailResponse): CandidateFormState {
     name: detail.name,
     email: detail.email,
     phone: detail.phone,
+    jobPosition: detail.jobPosition ?? "",
     birthDate: detail.birthDate ?? "",
     applyStatus: detail.applyStatus,
   };
@@ -98,8 +101,9 @@ export function useCandidateDetail({
     const refreshedDetail = await fetchCandidateDetail(targetCandidateId);
     setDetail(refreshedDetail);
     if (shouldSyncForm) {
-      setForm(toFormState(refreshedDetail));
-      setInitialForm(toFormState(refreshedDetail));
+      const nextForm = toFormState(refreshedDetail);
+      setForm(nextForm);
+      setInitialForm(nextForm);
     }
   };
 
@@ -127,21 +131,20 @@ export function useCandidateDetail({
         setIsDetailLoading(true);
         setErrorMessage("");
         const response = await fetchCandidateDetail(candidateId);
-
         if (!active) {
           return;
         }
 
+        const nextForm = toFormState(response);
         setDetail(response);
-        setForm(toFormState(response));
-        setInitialForm(toFormState(response));
+        setForm(nextForm);
+        setInitialForm(nextForm);
         setPendingDocuments([]);
         setValidationErrors({});
       } catch (error) {
         if (!active) {
           return;
         }
-
         setErrorMessage(
           getErrorMessage(error, "지원자 상세 정보를 불러오지 못했습니다."),
         );
@@ -188,7 +191,7 @@ export function useCandidateDetail({
 
           setDetail(refreshedDetail);
         } catch {
-          // Keep the current editing state stable if polling fails.
+          // Polling failure should not break the current editing flow.
         } finally {
           if (active) {
             setIsExtractRefreshing(false);
@@ -225,6 +228,10 @@ export function useCandidateDetail({
       nextErrors.phone = "전화번호를 입력해주세요.";
     } else if (phone.replace(/\D/g, "").length < 10) {
       nextErrors.phone = "전화번호는 10자리 이상 입력해주세요.";
+    }
+
+    if (!form.jobPosition) {
+      nextErrors.jobPosition = "지원 직무를 선택해주세요.";
     }
 
     setValidationErrors(nextErrors);
@@ -316,7 +323,9 @@ export function useCandidateDetail({
         payload.name !== normalizeValue(initialForm.name) ||
         payload.email !== normalizeValue(initialForm.email) ||
         payload.phone !== normalizeValue(initialForm.phone) ||
-        (payload.birthDate || null) !== (normalizeValue(initialForm.birthDate) || null);
+        payload.jobPosition !== (initialForm.jobPosition || null) ||
+        (payload.birthDate || null) !==
+          (normalizeValue(initialForm.birthDate) || null);
 
       const hasStatusChange = form.applyStatus !== initialForm.applyStatus;
 
@@ -352,7 +361,6 @@ export function useCandidateDetail({
     }
 
     const confirmed = window.confirm(`${detail.name} 지원자를 삭제하시겠습니까?`);
-
     if (!confirmed) {
       return;
     }
@@ -394,7 +402,6 @@ export function useCandidateDetail({
     }
 
     const confirmed = window.confirm(`${fileName} 파일을 삭제하시겠습니까?`);
-
     if (!confirmed) {
       return;
     }

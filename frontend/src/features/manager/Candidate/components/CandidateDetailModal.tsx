@@ -16,6 +16,7 @@ import type {
   CandidateDocumentResponse,
   CandidateDocumentType,
   CandidateFormState,
+  CandidateJobPosition,
   CandidatePendingDocument,
 } from "../types";
 
@@ -32,6 +33,7 @@ interface CandidateDetailModalProps {
   isDetailLoading: boolean;
   isExtractRefreshing: boolean;
   statusOptions: readonly CandidateApplyStatus[];
+  jobPositionOptions: readonly CandidateJobPosition[];
   documentTypeOptions: readonly CandidateDocumentType[];
   onFieldChange: <K extends keyof CandidateFormState>(
     key: K,
@@ -60,6 +62,14 @@ const fieldClassName =
 
 const pendingCardClassName =
   "grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-[minmax(0,1fr)_220px_auto] md:items-center";
+
+const JOB_POSITION_LABEL: Record<CandidateJobPosition, string> = {
+  STRATEGY_PLANNING: "기획·전략",
+  HR: "인사·HR",
+  MARKETING: "마케팅·광고·MD",
+  AI_DEV_DATA: "AI·개발·데이터",
+  SALES: "영업",
+};
 
 function formatDateTime(value?: string) {
   if (!value) {
@@ -103,6 +113,7 @@ export function CandidateDetailModal({
   isDetailLoading,
   isExtractRefreshing,
   statusOptions,
+  jobPositionOptions,
   documentTypeOptions,
   onFieldChange,
   onSave,
@@ -158,7 +169,7 @@ export function CandidateDetailModal({
               </p>
               <h2 className="mt-2 text-2xl font-bold text-[var(--text)]">{title}</h2>
               <p className="mt-2 text-sm text-[var(--muted)]">
-                기본 정보와 지원 문서를 한 화면에서 정리하고, 문서 상세 페이지로 이어서 확인할 수 있습니다.
+                지원자 기본 정보, 지원 직무, 진행 상태와 문서를 한 화면에서 관리합니다.
               </p>
             </div>
           </div>
@@ -169,8 +180,11 @@ export function CandidateDetailModal({
         {hasPendingExtraction ? (
           <div className="mt-5 inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
             <LoaderCircle className="h-4 w-4 animate-spin" />
-            <span>문서 추출 처리 중입니다. 완료될 때까지 수정, 삭제, 재업로드가 잠시 잠깁니다.</span>
-            {isExtractRefreshing ? <span>· 상태 확인 중</span> : null}
+            <span>
+              문서 추출 처리 중입니다. 완료 전까지 수정, 삭제, 추가 업로드가 잠시
+              제한됩니다.
+            </span>
+            {isExtractRefreshing ? <span>상태 확인 중</span> : null}
           </div>
         ) : null}
 
@@ -182,7 +196,7 @@ export function CandidateDetailModal({
           <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
             <section className="space-y-6">
               <div className="rounded-[28px] border border-white/70 bg-[var(--panel-strong)] p-5">
-                <h3 className="text-lg font-bold text-(--text)">기본 정보</h3>
+                <h3 className="text-lg font-bold text-[var(--text)]">기본 정보</h3>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <label className="block text-sm font-medium text-slate-700">
@@ -228,6 +242,33 @@ export function CandidateDetailModal({
                   </label>
 
                   <label className="block text-sm font-medium text-slate-700">
+                    지원 직무
+                    <select
+                      className={fieldClassName}
+                      value={form.jobPosition}
+                      disabled={isInteractionLocked}
+                      onChange={(event) =>
+                        onFieldChange(
+                          "jobPosition",
+                          event.target.value as CandidateJobPosition | "",
+                        )
+                      }
+                    >
+                      <option value="">선택하세요</option>
+                      {jobPositionOptions.map((jobPosition) => (
+                        <option key={jobPosition} value={jobPosition}>
+                          {JOB_POSITION_LABEL[jobPosition]}
+                        </option>
+                      ))}
+                    </select>
+                    {validationErrors.jobPosition ? (
+                      <p className="mt-2 text-xs text-rose-600">
+                        {validationErrors.jobPosition}
+                      </p>
+                    ) : null}
+                  </label>
+
+                  <label className="block text-sm font-medium text-slate-700">
                     생년월일
                     <input
                       type="date"
@@ -247,7 +288,10 @@ export function CandidateDetailModal({
                       value={form.applyStatus}
                       disabled={isInteractionLocked}
                       onChange={(event) =>
-                        onFieldChange("applyStatus", event.target.value as CandidateApplyStatus)
+                        onFieldChange(
+                          "applyStatus",
+                          event.target.value as CandidateApplyStatus,
+                        )
                       }
                     >
                       {statusOptions.map((status) => (
@@ -259,10 +303,10 @@ export function CandidateDetailModal({
                   </label>
 
                   {!isCreateMode && detail ? (
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-                    <p className="text-xs text-slate-400">등록일</p>
-                    <p className="mt-1">{formatDateTime(detail.createdAt)}</p>
-                  </div>
+                    <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                      <p className="text-xs text-slate-400">등록일</p>
+                      <p className="mt-1">{formatDateTime(detail.createdAt)}</p>
+                    </div>
                   ) : null}
                 </div>
               </div>
@@ -270,9 +314,10 @@ export function CandidateDetailModal({
               <div className="rounded-[28px] border border-white/70 bg-[var(--panel-strong)] p-5">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-(--text)">문서 등록</h3>
-                    <p className="mt-1 text-sm text-(--muted)">
-                      자기소개서, 포트폴리오 등 지원 문서를 최대 3개까지 한 번에 등록할 수 있습니다.
+                    <h3 className="text-lg font-bold text-[var(--text)]">문서 등록</h3>
+                    <p className="mt-1 text-sm text-[var(--muted)]">
+                      자기소개서, 포트폴리오 등 지원 문서를 최대 3개까지 한 번에
+                      등록할 수 있습니다.
                     </p>
                   </div>
 
@@ -324,7 +369,7 @@ export function CandidateDetailModal({
                     파일을 이 영역에 드래그하거나 버튼으로 선택해주세요.
                   </p>
                   <p className="mt-2 text-xs text-slate-500">
-                    저장 전 아래 목록에서 어떤 파일이 업로드될지 바로 확인할 수 있습니다.
+                    아래 목록에서 어떤 파일이 업로드될지 바로 확인할 수 있습니다.
                   </p>
                   <p className="mt-2 text-xs font-semibold text-emerald-700">
                     현재 {pendingDocuments.length}개 선택 / 추가 가능 {remainingDocumentSlots}개
@@ -342,7 +387,7 @@ export function CandidateDetailModal({
                               {document.file.name}
                             </p>
                             <p className="mt-1 text-xs text-slate-500">
-                              업로드 예정 파일 · {formatFileSize(document.file.size)}
+                              업로드 예정 파일 / {formatFileSize(document.file.size)}
                             </p>
                           </div>
                         </div>
@@ -392,7 +437,8 @@ export function CandidateDetailModal({
                 <div>
                   <h3 className="text-lg font-bold text-[var(--text)]">등록 문서</h3>
                   <p className="mt-1 text-sm text-[var(--muted)]">
-                    문서 메타 정보를 보고, 필요하면 상세 페이지에서 추출 텍스트까지 확인할 수 있습니다.
+                    문서 메타 정보와 추출 상태를 확인하고, 필요하면 상세 페이지로
+                    이동할 수 있습니다.
                   </p>
                 </div>
                 <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">
@@ -446,7 +492,7 @@ export function CandidateDetailModal({
                                 {document.originalFileName}
                               </p>
                               <p className="mt-1 text-xs text-slate-500">
-                                {document.documentType} · {formatFileSize(document.fileSize)}
+                                {document.documentType} / {formatFileSize(document.fileSize)}
                               </p>
                             </div>
                             <StatusPill status={document.extractStatus} />
@@ -459,9 +505,12 @@ export function CandidateDetailModal({
                           {document.extractStatus === "PENDING" ? (
                             <div className="inline-flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
                               <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-                              <span>추출 처리 중입니다. 완료되면 상태가 자동으로 갱신됩니다.</span>
+                              <span>
+                                추출 처리 중입니다. 완료되면 상태가 자동으로 갱신됩니다.
+                              </span>
                             </div>
                           ) : null}
+
                           <div className="flex flex-wrap items-center gap-2">
                             <button
                               type="button"

@@ -43,9 +43,6 @@ export function validateAgentConfigForCreate(form: PromptProfileFormState): stri
   if (!form.department.trim()) {
     return "채용 부서를 입력해 주세요.";
   }
-  if (!form.jobTitle.trim()) {
-    return "채용 직무를 입력해 주세요.";
-  }
   if (form.mustHaveStack.filter((s) => s.trim()).length === 0) {
     return "필수 기술 스택을 한 가지 이상 선택하거나 추가해 주세요.";
   }

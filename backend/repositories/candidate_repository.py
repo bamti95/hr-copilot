@@ -1,9 +1,9 @@
-from sqlalchemy import distinct, exists, func, or_, select
+from sqlalchemy import distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from models.interview_session import InterviewSession
 from models.candidate import Candidate
 from models.document import Document
-from models.interview_session import InterviewSession
 from repositories.base_repository import BaseRepository
 
 
@@ -115,16 +115,7 @@ class CandidateRepository(BaseRepository[Candidate]):
                 )
             )
         if target_job and target_job.strip():
-            job = target_job.strip()
-            conditions.append(
-                exists(
-                    select(1).where(
-                        InterviewSession.candidate_id == Candidate.id,
-                        InterviewSession.target_job == job,
-                        InterviewSession.deleted_at.is_(None),
-                    )
-                )
-            )
+            conditions.append(Candidate.job_position == target_job.strip())
         return conditions
 
     async def count_list(
@@ -175,15 +166,14 @@ class CandidateRepository(BaseRepository[Candidate]):
     async def count_by_target_job_distinct_candidates(self) -> list[tuple[str, int]]:
         stmt = (
             select(
-                InterviewSession.target_job,
-                func.count(distinct(InterviewSession.candidate_id)),
+                Candidate.job_position,
+                func.count(Candidate.id),
             )
-            .join(Candidate, Candidate.id == InterviewSession.candidate_id)
             .where(
                 Candidate.deleted_at.is_(None),
-                InterviewSession.deleted_at.is_(None),
+                Candidate.job_position.is_not(None),
             )
-            .group_by(InterviewSession.target_job)
+            .group_by(Candidate.job_position)
         )
         result = await self.db.execute(stmt)
         return [(str(row[0]), int(row[1])) for row in result.all()]

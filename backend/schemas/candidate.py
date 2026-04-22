@@ -116,7 +116,7 @@ class ApplyStatusCountRow(BaseModel):
 
 
 class TargetJobCountRow(BaseModel):
-    job_position: str
+    target_job: str
     count: int
 
 

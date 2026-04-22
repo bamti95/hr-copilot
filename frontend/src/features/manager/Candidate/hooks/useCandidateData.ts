@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getErrorMessage } from "../../../../utils/getErrorMessage";
-import { DEFAULT_PROMPT_PROFILE_OUTPUT_SCHEMA } from "../../PromptProfile/constants/defaultOutputSchema";
-import { createPromptProfile } from "../../PromptProfile/services/promptProfileService";
-import type { PromptProfileFormState, PromptProfileResponse } from "../../PromptProfile/types";
-import { buildAgentSystemPrompt, validateAgentConfigForCreate } from "../../PromptProfile/utils/buildAgentSystemPrompt";
-import { emptyPromptProfileForm } from "../../PromptProfile/utils/promptProfileFormDefaults";
+import { createAnalysisSessions } from "../services/analysisSessionService";
 import {
   deleteCandidate,
   fetchCandidateList,
   fetchCandidateStatistics,
 } from "../services/candidateService";
 import type {
+  AnalysisSessionCreateRequest,
   CandidateApplyStatus,
   CandidateListResponse,
   CandidateStatisticsResponse,
@@ -36,12 +33,9 @@ export function useCandidateData() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-
-  const [promptWizardOpen, setPromptWizardOpen] = useState(false);
-  const [promptCreateOpen, setPromptCreateOpen] = useState(false);
-  const [promptForm, setPromptForm] = useState<PromptProfileFormState>(emptyPromptProfileForm());
-  const [promptFormError, setPromptFormError] = useState("");
-  const [promptSaving, setPromptSaving] = useState(false);
+  const [isAnalysisSessionCreateModalOpen, setIsAnalysisSessionCreateModalOpen] =
+    useState(false);
+  const [isCreatingAnalysisSessions, setIsCreatingAnalysisSessions] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -66,11 +60,22 @@ export function useCandidateData() {
     if (!successMessage) {
       return;
     }
-    const t = window.setTimeout(() => setSuccessMessage(""), 4000);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(() => setSuccessMessage(""), 4000);
+    return () => window.clearTimeout(timer);
   }, [successMessage]);
 
   const jobQuery = jobFilter.trim() || undefined;
+
+  const loadCandidates = useCallback(async () => {
+    const response = await fetchCandidateList({
+      page,
+      limit: pageSize,
+      search: searchKeyword || undefined,
+      applyStatus: statusFilter === "ALL" ? undefined : statusFilter,
+      targetJob: jobQuery,
+    });
+    setData(response);
+  }, [jobQuery, page, pageSize, searchKeyword, statusFilter]);
 
   useEffect(() => {
     let active = true;
@@ -113,18 +118,7 @@ export function useCandidateData() {
     return () => {
       active = false;
     };
-  }, [page, pageSize, searchKeyword, statusFilter, jobFilter]);
-
-  const loadCandidates = useCallback(async () => {
-    const response = await fetchCandidateList({
-      page,
-      limit: pageSize,
-      search: searchKeyword || undefined,
-      applyStatus: statusFilter === "ALL" ? undefined : statusFilter,
-      targetJob: jobQuery,
-    });
-    setData(response);
-  }, [page, pageSize, searchKeyword, statusFilter, jobQuery]);
+  }, [jobQuery, page, pageSize, searchKeyword, statusFilter]);
 
   const handleSearchSubmit = () => {
     setPage(1);
@@ -149,7 +143,6 @@ export function useCandidateData() {
     const confirmed = window.confirm(
       `${candidateName} 지원자를 삭제하시겠습니까?`,
     );
-
     if (!confirmed) {
       return;
     }
@@ -159,6 +152,7 @@ export function useCandidateData() {
       setErrorMessage("");
       await deleteCandidate(candidateId);
       await loadCandidates();
+      setSuccessMessage("지원자를 삭제했습니다.");
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "지원자 삭제에 실패했습니다."));
     } finally {
@@ -168,12 +162,12 @@ export function useCandidateData() {
 
   const toggleSelect = (id: number) => {
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+      prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id],
     );
   };
 
   const selectAllOnPage = () => {
-    const ids = data.items.map((r) => r.id);
+    const ids = data.items.map((row) => row.id);
     if (ids.length === 0) {
       return;
     }
@@ -181,70 +175,51 @@ export function useCandidateData() {
     setSelectedIds(allSelected ? [] : ids);
   };
 
-  const openPromptWizard = () => {
+  const openAnalysisSessionCreateModal = () => {
+    if (!jobQuery || selectedIds.length === 0 || isLoading) {
+      return;
+    }
+    setIsAnalysisSessionCreateModalOpen(true);
+  };
+
+  const closeAnalysisSessionCreateModal = () => {
+    if (isCreatingAnalysisSessions) {
+      return;
+    }
+    setIsAnalysisSessionCreateModalOpen(false);
+  };
+
+  const handleCreateAnalysisSessions = async (
+    payload: Omit<AnalysisSessionCreateRequest, "candidateIds" | "targetJob">,
+  ) => {
     if (!jobQuery || selectedIds.length === 0) {
       return;
     }
-    setPromptWizardOpen(true);
-  };
 
-  const closePromptWizard = () => {
-    setPromptWizardOpen(false);
-  };
-
-  const openPromptCreateFromWizard = () => {
-    setPromptWizardOpen(false);
-    setPromptForm(
-      emptyPromptProfileForm({
-        jobTitle: jobFilter.trim(),
-      }),
-    );
-    setPromptFormError("");
-    setPromptCreateOpen(true);
-  };
-
-  const closePromptCreate = () => {
-    setPromptCreateOpen(false);
-    setPromptForm(emptyPromptProfileForm());
-    setPromptFormError("");
-  };
-
-  const handlePromptFieldChange = <K extends keyof PromptProfileFormState>(
-    key: K,
-    value: PromptProfileFormState[K],
-  ) => {
-    setPromptForm((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handlePromptCreateSave = async () => {
-    setPromptFormError("");
-    const err = validateAgentConfigForCreate(promptForm);
-    if (err) {
-      setPromptFormError(err);
-      return;
-    }
     try {
-      setPromptSaving(true);
-      await createPromptProfile({
-        profileKey: promptForm.profileKey.trim(),
-        systemPrompt: buildAgentSystemPrompt(promptForm),
-        outputSchema: DEFAULT_PROMPT_PROFILE_OUTPUT_SCHEMA,
-        targetJob: jobFilter.trim() || promptForm.jobTitle.trim() || null,
-      });
-      closePromptCreate();
-      setSuccessMessage("프롬프트 프로필이 등록되었습니다.");
-    } catch (error) {
-      setPromptFormError(getErrorMessage(error, "저장에 실패했습니다."));
-    } finally {
-      setPromptSaving(false);
-    }
-  };
+      setIsCreatingAnalysisSessions(true);
+      setErrorMessage("");
 
-  const handlePickExistingProfile = (row: PromptProfileResponse) => {
-    setPromptWizardOpen(false);
-    setSuccessMessage(
-      `프로필「${row.profileKey}」을(를) 선택했습니다. (저장 연동 없음)`,
-    );
+      const response = await createAnalysisSessions({
+        candidateIds: selectedIds,
+        targetJob: jobQuery,
+        difficultyLevel: payload.difficultyLevel ?? null,
+        promptProfileId: payload.promptProfileId ?? null,
+        promptProfileSnapshot: payload.promptProfileSnapshot ?? null,
+      });
+
+      setIsAnalysisSessionCreateModalOpen(false);
+      setSelectedIds([]);
+      setSuccessMessage(
+        `${response.items.length}개의 분석 세션을 생성했습니다. 실제 분석은 이후 단계에서 시작할 수 있습니다.`,
+      );
+    } catch (error) {
+      setErrorMessage(
+        getErrorMessage(error, "분석 세션 생성에 실패했습니다."),
+      );
+    } finally {
+      setIsCreatingAnalysisSessions(false);
+    }
   };
 
   return {
@@ -253,16 +228,14 @@ export function useCandidateData() {
     searchInput,
     statusFilter,
     jobFilter,
+    page,
     pageSize,
     selectedIds,
     isLoading,
     errorMessage,
     successMessage,
-    promptWizardOpen,
-    promptCreateOpen,
-    promptForm,
-    promptFormError,
-    promptSaving,
+    isAnalysisSessionCreateModalOpen,
+    isCreatingAnalysisSessions,
     setSearchInput,
     setStatusFilter,
     setPage,
@@ -274,12 +247,8 @@ export function useCandidateData() {
     handleDelete,
     toggleSelect,
     selectAllOnPage,
-    openPromptWizard,
-    closePromptWizard,
-    openPromptCreateFromWizard,
-    closePromptCreate,
-    handlePromptFieldChange,
-    handlePromptCreateSave,
-    handlePickExistingProfile,
+    openAnalysisSessionCreateModal,
+    closeAnalysisSessionCreateModal,
+    createAnalysisSessions: handleCreateAnalysisSessions,
   };
 }

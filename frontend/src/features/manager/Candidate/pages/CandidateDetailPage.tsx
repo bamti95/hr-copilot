@@ -10,6 +10,14 @@ const statusOptions = [
   "REJECTED",
 ] as const;
 
+const jobPositionOptions = [
+  "STRATEGY_PLANNING",
+  "HR",
+  "MARKETING",
+  "AI_DEV_DATA",
+  "SALES",
+] as const;
+
 const documentTypeOptions = [
   "RESUME",
   "PORTFOLIO",
@@ -78,6 +86,7 @@ export default function CandidateDetailPage({
         isDetailLoading={isDetailLoading}
         isExtractRefreshing={isExtractRefreshing}
         statusOptions={statusOptions}
+        jobPositionOptions={jobPositionOptions}
         documentTypeOptions={documentTypeOptions}
         onFieldChange={updateField}
         onSave={() => void handleSave()}
