@@ -8,13 +8,17 @@ export interface DepartmentRealityPresetOption {
 export interface DepartmentRealityQuestionDef {
   id: DepartmentRealityQuestionId;
   title: string;
+  /** 질문별 입력 가이드 (옵션 목록 아래에 표시) */
+  guide: string;
   presets: DepartmentRealityPresetOption[];
 }
 
 export const DEPARTMENT_REALITY_QUESTIONS: DepartmentRealityQuestionDef[] = [
   {
     id: "q1",
-    title: "Q1. 업무 강도 및 마감 대응 (야근 빈도)",
+    title: "Q1. 업무 강도 및 마감 대응",
+    guide:
+      "가이드: 야근이 잦은 부서인가요? 밤샘이나 늦은 퇴근을 군말 없이 잘 버틸 신입이 필요한지, 아니면 야근이 아예 없어 워라밸이 확실한 팀인지 알려주세요",
     presets: [
       {
         id: "q1-worklife",
@@ -32,7 +36,8 @@ export const DEPARTMENT_REALITY_QUESTIONS: DepartmentRealityQuestionDef[] = [
   },
   {
     id: "q2",
-    title: "Q2. 교육 환경 및 자생력 (사수 유무)",
+    title: "Q2. 교육 환경 및 자생력",
+    guide: "가이드: 하나하나 가르칠 여유가 없어서, 밤을 새워서라도 스스로 배워올 사람이 필요한가요?",
     presets: [
       {
         id: "q2-education",
@@ -50,7 +55,9 @@ export const DEPARTMENT_REALITY_QUESTIONS: DepartmentRealityQuestionDef[] = [
   },
   {
     id: "q3",
-    title: "Q3. 의사결정 수용성 (복종도)",
+    title: "Q3. 의사결정 수용성",
+    guide:
+      "가이드: 논리적으로 따지는 신입보다, 일단 믿고 빠르게 실행해 줄 신입이 필요한가요?",
     presets: [
       {
         id: "q3-horizontal",
@@ -68,7 +75,9 @@ export const DEPARTMENT_REALITY_QUESTIONS: DepartmentRealityQuestionDef[] = [
   },
   {
     id: "q4",
-    title: "Q4. 직무 유연성 (잡무 비중)",
+    title: "Q4. 직무 유연성",
+    guide:
+      "가이드: 정해진 프로세스 안에서 '전문 역량을 발휘'하는 스타일과, 상황에 맞춰 '팀의 모든 요구사항에 기여'하는 스타일 중 우리 팀에 더 적합한 인재상은 무엇인가요?",
     presets: [
       {
         id: "q4-specialist",
