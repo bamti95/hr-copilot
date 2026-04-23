@@ -4,6 +4,7 @@ import { CANDIDATE_JOB_POSITION_OPTIONS } from "../../common/candidateJobPositio
 import type { PromptProfileFormState } from "../types";
 import { buildAgentSystemPrompt } from "../utils/buildAgentSystemPrompt";
 import { EDUCATION_SUGGESTIONS, getPromptProfileChipSuggestions } from "../utils/chipPresets";
+import { DepartmentRealitySection } from "./DepartmentRealitySection";
 import { HashtagChipField } from "./HashtagChipField";
 
 export type PromptProfileDialogMode = "closed" | "create" | "edit";
@@ -187,6 +188,12 @@ export function PromptProfileFormModal({
                   />
                 </div>
               </div>
+
+              <DepartmentRealitySection
+                value={form.departmentReality}
+                onChange={(next) => onFieldChange("departmentReality", next)}
+                disabled={isSaving}
+              />
 
               <div>
                 <label className="text-sm font-medium text-[var(--text)]">

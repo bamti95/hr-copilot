@@ -1,5 +1,14 @@
 import { DEFAULT_PROMPT_PROFILE_OUTPUT_SCHEMA } from "../constants/defaultOutputSchema";
-import type { PromptProfileFormState } from "../types";
+import type { DepartmentRealityFormState, PromptProfileFormState } from "../types";
+
+export function emptyDepartmentReality(): DepartmentRealityFormState {
+  return {
+    q1: { selectedIds: [], customItems: [] },
+    q2: { selectedIds: [], customItems: [] },
+    q3: { selectedIds: [], customItems: [] },
+    q4: { selectedIds: [], customItems: [] },
+  };
+}
 
 export function emptyPromptProfileForm(partial?: Partial<PromptProfileFormState>): PromptProfileFormState {
   return {
@@ -13,6 +22,7 @@ export function emptyPromptProfileForm(partial?: Partial<PromptProfileFormState>
     niceToHaveStack: [],
     requiredCertificates: [],
     requiredEducation: [],
+    departmentReality: emptyDepartmentReality(),
     ...partial,
   };
 }
