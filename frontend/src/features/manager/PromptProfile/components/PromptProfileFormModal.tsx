@@ -3,7 +3,7 @@ import type { CandidateJobPosition } from "../../Candidate/types";
 import { CANDIDATE_JOB_POSITION_OPTIONS } from "../../common/candidateJobPosition";
 import type { PromptProfileFormState } from "../types";
 import { buildAgentSystemPrompt } from "../utils/buildAgentSystemPrompt";
-import { CERTIFICATE_SUGGESTIONS, EDUCATION_SUGGESTIONS, SKILL_STACK_SUGGESTIONS } from "../utils/chipPresets";
+import { EDUCATION_SUGGESTIONS, getPromptProfileChipSuggestions } from "../utils/chipPresets";
 import { HashtagChipField } from "./HashtagChipField";
 
 export type PromptProfileDialogMode = "closed" | "create" | "edit";
@@ -45,6 +45,10 @@ export function PromptProfileFormModal({
 }: PromptProfileFormModalProps) {
   const isCreate = mode === "create";
   const composedPreview = useMemo(() => buildAgentSystemPrompt(form), [form]);
+  const chipSuggestions = useMemo(
+    () => getPromptProfileChipSuggestions(form.targetJob),
+    [form.targetJob],
+  );
 
   if (mode === "closed") {
     return null;
@@ -155,21 +159,21 @@ export function PromptProfileFormModal({
                 <div className="mt-4 grid gap-5">
                   <HashtagChipField
                     label="필수 기술 스택 (Must-have)"
-                    suggestions={SKILL_STACK_SUGGESTIONS}
+                    suggestions={chipSuggestions.mustHaveStack}
                     value={form.mustHaveStack}
                     onChange={(next) => onFieldChange("mustHaveStack", next)}
                     disabled={isSaving}
                   />
                   <HashtagChipField
                     label="우대 기술 스택 (Nice-to-have)"
-                    suggestions={SKILL_STACK_SUGGESTIONS}
+                    suggestions={chipSuggestions.niceToHaveStack}
                     value={form.niceToHaveStack}
                     onChange={(next) => onFieldChange("niceToHaveStack", next)}
                     disabled={isSaving}
                   />
                   <HashtagChipField
                     label="필수 자격증"
-                    suggestions={CERTIFICATE_SUGGESTIONS}
+                    suggestions={chipSuggestions.certificates}
                     value={form.requiredCertificates}
                     onChange={(next) => onFieldChange("requiredCertificates", next)}
                     disabled={isSaving}
