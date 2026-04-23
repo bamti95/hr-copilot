@@ -31,9 +31,7 @@ export async function createAnalysisSessions(
 
   const promptProfileSnapshot =
     request.promptProfileSnapshot ??
-    (typeof request.promptProfileId === "number"
-      ? await buildPromptProfileSnapshot(request.promptProfileId)
-      : null);
+    (await buildPromptProfileSnapshot(request.promptProfileId));
 
   const created = await Promise.all<AnalysisSessionCreateItem>(
     candidateIds.map(async (candidateId) => {
@@ -41,6 +39,7 @@ export async function createAnalysisSessions(
         candidateId,
         targetJob: request.targetJob,
         difficultyLevel: request.difficultyLevel ?? null,
+        promptProfileId: request.promptProfileId,
       });
 
       return {
@@ -48,7 +47,7 @@ export async function createAnalysisSessions(
         candidateId: session.candidateId,
         targetJob: session.targetJob,
         difficultyLevel: session.difficultyLevel as AnalysisSessionCreateItem["difficultyLevel"],
-        promptProfileId: request.promptProfileId ?? null,
+        promptProfileId: request.promptProfileId,
         status: "READY" as const,
         createdAt: session.createdAt,
       };

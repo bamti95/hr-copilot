@@ -3,12 +3,13 @@ import type {
   InterviewSessionCandidateOption,
   InterviewSessionFormState,
   InterviewSessionListResponse,
-  InterviewSessionResponse,
+  InterviewSessionPromptProfileOption,
 } from "../types";
 
 interface InterviewSessionBoardProps {
   data: InterviewSessionListResponse;
   candidateOptions: InterviewSessionCandidateOption[];
+  promptProfileOptions: InterviewSessionPromptProfileOption[];
   formMode: "create" | "edit" | null;
   editingSessionId: number | null;
   form: InterviewSessionFormState;
@@ -24,8 +25,7 @@ interface InterviewSessionBoardProps {
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   onCreate: () => void;
-  onEdit: (sessionId: number) => void;
-  onDelete: (row: InterviewSessionResponse) => void;
+  onView: (sessionId: number) => void;
   onCloseForm: () => void;
   onSave: () => void;
   onFormChange: <K extends keyof InterviewSessionFormState>(
@@ -40,13 +40,30 @@ const inputClassName =
 const buttonClassName =
   "inline-flex h-10 items-center justify-center rounded-xl border px-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
 
+const actionButtonClassName =
+  "inline-flex h-9 items-center justify-center rounded-xl px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
+
 function formatDateTime(value: string | null) {
   return value ? value.replace("T", " ").slice(0, 16) : "-";
+}
+
+function renderDifficultyTone(value: string | null) {
+  if (value === "SENIOR") {
+    return "bg-slate-900 text-white";
+  }
+  if (value === "INTERMEDIATE") {
+    return "bg-amber-100 text-amber-900";
+  }
+  if (value === "JUNIOR") {
+    return "bg-sky-100 text-sky-800";
+  }
+  return "bg-slate-100 text-slate-500";
 }
 
 export function InterviewSessionBoard({
   data,
   candidateOptions,
+  promptProfileOptions,
   formMode,
   editingSessionId,
   form,
@@ -62,8 +79,7 @@ export function InterviewSessionBoard({
   onPageChange,
   onPageSizeChange,
   onCreate,
-  onEdit,
-  onDelete,
+  onView,
   onCloseForm,
   onSave,
   onFormChange,
@@ -72,11 +88,9 @@ export function InterviewSessionBoard({
     <div className="space-y-6">
       <section className="rounded-[32px] border border-white/70 bg-[var(--panel)] p-7 shadow-[var(--shadow)] backdrop-blur-[14px]">
         <div className="mb-5">
-          <h2 className="m-0 text-2xl font-bold text-[var(--text)]">
-            인터뷰 세션 관리
-          </h2>
+          <h2 className="m-0 text-2xl font-bold text-[var(--text)]">면접 세션 관리</h2>
           <p className="mt-2 text-sm text-[var(--muted)]">
-            조건별로 인터뷰 세션을 조회하고, 필요한 경우 새 세션을 생성하거나 기존 세션 정보를 수정합니다.
+            조건별로 면접 세션을 조회하고, 상세 화면에서 질문 생성 직전 조립 데이터를 확인할 수 있습니다.
           </p>
         </div>
 
@@ -142,7 +156,7 @@ export function InterviewSessionBoard({
             onClick={onCreate}
             disabled={isLoading || isSaving}
           >
-            신규 생성
+            새 세션
           </button>
         </div>
 
@@ -175,11 +189,23 @@ export function InterviewSessionBoard({
                     key={row.id}
                     className={isEditing ? "bg-emerald-50/60" : "transition hover:bg-slate-50/70"}
                   >
-                    <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">{row.id}</td>
-                    <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">{row.candidateName}</td>
-                    <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">{row.targetJob}</td>
                     <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
-                      {row.difficultyLevel ?? "-"}
+                      {row.id}
+                    </td>
+                    <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap font-semibold text-[var(--text)]">
+                      {row.candidateName}
+                    </td>
+                    <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
+                      {row.targetJob}
+                    </td>
+                    <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${renderDifficultyTone(
+                          row.difficultyLevel,
+                        )}`}
+                      >
+                        {row.difficultyLevel ?? "미설정"}
+                      </span>
                     </td>
                     <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
                       {formatDateTime(row.createdAt)}
@@ -188,22 +214,14 @@ export function InterviewSessionBoard({
                       {row.createdBy ?? "-"}
                     </td>
                     <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
-                      <div className="flex flex-wrap gap-2">
+                      <div className="inline-flex flex-wrap items-center gap-1.5 rounded-2xl border border-[var(--line)] bg-[var(--panel-strong)]/85 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]">
                         <button
                           type="button"
-                          className={`${buttonClassName} border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100`}
-                          onClick={() => onEdit(row.id)}
+                          className={`${actionButtonClassName} border border-transparent bg-emerald-600 text-white hover:bg-emerald-700`}
+                          onClick={() => onView(row.id)}
                           disabled={isLoading || isSaving}
                         >
-                          수정
-                        </button>
-                        <button
-                          type="button"
-                          className={`${buttonClassName} border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100`}
-                          onClick={() => onDelete(row)}
-                          disabled={isLoading || isSaving}
-                        >
-                          삭제
+                          상세/조립
                         </button>
                       </div>
                     </td>
@@ -217,7 +235,7 @@ export function InterviewSessionBoard({
                     colSpan={7}
                     className="px-3 py-10 text-center text-sm text-[var(--muted)]"
                   >
-                    조회된 인터뷰 세션이 없습니다.
+                    조회된 면접 세션이 없습니다.
                   </td>
                 </tr>
               ) : null}
@@ -233,10 +251,10 @@ export function InterviewSessionBoard({
           <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="m-0 text-2xl font-bold text-[var(--text)]">
-                {formMode === "create" ? "인터뷰 세션 생성" : "인터뷰 세션 수정"}
+                {formMode === "create" ? "면접 세션 생성" : "면접 세션 수정"}
               </h2>
               <p className="mt-2 text-sm text-[var(--muted)]">
-                세션 생성 시에는 지원자를 함께 선택하고, 수정 시에는 목표 직무와 난이도 정보를 변경할 수 있습니다.
+                세션 생성 시 지원자, 목표 직무, 난이도, 프롬프트 프로필을 입력합니다.
               </p>
             </div>
 
@@ -259,7 +277,7 @@ export function InterviewSessionBoard({
                 onChange={(event) => onFormChange("candidateId", event.target.value)}
                 disabled={formMode === "edit" || isSaving}
               >
-                <option value="">지원자를 선택하세요</option>
+                <option value="">지원자를 선택해 주세요.</option>
                 {candidateOptions.map((candidate) => (
                   <option key={candidate.id} value={candidate.id}>
                     {candidate.name} ({candidate.email})
@@ -291,6 +309,29 @@ export function InterviewSessionBoard({
               {validationErrors.difficultyLevel ? (
                 <span className="mt-2 block text-xs text-rose-600">
                   {validationErrors.difficultyLevel}
+                </span>
+              ) : null}
+            </label>
+
+            <label className="text-sm font-medium text-[var(--text)]">
+              프롬프트 프로필
+              <select
+                className={`${inputClassName} mt-2`}
+                value={form.promptProfileId}
+                onChange={(event) => onFormChange("promptProfileId", event.target.value)}
+                disabled={formMode === "edit" || isSaving}
+              >
+                <option value="">프롬프트 프로필을 선택해 주세요.</option>
+                {promptProfileOptions.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.profileKey}
+                    {profile.targetJob ? ` (${profile.targetJob})` : ""}
+                  </option>
+                ))}
+              </select>
+              {validationErrors.promptProfileId ? (
+                <span className="mt-2 block text-xs text-rose-600">
+                  {validationErrors.promptProfileId}
                 </span>
               ) : null}
             </label>
@@ -327,7 +368,7 @@ export function InterviewSessionBoard({
               onClick={onSave}
               disabled={isSaving}
             >
-              {isSaving ? "저장 중..." : formMode === "create" ? "신규 생성" : "수정 저장"}
+              {isSaving ? "저장 중..." : formMode === "create" ? "새 세션" : "수정 저장"}
             </button>
           </div>
         </section>

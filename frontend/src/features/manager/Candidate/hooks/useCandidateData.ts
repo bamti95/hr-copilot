@@ -195,6 +195,10 @@ export function useCandidateData() {
     if (!jobQuery || selectedIds.length === 0) {
       return;
     }
+    if (payload.promptProfileId === null || payload.promptProfileId === undefined) {
+      setErrorMessage("프롬프트 프로필을 선택한 뒤 분석 세션을 생성해 주세요.");
+      return;
+    }
 
     try {
       setIsCreatingAnalysisSessions(true);
@@ -204,7 +208,7 @@ export function useCandidateData() {
         candidateIds: selectedIds,
         targetJob: jobQuery,
         difficultyLevel: payload.difficultyLevel ?? null,
-        promptProfileId: payload.promptProfileId ?? null,
+        promptProfileId: payload.promptProfileId,
         promptProfileSnapshot: payload.promptProfileSnapshot ?? null,
       });
 

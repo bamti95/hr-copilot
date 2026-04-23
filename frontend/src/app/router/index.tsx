@@ -14,6 +14,7 @@ import DashboardPage from "../../features/manager/Dashboard";
 import DocumentPage from "../../features/manager/Document";
 import InterviewQuestionPage from "../../features/manager/InterviewQuestion";
 import InterviewSessionPage from "../../features/manager/InterviewSession";
+import InterviewSessionDetailPage from "../../features/manager/InterviewSession/pages/InterviewSessionDetailPage";
 import ManagerPage from "../../features/manager/Manager";
 import OpsLogPage from "../../features/manager/OpsLog";
 import PromptProfilePage from "../../features/manager/PromptProfile";
@@ -47,6 +48,10 @@ const router = createBrowserRouter([
           { path: "documents", element: <DocumentPage /> },
           { path: "prompt-profiles", element: <PromptProfilePage /> },
           { path: "interview-sessions", element: <InterviewSessionPage /> },
+          {
+            path: "interview-sessions/:sessionId",
+            element: <InterviewSessionRouteDetailPage />,
+          },
           { path: "interview-questions", element: <InterviewQuestionPage /> },
           { path: "ops-logs", element: <OpsLogPage /> },
         ],
@@ -77,4 +82,10 @@ function CandidateRouteDocumentPage() {
   return (
     <CandidateDocumentPage candidateId={candidateId} documentId={documentId} />
   );
+}
+
+function InterviewSessionRouteDetailPage() {
+  const { sessionId: sessionIdParam } = useParams();
+  const sessionId = sessionIdParam ? Number(sessionIdParam) : undefined;
+  return <InterviewSessionDetailPage sessionId={sessionId} />;
 }
