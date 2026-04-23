@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getErrorMessage } from "../../../../utils/getErrorMessage";
 import { fetchPromptProfileList } from "../../PromptProfile/services/promptProfileService";
 import {
@@ -22,6 +23,14 @@ import type {
 type FormMode = "create" | "edit" | null;
 type ValidationErrors = Partial<Record<keyof InterviewSessionFormState, string>>;
 
+interface InterviewSessionPageState {
+  candidateId?: number;
+  candidateName?: string;
+  targetJob?: string;
+  promptProfileId?: number;
+  openCreate?: boolean;
+}
+
 const emptyForm: InterviewSessionFormState = {
   candidateId: "",
   targetJob: "",
@@ -30,6 +39,10 @@ const emptyForm: InterviewSessionFormState = {
 };
 
 export function useInterviewSessionData() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const hasConsumedLocationState = useRef(false);
+
   const [data, setData] = useState<InterviewSessionListResponse>({
     items: [],
     paging: { page: 1, size: 10, totalCount: 0, totalPages: 0 },
@@ -71,6 +84,7 @@ export function useInterviewSessionData() {
   const loadCandidateOptions = async () => {
     const response = await fetchInterviewSessionCandidateOptions();
     setCandidateOptions(response);
+    return response;
   };
 
   const loadPromptProfileOptions = async () => {
@@ -78,13 +92,13 @@ export function useInterviewSessionData() {
       page: 1,
       limit: 100,
     });
-    setPromptProfileOptions(
-      response.items.map((item) => ({
-        id: item.id,
-        profileKey: item.profileKey,
-        targetJob: item.targetJob,
-      })),
-    );
+    const nextOptions = response.items.map((item) => ({
+      id: item.id,
+      profileKey: item.profileKey,
+      targetJob: item.targetJob,
+    }));
+    setPromptProfileOptions(nextOptions);
+    return nextOptions;
   };
 
   useEffect(() => {
@@ -124,7 +138,7 @@ export function useInterviewSessionData() {
         }
 
         setErrorMessage(
-          getErrorMessage(error, "세션 생성에 필요한 목록을 불러오지 못했습니다."),
+          getErrorMessage(error, "세션 생성에 필요한 후보 데이터 로딩에 실패했습니다."),
         );
       }
     };
@@ -160,9 +174,7 @@ export function useInterviewSessionData() {
           return;
         }
 
-        setErrorMessage(
-          getErrorMessage(error, "면접 세션 목록을 불러오지 못했습니다."),
-        );
+        setErrorMessage(getErrorMessage(error, "면접 세션 목록을 불러오지 못했습니다."));
       } finally {
         if (active) {
           setIsLoading(false);
@@ -176,6 +188,50 @@ export function useInterviewSessionData() {
       active = false;
     };
   }, [page, pageSize, candidateFilterId, targetJobKeyword]);
+
+  useEffect(() => {
+    if (hasConsumedLocationState.current) {
+      return;
+    }
+
+    const state = (location.state ?? {}) as InterviewSessionPageState;
+    if (!state.openCreate && !state.candidateId && !state.targetJob) {
+      return;
+    }
+
+    hasConsumedLocationState.current = true;
+
+    if (state.candidateId) {
+      setCandidateFilterId(String(state.candidateId));
+      setForm((current) => ({
+        ...current,
+        candidateId: String(state.candidateId),
+      }));
+    }
+
+    if (state.targetJob) {
+      setTargetJobInput(state.targetJob);
+      setTargetJobKeyword(state.targetJob);
+      setForm((current) => ({
+        ...current,
+        targetJob: state.targetJob ?? "",
+      }));
+    }
+
+    if (state.promptProfileId) {
+      setForm((current) => ({
+        ...current,
+        promptProfileId: String(state.promptProfileId),
+      }));
+    }
+
+    if (state.openCreate) {
+      setFormMode("create");
+      setEditingSessionId(null);
+    }
+
+    void navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
 
   const validateForm = () => {
     const nextErrors: ValidationErrors = {};
@@ -231,10 +287,19 @@ export function useInterviewSessionData() {
       }
       setValidationErrors({});
       setEditingSessionId(null);
-      setForm(emptyForm);
+      setSelectedDetail(null);
+      setDetailModalOpen(false);
+      setForm((current) => ({
+        ...emptyForm,
+        candidateId: current.candidateId || candidateFilterId,
+        targetJob: current.targetJob || targetJobKeyword || targetJobInput.trim(),
+        promptProfileId: current.promptProfileId,
+      }));
       setFormMode("create");
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "세션 생성에 필요한 목록을 불러오지 못했습니다."));
+      setErrorMessage(
+        getErrorMessage(error, "세션 생성에 필요한 데이터를 준비하지 못했습니다."),
+      );
     }
   };
 
@@ -245,10 +310,12 @@ export function useInterviewSessionData() {
       setValidationErrors({});
       const detail = await fetchInterviewSessionDetail(sessionId);
       syncForm(detail);
+      setSelectedDetail(detail);
+      setDetailModalOpen(false);
       setEditingSessionId(sessionId);
       setFormMode("edit");
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "면접 세션 정보를 불러오지 못했습니다."));
+      setErrorMessage(getErrorMessage(error, "세션 상세 정보를 불러오지 못했습니다."));
     } finally {
       setIsLoading(false);
     }
@@ -262,9 +329,7 @@ export function useInterviewSessionData() {
       setSelectedDetail(detail);
       setDetailModalOpen(true);
     } catch (error) {
-      setErrorMessage(
-        getErrorMessage(error, "면접 세션 상세 정보를 불러오지 못했습니다."),
-      );
+      setErrorMessage(getErrorMessage(error, "세션 상세 정보를 불러오지 못했습니다."));
     } finally {
       setDetailModalLoading(false);
     }
@@ -275,7 +340,6 @@ export function useInterviewSessionData() {
       return;
     }
     setDetailModalOpen(false);
-    setSelectedDetail(null);
   };
 
   const handleCloseForm = () => {
@@ -293,6 +357,14 @@ export function useInterviewSessionData() {
     setValidationErrors((current) => ({ ...current, [key]: undefined }));
   };
 
+  const refreshSelectedDetailIfNeeded = async (sessionId: number) => {
+    if (selectedDetail?.id !== sessionId) {
+      return;
+    }
+    const detail = await fetchInterviewSessionDetail(sessionId);
+    setSelectedDetail(detail);
+  };
+
   const handleSave = async () => {
     if (!formMode || !validateForm()) {
       return;
@@ -302,21 +374,30 @@ export function useInterviewSessionData() {
       setIsSaving(true);
       setErrorMessage("");
 
+      let savedSessionId: number | null = null;
+
       if (formMode === "create") {
-        await createInterviewSession({
+        const created = await createInterviewSession({
           candidateId: Number(form.candidateId),
           targetJob: form.targetJob.trim(),
           difficultyLevel: form.difficultyLevel.trim() || null,
           promptProfileId: Number(form.promptProfileId),
         });
+        savedSessionId = created.id;
       } else if (editingSessionId) {
-        await updateInterviewSession(editingSessionId, {
+        const updated = await updateInterviewSession(editingSessionId, {
           targetJob: form.targetJob.trim(),
           difficultyLevel: form.difficultyLevel.trim() || null,
         });
+        savedSessionId = updated.id;
       }
 
       await loadSessions();
+
+      if (savedSessionId) {
+        await refreshSelectedDetailIfNeeded(savedSessionId);
+      }
+
       handleCloseForm();
       setSuccessMessage(
         formMode === "create"
@@ -332,7 +413,7 @@ export function useInterviewSessionData() {
 
   const handleDelete = async (sessionId: number, candidateName: string) => {
     const confirmed = window.confirm(
-      `${candidateName} 면접 세션을 삭제하시겠습니까?`,
+      `${candidateName} 지원자의 면접 세션을 삭제하시겠습니까?`,
     );
 
     if (!confirmed) {
@@ -344,10 +425,11 @@ export function useInterviewSessionData() {
       setErrorMessage("");
       await deleteInterviewSession(sessionId);
       await loadSessions();
-      setSuccessMessage("면접 세션을 삭제했습니다.");
+      setSuccessMessage("면접 세션이 삭제되었습니다.");
 
       if (selectedDetail?.id === sessionId) {
-        handleCloseDetailModal();
+        setDetailModalOpen(false);
+        setSelectedDetail(null);
       }
 
       if (editingSessionId === sessionId) {
@@ -367,13 +449,9 @@ export function useInterviewSessionData() {
       await triggerInterviewQuestionGeneration(sessionId, {
         triggerType: "MANUAL",
       });
-      setSuccessMessage(
-        "질문 분석 생성 트리거를 전송했습니다. 실제 AI 실행 파이프라인은 다음 단계에서 연결됩니다.",
-      );
+      setSuccessMessage("질문 생성 요청을 전송했습니다.");
     } catch (error) {
-      setErrorMessage(
-        getErrorMessage(error, "질문 분석 생성 트리거 요청에 실패했습니다."),
-      );
+      setErrorMessage(getErrorMessage(error, "질문 생성 요청에 실패했습니다."));
     } finally {
       setIsSaving(false);
     }
