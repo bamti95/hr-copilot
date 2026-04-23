@@ -33,7 +33,9 @@ export function buildAgentSystemPrompt(form: PromptProfileFormState): string {
       lines.length > 0
         ? lines.map((line) => `  - ${line}`).join("\n")
         : "  - (해당 없음 또는 미선택)";
-    return `### ${q.title}\n${body}`;
+    const guide = q.guide.trim();
+    const guideBlock = guide ? `\n${guide}` : "";
+    return `### ${q.title}\n${body}${guideBlock}`;
   }).join("\n\n");
 
   return `당신은 기업 채용을 지원하는 AI 에이전트입니다. 아래에 정리된 조직·직무·기술·자격 맥락을 반드시 존중하고, 면접 질문 설계·지원자 서류·역량 평가 보조·HR 커뮤니케이션 초안 등에 활용합니다. 입력되지 않은 항목은 과장하지 말고, 주어진 사실 범위 안에서만 응답하세요.
