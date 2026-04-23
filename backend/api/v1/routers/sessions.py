@@ -1,3 +1,6 @@
+import json
+import logging
+
 from fastapi import APIRouter, Depends, Query, status
 
 from dependencies.auth import get_current_active_manager
@@ -5,13 +8,17 @@ from models.manager import Manager
 from schemas.session import (
     SessionCreateRequest,
     SessionDeleteResultResponse,
+    SessionDetailSingleResponse,
+    SessionGenerateQuestionsRequest,
     SessionListResponse,
     SessionSingleResponse,
+    SessionTriggerResponse,
     SessionUpdateRequest,
 )
 from services.session_service import SessionService, get_session_service
 
 router = APIRouter(prefix="/interview-sessions", tags=["interview-sessions"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("", response_model=SessionListResponse)
@@ -35,14 +42,14 @@ async def list_sessions(
     )
 
 
-@router.get("/{session_id}", response_model=SessionSingleResponse)
+@router.get("/{session_id}", response_model=SessionDetailSingleResponse)
 async def get_session(
     session_id: int,
-    _: Manager = Depends(get_current_active_manager), 
+    _: Manager = Depends(get_current_active_manager),
     service: SessionService = Depends(get_session_service),
-) -> SessionSingleResponse:
+) -> SessionDetailSingleResponse:
     data = await service.get_session(session_id=session_id)
-    return SessionSingleResponse(
+    return SessionDetailSingleResponse(
         data=data,
         message="면접 세션 조회 성공",
     )
@@ -54,10 +61,35 @@ async def create_session(
     current_manager: Manager = Depends(get_current_active_manager),
     service: SessionService = Depends(get_session_service),
 ) -> SessionSingleResponse:
+    logger.info(
+        "Session Create Request Payload\n%s",
+        json.dumps(
+            {
+                "actor_id": current_manager.id,
+                "payload": request_body.model_dump(),
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+    )
+
     data = await service.create_session(
         request=request_body,
         actor_id=current_manager.id,
     )
+
+    logger.info(
+        "Session Create Success Response\n%s",
+        json.dumps(
+            {
+                "actor_id": current_manager.id,
+                "response": data.model_dump(mode="json"),
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+    )
+
     return SessionSingleResponse(
         data=data,
         message="면접 세션 생성 성공",
@@ -94,4 +126,22 @@ async def delete_session(
     return SessionDeleteResultResponse(
         data=data,
         message="면접 세션 삭제 성공",
+    )
+
+
+@router.post("/{session_id}/generate-questions", response_model=SessionTriggerResponse)
+async def generate_questions(
+    session_id: int,
+    request_body: SessionGenerateQuestionsRequest,
+    current_manager: Manager = Depends(get_current_active_manager),
+    service: SessionService = Depends(get_session_service),
+) -> SessionTriggerResponse:
+    data = await service.trigger_question_generation(
+        session_id=session_id,
+        request=request_body,
+        actor_id=current_manager.id,
+    )
+    return SessionTriggerResponse(
+        data=data,
+        message="질문 분석 생성 트리거 요청이 접수되었습니다.",
     )

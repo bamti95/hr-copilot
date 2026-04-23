@@ -12,3 +12,7 @@ class InterviewSession(Base, AuditBase):
     candidate_id: Mapped[int] = mapped_column(ForeignKey("candidate.id"), nullable=False)
     target_job: Mapped[str] = mapped_column(String(50), nullable=False)
     difficulty_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    prompt_profile_id: Mapped[int | None] = mapped_column(
+        ForeignKey("prompt_profile.id"),
+        nullable=True,
+    )

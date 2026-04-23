@@ -65,6 +65,7 @@ export function CandidateAnalysisSessionCreateModal({
   const [difficultyLevel, setDifficultyLevel] = useState<DifficultyLevel | "">("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [validationError, setValidationError] = useState("");
 
   useEffect(() => {
     if (!open) {
@@ -73,6 +74,7 @@ export function CandidateAnalysisSessionCreateModal({
       setDifficultyLevel("");
       setLoading(false);
       setError("");
+      setValidationError("");
       return;
     }
 
@@ -137,6 +139,7 @@ export function CandidateAnalysisSessionCreateModal({
           (item) => item.targetJob && isMatchingPromptProfile(item, trimmedJob),
         );
         setSelectedPromptProfileId(jobSpecificPick?.id ?? nextItems[0]?.id ?? null);
+        setValidationError("");
       } catch (loadError) {
         if (!active) {
           return;
@@ -180,6 +183,11 @@ export function CandidateAnalysisSessionCreateModal({
   }
 
   const handleConfirm = () => {
+    if (selectedPromptProfileId === null) {
+      setValidationError("프롬프트 프로필을 선택해 주세요.");
+      return;
+    }
+
     onConfirm({
       difficultyLevel: difficultyLevel || null,
       promptProfileId: selectedPromptProfileId,
@@ -276,11 +284,12 @@ export function CandidateAnalysisSessionCreateModal({
             <select
               className="mt-2 h-12 w-full rounded-2xl border border-[var(--line)] bg-[var(--panel-strong)] px-4 text-[var(--text)] outline-none transition focus:border-[var(--primary)]"
               value={selectedPromptProfileId ?? ""}
-              onChange={(event) =>
+              onChange={(event) => {
                 setSelectedPromptProfileId(
                   event.target.value ? Number(event.target.value) : null,
-                )
-              }
+                );
+                setValidationError("");
+              }}
               disabled={loading || isSubmitting || items.length === 0}
             >
               <option value="">
@@ -295,6 +304,12 @@ export function CandidateAnalysisSessionCreateModal({
             </select>
           </label>
         </div>
+
+        {validationError ? (
+          <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            {validationError}
+          </div>
+        ) : null}
 
         {selectedPromptProfile ? (
           <div className="mt-4 rounded-2xl border border-[var(--line)] bg-white/70 px-4 py-3">
@@ -335,7 +350,7 @@ export function CandidateAnalysisSessionCreateModal({
             type="button"
             className={`${buttonClassName} border-transparent bg-[var(--primary)] text-white hover:opacity-90`}
             onClick={handleConfirm}
-            disabled={isSubmitting || selectedCount === 0}
+            disabled={isSubmitting || selectedCount === 0 || selectedPromptProfileId === null}
           >
             {isSubmitting ? "생성 중..." : "세션 생성"}
           </button>

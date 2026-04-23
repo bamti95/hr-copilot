@@ -60,7 +60,7 @@ export interface AnalysisSessionCreateRequest {
   candidateIds: number[];
   targetJob: string;
   difficultyLevel?: DifficultyLevel | null;
-  promptProfileId?: number | string | null;
+  promptProfileId: number;
   promptProfileSnapshot?: Record<string, unknown> | null;
 }
 

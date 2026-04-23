@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from schemas.session_generation import CandidateInterviewPrepInput
+
 
 class SessionSchemaBase(BaseModel):
     # Pydantic v2 equivalent of orm_mode=True
@@ -12,6 +14,7 @@ class SessionCreateRequest(BaseModel):
     candidate_id: int = Field(..., gt=0)
     target_job: str = Field(..., min_length=1, max_length=50)
     difficulty_level: str | None = Field(default=None, max_length=20)
+    prompt_profile_id: int = Field(..., gt=0)
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -29,6 +32,7 @@ class SessionResponse(SessionSchemaBase):
     candidate_name: str
     target_job: str
     difficulty_level: str | None = None
+    prompt_profile_id: int | None = None
     created_at: datetime
     created_by: int | None = None
     deleted_at: datetime | None = None
@@ -59,6 +63,16 @@ class SessionSingleResponse(BaseModel):
     message: str
 
 
+class SessionDetailResponse(SessionResponse):
+    assembled_payload_preview: CandidateInterviewPrepInput
+
+
+class SessionDetailSingleResponse(BaseModel):
+    success: bool = True
+    data: SessionDetailResponse
+    message: str
+
+
 class SessionListResponse(BaseModel):
     success: bool = True
     data: SessionListData
@@ -68,4 +82,21 @@ class SessionListResponse(BaseModel):
 class SessionDeleteResultResponse(BaseModel):
     success: bool = True
     data: SessionDeleteResponse
+    message: str
+
+
+class SessionGenerateQuestionsRequest(BaseModel):
+    trigger_type: str = Field(default="MANUAL", min_length=1, max_length=50)
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+
+class SessionTriggerData(BaseModel):
+    session_id: int
+    trigger_type: str
+
+
+class SessionTriggerResponse(BaseModel):
+    success: bool = True
+    data: SessionTriggerData
     message: str
