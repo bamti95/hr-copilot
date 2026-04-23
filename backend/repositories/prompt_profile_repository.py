@@ -1,4 +1,4 @@
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.prompt_profile import PromptProfile
@@ -34,12 +34,7 @@ class PromptProfileRepository(BaseRepository[PromptProfile]):
         conditions = [PromptProfile.deleted_at.is_(None)]
         if search and search.strip():
             term = f"%{search.strip()}%"
-            conditions.append(
-                or_(
-                    PromptProfile.profile_key.ilike(term),
-                    PromptProfile.system_prompt.ilike(term),
-                )
-            )
+            conditions.append(PromptProfile.profile_key.ilike(term))
         if target_job and target_job.strip():
             conditions.append(PromptProfile.target_job == target_job.strip())
         return conditions
