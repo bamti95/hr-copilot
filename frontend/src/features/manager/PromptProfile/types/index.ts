@@ -51,4 +51,24 @@ export interface PromptProfileFormState {
   niceToHaveStack: string[];
   requiredCertificates: string[];
   requiredEducation: string[];
+  /** 3. 부서 실무 상황 (생성 시 시스템 프롬프트에만 반영, 내부 맥락) */
+  departmentReality: DepartmentRealityFormState;
 }
+
+export type DepartmentRealityQuestionId = "q1" | "q2" | "q3" | "q4";
+
+export interface DepartmentRealityCustomItem {
+  id: string;
+  text: string;
+}
+
+export interface DepartmentRealityQuestionState {
+  /** 프리셋 id(q1-…) 또는 커스텀 항목 id */
+  selectedIds: string[];
+  customItems: DepartmentRealityCustomItem[];
+}
+
+export type DepartmentRealityFormState = Record<
+  DepartmentRealityQuestionId,
+  DepartmentRealityQuestionState
+>;
