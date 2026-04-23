@@ -1,0 +1,32 @@
+{
+  "job_code": "AI_DEV_DATA",
+  "job_display_name": "AI_개발_데이터",
+  "candidate_index": 10,
+  "candidate_name": "박서현",
+  "candidate_type": "인성 리스크형",
+  "candidate_type_slug": "personality_risk",
+  "candidate_test_intent": "업무 성과와 역량은 일정 수준 이상으로 보이지만, 협업 태도와 책임 인식에서 조직 적합성 리스크가 느껴지는 지원자다. 면접에서는 갈등 해결 방식, 피드백 수용성, 실패 책임, 타인과의 협업 태도를 중점적으로 검증해야 한다.",
+  "hidden_signals": [
+    "성과를 설명할 때 본인의 기여를 과도하게 강조하고 동료나 타 부서의 기여는 자연스럽게 축소한다.",
+    "협업 사례를 쓸 때 조율과 설득을 강조하지만, 실제 문장 뉘앙스는 상대의 비협조와 무능을 문제로 삼는다.",
+    "갈등 경험 문항에서 본인의 성찰보다 상대의 태도 문제와 조직의 비효율을 더 길게 설명한다.",
+    "실패 경험을 서술할 때 책임을 완전히 인정하기보다 외부 환경, 의사결정권자, 프로세스 문제로 분산시킨다.",
+    "자신감은 높지만 겸손, 학습 태도, 피드백 수용성은 충분히 드러나지 않게 한다.",
+    "읽는 사람이 '성과는 있는데 같이 일하기 편한 사람일까?'라는 의문을 갖게 하되, 노골적 비호감으로 보이진 않게 한다."
+  ],
+  "summary": "저는 5년차 AI 데이터 엔지니어로, 수집부터 모델 배포까지 End-to-End 데이터 파이프라인 설계와 운영 자동화에 전문성을 갖추고 있습니다. 여러 기업에서 복잡한 데이터 환경을 정비하고 AI 기반 서비스 고도화를 주도했습니다. 높은 추진력과 목표 지향적인 업무 스타일로 성과 창출에 집중해왔으며, 각종 효율 개선 프로젝트에서 실질적 변화를 이끈 경험이 많습니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_10_박서현_bundle.pdf",
+    "portfolio_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_10_박서현_portfolio.pdf",
+    "career_description_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_10_박서현_career_description.pdf",
+    "source_json": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_10_박서현_source.json"
+  },
+  "candidate_case_code": "job_hopper_conflict_blame",
+  "candidate_case_title": "이직 많음 - 인성 리스크가 느껴지는 케이스",
+  "candidate_case_description": "이직이 잦은데, 팀원과의 불화 경험을 적어놓은 부분에서 남탓이 많고 본인 성찰은 약하다. 서류만 봐도 갈등 원인이 늘 외부에 있었던 것처럼 보여 면접에서 협업 태도를 검증하고 싶게 만들어야 한다.",
+  "candidate_case_must_haves": [
+    "이직이 많음",
+    "갈등 경험에서 남탓 뉘앙스",
+    "인성 리스크 단서 존재"
+  ]
+}

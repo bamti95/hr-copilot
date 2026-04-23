@@ -1,0 +1,31 @@
+{
+  "job_code": "AI_DEV_DATA",
+  "job_display_name": "AI_개발_데이터",
+  "candidate_index": 6,
+  "candidate_name": "송예진",
+  "candidate_type": "공백 및 전환형",
+  "candidate_type_slug": "career_gap_switch",
+  "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+  "hidden_signals": [
+    "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+    "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+    "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+    "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+    "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+  ],
+  "summary": "식물원 전시 디자인과 원예 업무를 거친 뒤, 데이터 기반 문제 해결에 매력을 느껴 AI 개발 및 데이터 직무로 진로를 전환했습니다. 기존 미술과 원예 프로젝트에서 데이터 수집과 분석의 중요성을 직접 경험하며 변화의 필요성을 절감했습니다. 최근 1년간 Python, 머신러닝, 데이터 엔지니어링을 집중적으로 학습하고, 직접 작은 프로젝트도 수행해보았습니다. 다양한 산업에서 쌓은 팀워크와 창의적 시각을 데이터 분야에서 새롭게 펼치고자 합니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_06_송예진_bundle.pdf",
+    "portfolio_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_06_송예진_portfolio.pdf",
+    "career_description_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_06_송예진_career_description.pdf",
+    "source_json": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_06_송예진_source.json"
+  },
+  "candidate_case_code": "career_switch_unrelated_major",
+  "candidate_case_title": "직무전환형 - 원예/미술 등 완전 무관 배경",
+  "candidate_case_description": "원예, 미술 등 완전히 다른 전공과 직무 배경을 가졌고, 기존 일에 회의를 느껴 새 직무로 전환하려는 지원자다. 도망치듯 온 것인지, 진지하게 준비한 것인지 면접에서 가려내고 싶게 만들어야 한다.",
+  "candidate_case_must_haves": [
+    "기존 전공과 현재 지원 직무가 완전히 다름",
+    "기존 직무 불만 또는 회의감 존재",
+    "새 직무 준비 흔적 필요"
+  ]
+}

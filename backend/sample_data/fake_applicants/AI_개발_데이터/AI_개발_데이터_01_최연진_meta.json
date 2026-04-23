@@ -1,0 +1,31 @@
+{
+  "job_code": "AI_DEV_DATA",
+  "job_display_name": "AI_개발_데이터",
+  "candidate_index": 1,
+  "candidate_name": "최연진",
+  "candidate_type": "잠재력 높은 신입형",
+  "candidate_type_slug": "high_potential_junior",
+  "candidate_test_intent": "실무 경력은 부족하거나 없지만 프로젝트 경험, 문제 해결 방식, 학습 속도, 사고 구조에서 강점이 보이는 신입 또는 주니어 지원자다. 면접에서는 포텐셜이 실제 업무 수행으로 이어질 수 있는지, 기초 이해가 단단한지 검증해야 한다.",
+  "hidden_signals": [
+    "학교, 대외활동, 공모전, 사이드 프로젝트의 밀도가 높고 비교적 성실하게 쌓여 있다.",
+    "큰 성과는 아니어도 문제를 구조적으로 바라본 흔적과 학습 과정이 드러난다.",
+    "자기소개서에서 성장 배경과 배운 점이 설득력 있게 연결된다.",
+    "경험 규모는 작지만 생각의 깊이나 태도는 좋게 느껴지게 한다.",
+    "읽는 사람이 '경험은 적지만 잘 키우면 크게 성장할 수 있겠다'고 느끼게 만든다."
+  ],
+  "summary": "데이터와 AI에 관심을 가지고 꾸준히 프로젝트와 대외활동에 참여한 신입 개발자입니다. 학부 시절에는 데이터 분석 동아리와 산학 프로젝트 경험을 통해 실무적인 관점의 문제 해결을 경험했습니다. Python, SQL 등 필수 도구 활용에 익숙하며, 기존 데이터를 새로운 인사이트로 전환하는 과정에서 배우는 기쁨을 느낍니다. 배경지식과 성실함을 바탕으로 실무에서도 빠르게 성장할 수 있다고 생각합니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_01_최연진_bundle.pdf",
+    "portfolio_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_01_최연진_portfolio.pdf",
+    "career_description_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_01_최연진_career_description.pdf",
+    "source_json": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_01_최연진_source.json"
+  },
+  "candidate_case_code": "new_grad_standard",
+  "candidate_case_title": "완전 신입 - 정상적 신입",
+  "candidate_case_description": "정규직 경력이 전혀 없는 전형적인 신입 지원자다. 학력, 대외활동, 팀프로젝트, 교육, 자격증, 아르바이트 또는 교내 경험을 중심으로 서류를 구성한다. 지나치게 과장되지 않고 무난한 신입처럼 보여야 한다.",
+  "candidate_case_must_haves": [
+    "정규직 경력 없음",
+    "학교 프로젝트 또는 대외활동 중심",
+    "과장되지 않은 무난한 신입 서사"
+  ]
+}

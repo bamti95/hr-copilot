@@ -1,0 +1,29 @@
+{
+  "job_code": "SALES",
+  "job_display_name": "영업",
+  "candidate_index": 8,
+  "candidate_name": "오진아",
+  "candidate_type": "공백 및 전환형",
+  "candidate_type_slug": "career_gap_switch",
+  "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+  "hidden_signals": [
+    "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+    "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+    "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+    "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+    "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+  ],
+  "summary": "B2B 산업용 자재 영업 분야에서 3년간 실무 경험을 쌓았으며, 고객사 파이프라인 구축과 장기 거래 유지에 집중해왔습니다. 퇴사 이후 건강 회복과 새로운 도전에 집중하며, 변화된 시장과 영업 방식을 학습하는 시간을 가졌습니다. 최근에는 디지털 세일즈와 CRM을 접목하는 등 실전 역량 확장에 중점을 두고 재도약을 준비하고 있습니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\영업\\영업_08_오진아_bundle.pdf",
+    "source_json": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\영업\\영업_08_오진아_source.json"
+  },
+  "candidate_case_code": "career_gap_unpaid_wage_treatment",
+  "candidate_case_title": "경력단절 복귀 - 임금체불 퇴사 후 의지 상실과 치료 이력",
+  "candidate_case_description": "임금체불로 퇴사한 후 심리적으로 크게 위축되어 정신과 치료를 받은 이력이 있고, 한동안 취업 의지를 잃었다가 최근 다시 복귀를 준비한 지원자다. 너무 극적으로 쓰지 말고 현실적이면서도 조심스러운 복귀 맥락이 느껴져야 한다.",
+  "candidate_case_must_haves": [
+    "임금체불 퇴사",
+    "치료 이력 또는 회복 서사",
+    "신중한 복귀 준비"
+  ]
+}

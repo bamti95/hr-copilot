@@ -1,0 +1,29 @@
+{
+  "job_code": "SALES",
+  "job_display_name": "영업",
+  "candidate_index": 4,
+  "candidate_name": "이서준",
+  "candidate_type": "검증형 우수 인재",
+  "candidate_type_slug": "elite_verification",
+  "candidate_test_intent": "성과, 사고력, 표현력, 커리어 흐름이 모두 안정적으로 좋아 보이는 상위권 지원자다. 서류만 보면 바로 합격권처럼 느껴지지만, 실제 면접에서는 이 성과가 우연이 아닌지, 본인의 판단 기준과 문제 해결 사고가 얼마나 깊은지, 스스로 만든 원칙과 기준이 있는지를 검증해야 하는 유형이다.",
+  "hidden_signals": [
+    "성과 수치와 맥락이 자연스럽고 과장 없이 연결되어 읽힌다.",
+    "업무 배경, 본인 행동, 결과, 회고가 비교적 일관되게 서술된다.",
+    "자기소개서 표현이 과하지 않고 차분하지만, 기준과 관점이 느껴지게 작성한다.",
+    "무조건 잘난 척하는 인상보다 깊이 있는 실무자처럼 보이게 한다.",
+    "읽는 사람이 '좋아 보이는데 정말 이 사람 생각이 맞는지 더 깊게 검증하고 싶다'고 느끼게 한다."
+  ],
+  "summary": "신입이지만 실질적인 영업 인턴 경험과 인증된 역량을 두루 갖춘 지원자입니다. 뉴비즈니스 리드 발굴, 파이프라인 관리, 고객 협상에 대한 경험을 바탕으로 신중하면서도 체계적으로 업무를 접근합니다. 다양한 학교 내외 활동과 봉사 경험을 통해 소통 능력과 문제 해결력을 자연스럽게 길러왔습니다. 성과보다는 과정에서 얻은 인사이트와 기준을 더 중요하게 생각하는 태도가 강점입니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\영업\\영업_04_이서준_bundle.pdf",
+    "source_json": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\영업\\영업_04_이서준_source.json"
+  },
+  "candidate_case_code": "intern_top_spec",
+  "candidate_case_title": "인턴 경험 신입 - 인턴/자격증/봉사 모두 좋은 엄친아형",
+  "candidate_case_description": "인턴, 자격증, 봉사활동, 교내외 활동이 모두 안정적으로 좋은 모범생형 신입이다. 지나친 과장보다 성실성과 준비성이 잘 보이는 서류여야 하며, 면접에서는 깊이와 실제 실무 전환 가능성을 검증하고 싶게 만들어야 한다.",
+  "candidate_case_must_haves": [
+    "인턴 경험 좋음",
+    "자격증/봉사활동/대외활동 고르게 좋음",
+    "안정적이고 모범적인 인상"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "job_code": "MARKETING",
+  "job_display_name": "마케팅광고_MD",
+  "candidate_index": 6,
+  "candidate_name": "임은비",
+  "candidate_type": "공백 및 전환형",
+  "candidate_type_slug": "career_gap_switch",
+  "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+  "hidden_signals": [
+    "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+    "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+    "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+    "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+    "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+  ],
+  "summary": "원예학과 출신으로 예술과 자연을 잇는 경험을 쌓아오다가, 소비자와 시장의 흐름을 직접 읽는 마케팅/MD의 세계에 매력을 느껴 직무 전환을 결심했습니다. 진로 고민과 공백기를 통해 다양한 관점에서 나를 돌아보고, 실제 데이터를 다루며 소비자 행동을 분석하는 프로젝트에 참여해 실전 준비를 했습니다. 한계를 넘고 싶다는 끈기가 강점이며, 아직은 완전히 익숙하지 않지만 실무 중심의 경험을 꾸준히 쌓으며 배우고 있습니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\마케팅광고_MD\\마케팅광고_MD_06_임은비_bundle.pdf",
+    "source_json": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\마케팅광고_MD\\마케팅광고_MD_06_임은비_source.json"
+  },
+  "candidate_case_code": "career_switch_unrelated_major",
+  "candidate_case_title": "직무전환형 - 원예/미술 등 완전 무관 배경",
+  "candidate_case_description": "원예, 미술 등 완전히 다른 전공과 직무 배경을 가졌고, 기존 일에 회의를 느껴 새 직무로 전환하려는 지원자다. 도망치듯 온 것인지, 진지하게 준비한 것인지 면접에서 가려내고 싶게 만들어야 한다.",
+  "candidate_case_must_haves": [
+    "기존 전공과 현재 지원 직무가 완전히 다름",
+    "기존 직무 불만 또는 회의감 존재",
+    "새 직무 준비 흔적 필요"
+  ]
+}

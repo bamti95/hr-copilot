@@ -1,0 +1,28 @@
+{
+  "job_code": "HR",
+  "job_display_name": "HR_인사",
+  "candidate_index": 5,
+  "candidate_name": "한지윤",
+  "candidate_type": "직무 적합도 의심형",
+  "candidate_type_slug": "job_fit_doubt",
+  "candidate_test_intent": "학력, 활동, 기본 역량은 나쁘지 않지만 현재 지원 직무와의 직접 연결이 약해 보이는 지원자다. 왜 이 직무를 선택했는지, 실제로 얼마나 준비했는지, 적합성이 진짜인지 면접에서 확인해야 한다.",
+  "hidden_signals": [
+    "이전 전공이나 경험은 성실하고 우수하지만 현재 직무와 직접 연결되는 증거는 제한적이다.",
+    "지원 동기와 전환 계기는 존재하지만 완전히 매끈하게 이어지지는 않는다.",
+    "읽는 사람이 '좋은 사람 같긴 한데 이 직무랑 정말 맞나?'라는 의문을 갖게 만든다.",
+    "서류에는 가능성이 보이되, 적합성 검증 질문이 반드시 필요하게 한다."
+  ],
+  "summary": "경영학과가 아닌 생명과학 전공임에도 높은 학업 성취와 여러 연구 경력을 바탕으로, 성실함과 문제 해결 능력을 입증했습니다. 데이터 분석과 프로젝트 관리 경험을 통해 주어진 과제를 체계적으로 파악하는 역량이 있습니다. 인사 분야에 관심을 갖게 된 계기가 있으며, 최근 HR 분야의 교육 프로그램과 실무 경험을 쌓기 위해 적극적으로 준비했습니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\HR_인사\\HR_인사_05_한지윤_bundle.pdf",
+    "source_json": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\HR_인사\\HR_인사_05_한지윤_source.json"
+  },
+  "candidate_case_code": "high_edu_nonmajor",
+  "candidate_case_title": "전공 불일치 신입 - 학력은 높고 기존 전공 성취도도 좋음",
+  "candidate_case_description": "지원 직무 전공은 아니지만 기존 전공에서 학점, 자격증, 수상경력 등은 좋은 편인 신입이다. 전공은 다르지만 성실하고 역량 있는 사람으로 보이며, 왜 지금 직무로 오게 되었는지 설득력이 관건이다.",
+  "candidate_case_must_haves": [
+    "전공 불일치",
+    "기존 전공 학점/수상/자격증 우수",
+    "새 직무로 넘어오는 이유가 중요"
+  ]
+}
