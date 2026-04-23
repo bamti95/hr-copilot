@@ -14,9 +14,10 @@ settings = get_settings()
 
 origins = [
     "http://localhost:5173",
-    "https://your-domain.com",
-    "*",
+    "http://127.0.0.1:5173",
+    "http://192.168.239.20:5173",  # 현재 사용 중인 프론트엔드 IP 명시
 ]
+
 
 if settings.DB_ECHO:
     logging.basicConfig(level=logging.INFO)
