@@ -59,9 +59,9 @@ export function useInterviewSessionData() {
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [candidateFilterId, setCandidateFilterId] = useState("");
-  const [targetJobInput, setTargetJobInput] = useState("");
-  const [targetJobKeyword, setTargetJobKeyword] = useState("");
+  const [jobFilter, setJobFilter] = useState("");
+  const [candidateNameInput, setCandidateNameInput] = useState("");
+  const [candidateNameKeyword, setCandidateNameKeyword] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -75,8 +75,8 @@ export function useInterviewSessionData() {
     const response = await fetchInterviewSessionList({
       page,
       limit: pageSize,
-      candidateId: candidateFilterId ? Number(candidateFilterId) : undefined,
-      targetJob: targetJobKeyword || undefined,
+      targetJob: jobFilter || undefined,
+      candidateName: candidateNameKeyword || undefined,
     });
     setData(response);
   };
@@ -160,8 +160,8 @@ export function useInterviewSessionData() {
         const response = await fetchInterviewSessionList({
           page,
           limit: pageSize,
-          candidateId: candidateFilterId ? Number(candidateFilterId) : undefined,
-          targetJob: targetJobKeyword || undefined,
+          targetJob: jobFilter || undefined,
+          candidateName: candidateNameKeyword || undefined,
         });
 
         if (!active) {
@@ -187,7 +187,7 @@ export function useInterviewSessionData() {
     return () => {
       active = false;
     };
-  }, [page, pageSize, candidateFilterId, targetJobKeyword]);
+  }, [page, pageSize, jobFilter, candidateNameKeyword]);
 
   useEffect(() => {
     if (hasConsumedLocationState.current) {
@@ -202,7 +202,6 @@ export function useInterviewSessionData() {
     hasConsumedLocationState.current = true;
 
     if (state.candidateId) {
-      setCandidateFilterId(String(state.candidateId));
       setForm((current) => ({
         ...current,
         candidateId: String(state.candidateId),
@@ -210,8 +209,7 @@ export function useInterviewSessionData() {
     }
 
     if (state.targetJob) {
-      setTargetJobInput(state.targetJob);
-      setTargetJobKeyword(state.targetJob);
+      setJobFilter(state.targetJob);
       setForm((current) => ({
         ...current,
         targetJob: state.targetJob ?? "",
@@ -273,7 +271,7 @@ export function useInterviewSessionData() {
 
   const handleSearchSubmit = () => {
     setPage(1);
-    setTargetJobKeyword(targetJobInput.trim());
+    setCandidateNameKeyword(candidateNameInput.trim());
   };
 
   const handleCreate = async () => {
@@ -291,8 +289,8 @@ export function useInterviewSessionData() {
       setDetailModalOpen(false);
       setForm((current) => ({
         ...emptyForm,
-        candidateId: current.candidateId || candidateFilterId,
-        targetJob: current.targetJob || targetJobKeyword || targetJobInput.trim(),
+        candidateId: current.candidateId,
+        targetJob: current.targetJob || jobFilter,
         promptProfileId: current.promptProfileId,
       }));
       setFormMode("create");
@@ -466,8 +464,8 @@ export function useInterviewSessionData() {
     form,
     validationErrors,
     pageSize,
-    candidateFilterId,
-    targetJobInput,
+    jobFilter,
+    candidateNameInput,
     isLoading,
     isSaving,
     errorMessage,
@@ -477,8 +475,8 @@ export function useInterviewSessionData() {
     selectedDetail,
     setPage,
     setPageSize,
-    setCandidateFilterId,
-    setTargetJobInput,
+    setJobFilter,
+    setCandidateNameInput,
     handleSearchSubmit,
     handleCreate,
     handleViewDetail,

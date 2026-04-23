@@ -5,8 +5,8 @@ export type InterviewDifficultyLevel = "JUNIOR" | "INTERMEDIATE" | "SENIOR";
 export interface InterviewSessionListRequest {
   page: number;
   limit: number;
-  candidateId?: number;
   targetJob?: string;
+  candidateName?: string;
 }
 
 export interface InterviewSessionCreateRequest {

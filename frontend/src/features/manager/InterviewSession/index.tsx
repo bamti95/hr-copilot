@@ -13,8 +13,8 @@ export default function InterviewSessionPage() {
     form,
     validationErrors,
     pageSize,
-    candidateFilterId,
-    targetJobInput,
+    jobFilter,
+    candidateNameInput,
     isLoading,
     isSaving,
     errorMessage,
@@ -24,8 +24,8 @@ export default function InterviewSessionPage() {
     selectedDetail,
     setPage,
     setPageSize,
-    setCandidateFilterId,
-    setTargetJobInput,
+    setJobFilter,
+    setCandidateNameInput,
     handleSearchSubmit,
     handleCreate,
     handleViewDetail,
@@ -69,13 +69,13 @@ export default function InterviewSessionPage() {
         isLoading={isLoading}
         isSaving={isSaving}
         pageSize={pageSize}
-        candidateFilterId={candidateFilterId}
-        targetJobInput={targetJobInput}
-        onCandidateFilterChange={(value) => {
+        jobFilter={jobFilter}
+        candidateNameInput={candidateNameInput}
+        onJobFilterChange={(value) => {
           setPage(1);
-          setCandidateFilterId(value);
+          setJobFilter(value);
         }}
-        onTargetJobInputChange={setTargetJobInput}
+        onCandidateNameInputChange={setCandidateNameInput}
         onSearchSubmit={handleSearchSubmit}
         onPageChange={setPage}
         onPageSizeChange={(size) => {

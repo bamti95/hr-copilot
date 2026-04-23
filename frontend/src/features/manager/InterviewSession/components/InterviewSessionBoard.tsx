@@ -1,6 +1,9 @@
 import { Eye, FilePlus2, Pencil, Trash2 } from "lucide-react";
 import { Pagination } from "../../../../common/components/Pagination";
-import { getJobPositionLabel } from "../../common/candidateJobPosition";
+import {
+  CANDIDATE_JOB_POSITION_OPTIONS,
+  getJobPositionLabel,
+} from "../../common/candidateJobPosition";
 import type {
   InterviewSessionCandidateOption,
   InterviewSessionFormState,
@@ -19,10 +22,10 @@ interface InterviewSessionBoardProps {
   isLoading: boolean;
   isSaving: boolean;
   pageSize: number;
-  candidateFilterId: string;
-  targetJobInput: string;
-  onCandidateFilterChange: (value: string) => void;
-  onTargetJobInputChange: (value: string) => void;
+  jobFilter: string;
+  candidateNameInput: string;
+  onJobFilterChange: (value: string) => void;
+  onCandidateNameInputChange: (value: string) => void;
   onSearchSubmit: () => void;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
@@ -82,10 +85,10 @@ export function InterviewSessionBoard({
   isLoading,
   isSaving,
   pageSize,
-  candidateFilterId,
-  targetJobInput,
-  onCandidateFilterChange,
-  onTargetJobInputChange,
+  jobFilter,
+  candidateNameInput,
+  onJobFilterChange,
+  onCandidateNameInputChange,
   onSearchSubmit,
   onPageChange,
   onPageSizeChange,
@@ -123,33 +126,33 @@ export function InterviewSessionBoard({
 
         <div className="mb-4 grid gap-3 rounded-[24px] border border-white/70 bg-[var(--panel-strong)] p-4 xl:grid-cols-[220px_minmax(0,1fr)_140px_auto_auto] xl:items-end">
           <label className="text-sm font-medium text-[var(--text)]">
-            지원자
+            지원 직무
             <select
               className={`${inputClassName} mt-2`}
-              value={candidateFilterId}
-              onChange={(event) => onCandidateFilterChange(event.target.value)}
+              value={jobFilter}
+              onChange={(event) => onJobFilterChange(event.target.value)}
             >
-              <option value="">전체 지원자</option>
-              {candidateOptions.map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.name} ({candidate.email})
+              <option value="">전체 직무</option>
+              {CANDIDATE_JOB_POSITION_OPTIONS.map((job) => (
+                <option key={job.value} value={job.value}>
+                  {job.label}
                 </option>
               ))}
             </select>
           </label>
 
           <label className="text-sm font-medium text-[var(--text)]">
-            목표 직무
+            지원자 이름
             <input
               className={`${inputClassName} mt-2`}
-              value={targetJobInput}
-              onChange={(event) => onTargetJobInputChange(event.target.value)}
+              value={candidateNameInput}
+              onChange={(event) => onCandidateNameInputChange(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   onSearchSubmit();
                 }
               }}
-              placeholder="예: BACKEND_DEVELOPER"
+              placeholder="예: 김철수"
             />
           </label>
 

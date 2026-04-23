@@ -172,19 +172,30 @@ export async function fetchInterviewSessionList(
       params: {
         page: request.page,
         limit: request.limit,
-        candidate_id: request.candidateId,
         target_job: request.targetJob || undefined,
       },
     },
   );
 
+  const allItems = response.data.data.interview_sessions.map(mapSession);
+  const normalizedCandidateName = request.candidateName?.trim().toLowerCase();
+  const filteredItems = normalizedCandidateName
+    ? allItems.filter((item) =>
+        item.candidateName.toLowerCase().includes(normalizedCandidateName),
+      )
+    : allItems;
+
   return {
-    items: response.data.data.interview_sessions.map(mapSession),
+    items: filteredItems,
     paging: {
       page: response.data.data.pagination.current_page,
       size: response.data.data.pagination.items_per_page,
-      totalCount: response.data.data.pagination.total_items,
-      totalPages: response.data.data.pagination.total_pages,
+      totalCount: normalizedCandidateName
+        ? filteredItems.length
+        : response.data.data.pagination.total_items,
+      totalPages: normalizedCandidateName
+        ? Math.ceil(filteredItems.length / response.data.data.pagination.items_per_page)
+        : response.data.data.pagination.total_pages,
     },
   };
 }
