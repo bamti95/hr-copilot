@@ -173,7 +173,7 @@ export function PromptProfileFormModal({
                     disabled={isSaving}
                   />
                   <HashtagChipField
-                    label="필수 자격증"
+                    label="우대 자격증"
                     suggestions={chipSuggestions.certificates}
                     value={form.requiredCertificates}
                     onChange={(next) => onFieldChange("requiredCertificates", next)}
