@@ -12,10 +12,8 @@ export const managerNavItems = [
   { label: "대시보드", path: "/manager/dashboard", icon: "◈" },
   { label: "관리자 관리", path: "/manager/managers", icon: "◎" },
   { label: "지원자 관리", path: "/manager/candidates", icon: "◌" },
-  { label: "문서 관리", path: "/manager/documents", icon: "▣" },
   { label: "프롬프트 프로필 관리", path: "/manager/prompt-profiles", icon: "◇" },
   { label: "면접 세션 관리", path: "/manager/interview-sessions", icon: "△" },
-  { label: "면접 질문 관리", path: "/manager/interview-questions", icon: "✦" },
   { label: "운영 로그", path: "/manager/ops-logs", icon: "▤" },
 ];
 
