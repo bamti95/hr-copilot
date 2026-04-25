@@ -39,6 +39,10 @@ export interface InterviewSessionResponse {
   createdBy: number | null;
   deletedAt: string | null;
   deletedBy: number | null;
+  questionGenerationStatus: string;
+  questionGenerationError: string | null;
+  questionGenerationRequestedAt: string | null;
+  questionGenerationCompletedAt: string | null;
 }
 
 export interface InterviewSessionPayloadMeta {
@@ -110,4 +114,39 @@ export interface InterviewQuestionGenerationTriggerRequest {
 
 export interface InterviewSessionDetailResponse extends InterviewSessionResponse {
   assembledPayloadPreview: InterviewSessionPayloadPreview;
+}
+
+export interface InterviewGeneratedQuestionReview {
+  questionId: string;
+  status: "approved" | "rejected";
+  reason: string;
+  rejectReason: string;
+  recommendedRevision: string;
+}
+
+export interface InterviewGeneratedQuestion {
+  id: string;
+  category: string;
+  questionText: string;
+  generationBasis: string;
+  documentEvidence: string[];
+  evaluationGuide: string;
+  predictedAnswer: string;
+  predictedAnswerBasis: string;
+  followUpQuestion: string;
+  followUpBasis: string;
+  riskTags: string[];
+  competencyTags: string[];
+  review: InterviewGeneratedQuestionReview;
+  score: number;
+  scoreReason: string;
+}
+
+export interface InterviewQuestionGenerationStatusResponse {
+  sessionId: number;
+  status: string;
+  error: string | null;
+  requestedAt: string | null;
+  completedAt: string | null;
+  questions: InterviewGeneratedQuestion[];
 }
