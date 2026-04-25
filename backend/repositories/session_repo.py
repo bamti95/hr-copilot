@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,6 +49,32 @@ class SessionRepository(BaseRepository[InterviewSession]):
         stmt = select(InterviewSession).where(InterviewSession.id == session_id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def mark_question_generation_queued(
+        self,
+        session: InterviewSession,
+    ) -> None:
+        session.question_generation_status = "QUEUED"
+        session.question_generation_error = None
+        session.question_generation_requested_at = datetime.now(timezone.utc)
+        session.question_generation_completed_at = None
+
+    async def mark_question_generation_processing(
+        self,
+        session: InterviewSession,
+    ) -> None:
+        session.question_generation_status = "PROCESSING"
+        session.question_generation_error = None
+
+    async def mark_question_generation_completed(
+        self,
+        session: InterviewSession,
+        status: str,
+        error: str | None = None,
+    ) -> None:
+        session.question_generation_status = status
+        session.question_generation_error = error
+        session.question_generation_completed_at = datetime.now(timezone.utc)
 
     async def get_detail_with_candidate(self, session_id: int) -> InterviewSession | None:
         stmt = self._base_join_stmt().where(InterviewSession.id == session_id)

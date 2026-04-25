@@ -1,7 +1,7 @@
 import json
 import logging
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
 
 from dependencies.auth import get_current_active_manager
 from models.manager import Manager
@@ -11,6 +11,7 @@ from schemas.session import (
     SessionDetailSingleResponse,
     SessionGenerateQuestionsRequest,
     SessionListResponse,
+    SessionQuestionGenerationResponse,
     SessionSingleResponse,
     SessionTriggerResponse,
     SessionUpdateRequest,
@@ -42,6 +43,22 @@ async def list_sessions(
     )
 
 
+@router.get(
+    "/{session_id}/question-generation",
+    response_model=SessionQuestionGenerationResponse,
+)
+async def get_question_generation_status(
+    session_id: int,
+    _: Manager = Depends(get_current_active_manager),
+    service: SessionService = Depends(get_session_service),
+) -> SessionQuestionGenerationResponse:
+    data = await service.get_question_generation_status(session_id=session_id)
+    return SessionQuestionGenerationResponse(
+        data=data,
+        message="질문 생성 상태 조회 성공",
+    )
+
+
 @router.get("/{session_id}", response_model=SessionDetailSingleResponse)
 async def get_session(
     session_id: int,
@@ -58,6 +75,7 @@ async def get_session(
 @router.post("", response_model=SessionSingleResponse, status_code=status.HTTP_201_CREATED)
 async def create_session(
     request_body: SessionCreateRequest,
+    background_tasks: BackgroundTasks,
     current_manager: Manager = Depends(get_current_active_manager),
     service: SessionService = Depends(get_session_service),
 ) -> SessionSingleResponse:
@@ -76,6 +94,7 @@ async def create_session(
     data = await service.create_session(
         request=request_body,
         actor_id=current_manager.id,
+        background_tasks=background_tasks,
     )
 
     logger.info(
@@ -92,7 +111,7 @@ async def create_session(
 
     return SessionSingleResponse(
         data=data,
-        message="면접 세션 생성 성공",
+        message="면접 세션 생성 성공. 질문 생성 작업이 대기열에 등록되었습니다.",
     )
 
 
@@ -133,6 +152,7 @@ async def delete_session(
 async def generate_questions(
     session_id: int,
     request_body: SessionGenerateQuestionsRequest,
+    background_tasks: BackgroundTasks,
     current_manager: Manager = Depends(get_current_active_manager),
     service: SessionService = Depends(get_session_service),
 ) -> SessionTriggerResponse:
@@ -140,8 +160,9 @@ async def generate_questions(
         session_id=session_id,
         request=request_body,
         actor_id=current_manager.id,
+        background_tasks=background_tasks,
     )
     return SessionTriggerResponse(
         data=data,
-        message="질문 분석 생성 트리거 요청이 접수되었습니다.",
+        message="질문 생성 작업이 대기열에 등록되었습니다.",
     )
