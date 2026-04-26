@@ -228,6 +228,12 @@ class SessionService:
             error=entity.question_generation_error,
             requested_at=entity.question_generation_requested_at,
             completed_at=entity.question_generation_completed_at,
+            generation_source={
+                "entrypoint": "services.question_generation_service.run_question_generation_background_job",
+                "service": "QuestionGenerationService.generate_and_store_for_session",
+                "graph_runner": "ai.interview_graph.runner.run_interview_question_graph",
+                "graph": "BuildState -> Analyzer -> Questioner -> Predictor -> Driller -> Reviewer -> Scorer -> Router -> Selector -> FinalFormatter",
+            },
             questions=[
                 InterviewQuestionItem(
                     id=str(question.id),
@@ -244,11 +250,10 @@ class SessionService:
                     competency_tags=question.competency_tags or [],
                     review=ReviewResult(
                         question_id=str(question.id),
-                        status=(
-                            "approved"
-                            if question.review_status == "approved"
-                            else "rejected"
-                        ),
+                        status=question.review_status
+                        if question.review_status
+                        in {"approved", "needs_revision", "rejected"}
+                        else "rejected",
                         reason=question.review_reason or "",
                         reject_reason=question.review_reject_reason or "",
                         recommended_revision=question.review_recommended_revision or "",

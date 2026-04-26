@@ -1,5 +1,6 @@
 import { getJobPositionLabel } from "../../common/candidateJobPosition";
 import { InterviewSessionAssembledPayloadView } from "./InterviewSessionAssembledPayloadView";
+import { InterviewSessionQuestionGenerationView } from "./InterviewSessionQuestionGenerationView";
 import type { InterviewSessionDetailResponse } from "../types";
 
 interface InterviewSessionDetailModalProps {
@@ -119,6 +120,8 @@ export function InterviewSessionDetailModal({
                 </div>
               </div>
             </section>
+
+            <InterviewSessionQuestionGenerationView sessionId={detail.id} compact />
 
             <InterviewSessionAssembledPayloadView detail={detail} compact />
           </div>

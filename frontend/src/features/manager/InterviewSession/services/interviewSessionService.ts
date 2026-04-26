@@ -46,7 +46,7 @@ interface GeneratedQuestionApiResponse {
   competency_tags: string[];
   review: {
     question_id: string;
-    status: "approved" | "rejected";
+    status: "approved" | "needs_revision" | "rejected";
     reason: string;
     reject_reason: string;
     recommended_revision: string;
@@ -61,6 +61,7 @@ interface QuestionGenerationStatusApiResponse {
   error: string | null;
   requested_at: string | null;
   completed_at: string | null;
+  generation_source: Record<string, string>;
   questions: GeneratedQuestionApiResponse[];
 }
 
@@ -301,6 +302,7 @@ export async function fetchInterviewQuestionGenerationStatus(
     error: data.error,
     requestedAt: data.requested_at,
     completedAt: data.completed_at,
+    generationSource: data.generation_source ?? {},
     questions: data.questions.map((question) => ({
       id: question.id,
       category: question.category,

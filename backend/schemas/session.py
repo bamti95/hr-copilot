@@ -114,6 +114,7 @@ class SessionQuestionGenerationData(BaseModel):
     error: str | None = None
     requested_at: datetime | None = None
     completed_at: datetime | None = None
+    generation_source: dict[str, str] = Field(default_factory=dict)
     questions: list[InterviewQuestionItem] = Field(default_factory=list)
 
 

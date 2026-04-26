@@ -29,6 +29,27 @@ T = TypeVar("T", bound=BaseModel)
 
 MAX_DOCUMENT_CHARS = 18000
 
+APPROVED_REVIEW_STATUSES = {"approved"}
+FOLLOW_UP_WEAK_FLAGS = {
+    "FOLLOW_UP_TOO_WEAK",
+    "꼬리질문_약함",
+    "꼬리질문_연결성_부족",
+    "꼬리질문_보강_필요",
+}
+QUESTION_REWRITE_FLAGS = {
+    "QUESTION_TOO_GENERIC",
+    "EVIDENCE_TOO_WEAK",
+    "LOW_JOB_RELEVANCE",
+    "DUPLICATE_RISK",
+    "질문_일반적",
+    "문서_근거_부족",
+    "직무_관련성_부족",
+    "중복_위험",
+    "보완_필요",
+    "재작성_권장",
+}
+RISK_CATEGORIES = {"RISK", "리스크"}
+
 
 async def _call_structured_output(
     *,
@@ -121,6 +142,60 @@ def _find_by_question_id(items: list[dict[str, Any]], question_id: str) -> dict[
     return next((item for item in items if item.get("question_id") == question_id), {})
 
 
+def _is_approved_review(review: dict[str, Any]) -> bool:
+    return review.get("status") in APPROVED_REVIEW_STATUSES
+
+
+def _is_risk_question(question: dict[str, Any]) -> bool:
+    return (
+        question.get("category") in RISK_CATEGORIES
+        or bool(question.get("risk_tags"))
+    )
+
+
+def _build_retry_feedback(state: AgentState) -> str:
+    summary = state.get("review_summary", {})
+    reviews = state.get("reviews", [])
+    scores = state.get("scores", [])
+
+    rejected_reviews = [
+        {
+            "question_id": review.get("question_id"),
+            "status": review.get("status"),
+            "reason": review.get("reason"),
+            "reject_reason": review.get("reject_reason"),
+            "recommended_revision": review.get("recommended_revision"),
+        }
+        for review in reviews
+        if not _is_approved_review(review)
+    ][:5]
+    low_scores = [
+        {
+            "question_id": score.get("question_id"),
+            "score": score.get("score"),
+            "score_reason": score.get("score_reason"),
+            "quality_flags": score.get("quality_flags", []),
+        }
+        for score in scores
+        if score.get("score", 0) < 80
+    ][:5]
+
+    return _json(
+        {
+            "retry_reason": "Router judged that the generated result needs improvement.",
+            "approved_count": summary.get("approved_count", 0),
+            "avg_score": summary.get("avg_score", 0),
+            "quality_issues": summary.get("quality_issues", []),
+            "rejected_or_revision_reviews": rejected_reviews,
+            "low_score_questions": low_scores,
+            "instruction": (
+                "이 피드백을 반영해 문서 근거가 약하거나 일반적인 질문을 줄이고, "
+                "직무 관련성, 리스크 검증력, 꼬리질문 연결성을 강화하세요."
+            ),
+        }
+    )
+
+
 def _fallback_review(question_id: str) -> ReviewResult:
     return ReviewResult(
         question_id=question_id,
@@ -154,7 +229,7 @@ def _fallback_follow_up(question_id: str) -> FollowUpQuestion:
         question_id=question_id,
         follow_up_question="방금 답변하신 내용 중 본인이 직접 수행한 범위와 근거를 구체적으로 설명해주시겠어요?",
         follow_up_basis="follow_up_missing",
-        drill_type="ROLE_VERIFICATION",
+        drill_type="역할_검증",
     )
 
 
@@ -216,7 +291,12 @@ async def questioner_node(state: AgentState) -> AgentState:
             regen_question_ids=list(regen_ids),
             candidate_text=state.get("candidate_text", ""),
             document_analysis=_json(state.get("document_analysis", {})),
-            existing_questions=_json(existing_questions),
+            existing_questions=_json(
+                {
+                    "items": existing_questions,
+                    "retry_feedback": state.get("retry_feedback"),
+                }
+            ),
         ),
         response_model=QuestionerOutput,
     )
@@ -228,15 +308,32 @@ async def questioner_node(state: AgentState) -> AgentState:
     if human_action == "more_questions":
         questions = existing_questions + new_questions
     elif human_action == "regenerate_question" and regen_ids:
-        replacements = {question["id"]: question for question in new_questions}
-        questions = [
-            replacements.get(question.get("id"), question)
+        replacements = {
+            question["id"]: question
+            for question in new_questions
             if question.get("id") in regen_ids
-            else question
+        }
+        replacement_queue = [
+            question
+            for question in new_questions
+            if question.get("id") not in replacements
+        ]
+        used_replacement_ids: set[str] = set()
+        questions = [
+            (
+                replacements[question.get("id")]
+                if question.get("id") in replacements
+                else replacement_queue.pop(0)
+                if question.get("id") in regen_ids and replacement_queue
+                else question
+            )
             for question in existing_questions
         ]
+        used_replacement_ids.update(replacements)
         missing_replacements = [
-            question for question in new_questions if question.get("id") not in replacements
+            question
+            for question in replacement_queue
+            if question.get("id") not in used_replacement_ids
         ]
         questions.extend(missing_replacements)
     else:
@@ -271,7 +368,12 @@ async def driller_node(state: AgentState) -> AgentState:
         user_prompt=prompts.DRILLER_USER_PROMPT.format(
             questions=_json(state.get("questions", [])),
             answers=_json(state.get("answers", [])),
-            document_analysis=_json(state.get("document_analysis", {})),
+            document_analysis=_json(
+                {
+                    "analysis": state.get("document_analysis", {}),
+                    "retry_feedback": state.get("retry_feedback"),
+                }
+            ),
         ),
         response_model=DrillerOutput,
     )
@@ -318,20 +420,27 @@ async def scorer_node(state: AgentState) -> AgentState:
 
     scores = [score.model_dump(mode="json") for score in result.scores]
     reviews = state.get("reviews", [])
-    approved_count = sum(1 for review in reviews if review.get("status") == "approved")
+    approved_count = sum(1 for review in reviews if _is_approved_review(review))
     rejected_count = sum(1 for review in reviews if review.get("status") == "rejected")
     avg_score = (
         sum(score.get("score", 0) for score in scores) / len(scores)
         if scores
         else 0
     )
-    quality_issues = sorted(
-        {
-            flag
-            for score in scores
-            for flag in score.get("quality_flags", [])
-        }
-    )
+    quality_issue_set = {
+        flag
+        for score in scores
+        for flag in score.get("quality_flags", [])
+    }
+    if any(not _is_approved_review(review) for review in reviews):
+        quality_issue_set.add("REVIEW_NOT_APPROVED")
+    if any(score.get("score", 0) < 80 for score in scores):
+        quality_issue_set.add("LOW_SCORE")
+    if any(flag in FOLLOW_UP_WEAK_FLAGS for flag in quality_issue_set):
+        quality_issue_set.add("FOLLOW_UP_TOO_WEAK")
+    if any(flag in QUESTION_REWRITE_FLAGS for flag in quality_issue_set):
+        quality_issue_set.add("QUESTION_REWRITE_NEEDED")
+    quality_issues = sorted(quality_issue_set)
 
     return {
         **state,
@@ -350,6 +459,7 @@ async def increment_retry_for_questioner_node(state: AgentState) -> AgentState:
         **state,
         "retry_count": state.get("retry_count", 0) + 1,
         "router_decision": "questioner",
+        "retry_feedback": _build_retry_feedback(state),
     }
 
 
@@ -358,6 +468,7 @@ async def increment_retry_for_driller_node(state: AgentState) -> AgentState:
         **state,
         "retry_count": state.get("retry_count", 0) + 1,
         "router_decision": "driller",
+        "retry_feedback": _build_retry_feedback(state),
     }
 
 
@@ -384,7 +495,7 @@ async def selector_node(state: AgentState) -> AgentState:
     sorted_questions = sorted(
         unique_questions,
         key=lambda question: (
-            reviews_by_id.get(question.get("id"), {}).get("status") == "approved",
+            _is_approved_review(reviews_by_id.get(question.get("id"), {})),
             scores_by_id.get(question.get("id"), {}).get("score", 0),
         ),
         reverse=True,
@@ -397,7 +508,7 @@ async def selector_node(state: AgentState) -> AgentState:
         (
             question
             for question in sorted_questions
-            if question.get("category") == "RISK"
+            if _is_risk_question(question)
         ),
         None,
     )
