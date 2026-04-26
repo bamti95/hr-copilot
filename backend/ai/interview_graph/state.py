@@ -20,6 +20,7 @@ class AgentState(TypedDict, total=False):
     review_summary: dict[str, Any]
 
     router_decision: str
+    retry_feedback: str | None
     retry_count: int
     max_retry_count: int
 

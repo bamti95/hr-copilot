@@ -4,6 +4,7 @@ import { PageIntro } from "../../../../common/components/PageIntro";
 import { getErrorMessage } from "../../../../utils/getErrorMessage";
 import { getJobPositionLabel } from "../../common/candidateJobPosition";
 import { InterviewSessionAssembledPayloadView } from "../components/InterviewSessionAssembledPayloadView";
+import { InterviewSessionQuestionGenerationView } from "../components/InterviewSessionQuestionGenerationView";
 import { fetchInterviewSessionDetail } from "../services/interviewSessionService";
 import type { InterviewSessionDetailResponse } from "../types";
 
@@ -125,6 +126,8 @@ export default function InterviewSessionDetailPage({
               </div>
             </div>
           </section>
+
+          <InterviewSessionQuestionGenerationView sessionId={detail.id} />
 
           <InterviewSessionAssembledPayloadView detail={detail} />
         </>

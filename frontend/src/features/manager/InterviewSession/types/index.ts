@@ -118,7 +118,7 @@ export interface InterviewSessionDetailResponse extends InterviewSessionResponse
 
 export interface InterviewGeneratedQuestionReview {
   questionId: string;
-  status: "approved" | "rejected";
+  status: "approved" | "needs_revision" | "rejected";
   reason: string;
   rejectReason: string;
   recommendedRevision: string;
@@ -148,5 +148,6 @@ export interface InterviewQuestionGenerationStatusResponse {
   error: string | null;
   requestedAt: string | null;
   completedAt: string | null;
+  generationSource: Record<string, string>;
   questions: InterviewGeneratedQuestion[];
 }
