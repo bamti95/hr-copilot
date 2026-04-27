@@ -50,13 +50,19 @@ QUESTION_REWRITE_FLAGS = {
 }
 RISK_CATEGORIES = {"RISK", "리스크"}
 
-
+# LLM 응답을 Pydantic 모델로 강제 파싱 + 검증 + 재시도 하는 래퍼
 async def _call_structured_output(
     *,
     system_prompt: str,
     user_prompt: str,
     response_model: type[T],
 ) -> T:
+    '''
+    system_prompt, user_prompt -> LLM 입력
+    response_model -> 출력 스키마 (Pydantic)
+    text_format=response_model이
+    LLM -> JSON -> Pydantic 객체 자동 변환
+    '''
     last_error: Exception | None = None
     for _ in range(2):
         try:
@@ -233,7 +239,16 @@ def _fallback_follow_up(question_id: str) -> FollowUpQuestion:
     )
 
 
+# 여기부터 HR COPILOT AI 노드들 ㅎ
+
+# 초기 상태 구성 노드 - build_state_node
 async def build_state_node(state: AgentState) -> AgentState:
+    '''
+    입력 payload → LLM이 이해 가능한 상태로 변환
+    지원자 정보(문서 포함) + 세션 정보 -> 하나의 텍스트로 병합 
+    프롬프트 프로필 (채용 기준) 세팅
+    재시도(retry) 상태 초기화
+    '''
     payload = state.get("source_payload", {})
     candidate_text, has_extracted_text = _merge_document_text(payload)
     prompt_profile = payload.get("prompt_profile") or {}
@@ -256,8 +271,16 @@ async def build_state_node(state: AgentState) -> AgentState:
         "max_retry_count": state.get("max_retry_count", 3),
     }
 
-
+# 지원자 문서 분석 노드 - analyzer_node
 async def analyzer_node(state: AgentState) -> AgentState:
+    '''
+    지원자 문서 → 구조화된 분석 결과 생성
+    LLM 호출 ->
+    1. 직무 적합성
+    2. 강점 / 약점
+    3. 리스크 포인트
+    생성
+    '''
     result = await _call_structured_output(
         system_prompt=prompts.ANALYZER_SYSTEM_PROMPT,
         user_prompt=prompts.ANALYZER_USER_PROMPT.format(
@@ -268,8 +291,15 @@ async def analyzer_node(state: AgentState) -> AgentState:
     )
     return {**state, "document_analysis": result.model_dump(mode="json")}
 
-
+# 면접 질문 생성 노드 - questioner_node
 async def questioner_node(state: AgentState) -> AgentState:
+    '''
+    면접 질문 생성 엔진
+    1. 신규 질문 생성
+    2. 기존 질문 유지 / 추가 / 재생성
+    문서 분석 결과를 기반으로 질문을 생성하며,
+    재생성(regenerate) 및 추가 생성(more) 요청을 처리
+    '''
     payload = state.get("source_payload", {})
     session = payload.get("session", {})
     existing_questions = state.get("questions", [])
@@ -345,8 +375,16 @@ async def questioner_node(state: AgentState) -> AgentState:
 
     return {**state, "questions": normalized_questions}
 
-
+# 예상 답변 생성 노드 - predictor_node
 async def predictor_node(state: AgentState) -> AgentState:
+    '''    
+    각 질문에 대해 지원자의 예상 답변과
+    근거 및 리스크 포인트를 생성
+    예상 답변:
+    - 근거
+    - 리스크 포인트
+    - 검증
+    '''
     result = await _call_structured_output(
         system_prompt=prompts.PREDICTOR_SYSTEM_PROMPT,
         user_prompt=prompts.PREDICTOR_USER_PROMPT.format(
@@ -361,8 +399,19 @@ async def predictor_node(state: AgentState) -> AgentState:
         "answers": [answer.model_dump(mode="json") for answer in result.answers],
     }
 
-
+# 꼬리 질문 생성 노드 - driller_node
 async def driller_node(state: AgentState) -> AgentState:
+    '''
+    심층 검증용 follow-up 질문 생성
+    입력데이터:
+    1. 생성된 질문 - questions    
+    2. 생성된 예상 답변 - answers
+    3. 지원자 문서 분석 데이터 - document_analysis
+    
+    출력데이터:
+    1. 꼬리 질문들
+    2. 꼬리 질문 타입(역할검증, 경험검증등)
+    '''
     result = await _call_structured_output(
         system_prompt=prompts.DRILLER_SYSTEM_PROMPT,
         user_prompt=prompts.DRILLER_USER_PROMPT.format(
@@ -385,8 +434,21 @@ async def driller_node(state: AgentState) -> AgentState:
         ],
     }
 
-
+# 질문 품질 검토 - reviewer_node
 async def reviewer_node(state: AgentState) -> AgentState:
+    '''
+    질문을 사람이 보는 기준으로 평가
+    평가기준:
+    1. 직무 적합성 
+    2. 문서 근거 
+    3. 질문 품질
+    4. 꼬리 질문 연결성
+    
+    결과:
+    - status: 승인 / 반려
+    - reason
+    - 수정 권장사항
+    '''
     payload = state.get("source_payload", {})
     session = payload.get("session", {})
     result = await _call_structured_output(
@@ -405,8 +467,17 @@ async def reviewer_node(state: AgentState) -> AgentState:
         "reviews": [review.model_dump(mode="json") for review in result.reviews],
     }
 
-
+# 질문 점수화 및 품질 요약 노드 점수화 + 품질 판단 - scorer_node
 async def scorer_node(state: AgentState) -> AgentState:
+    '''
+    정량 평가 + retry 여부 판단 준비
+    계산:
+    1. 평균점수
+    2. 승인/거절 개수
+    3. 품질 이슈 추출
+    -> reviewer + scorer 결합해서 판단
+       router의 입력값 생성
+    '''
     result = await _call_structured_output(
         system_prompt=prompts.SCORER_SYSTEM_PROMPT,
         user_prompt=prompts.SCORER_USER_PROMPT.format(
@@ -453,7 +524,12 @@ async def scorer_node(state: AgentState) -> AgentState:
         },
     }
 
+"""
+질문 재생성 retry 노드.
 
+retry_count를 증가시키고,
+questioner 재실행을 위한 피드백을 생성한다.
+"""
 async def increment_retry_for_questioner_node(state: AgentState) -> AgentState:
     return {
         **state,
@@ -462,7 +538,12 @@ async def increment_retry_for_questioner_node(state: AgentState) -> AgentState:
         "retry_feedback": _build_retry_feedback(state),
     }
 
+"""
+꼬리질문 재생성 retry 노드.
 
+retry_count를 증가시키고,
+driller 재실행을 위한 피드백을 생성한다.
+"""
 async def increment_retry_for_driller_node(state: AgentState) -> AgentState:
     return {
         **state,
@@ -471,7 +552,12 @@ async def increment_retry_for_driller_node(state: AgentState) -> AgentState:
         "retry_feedback": _build_retry_feedback(state),
     }
 
+"""
+최종 질문 선택 노드.
 
+리뷰 및 점수를 기반으로 중복 제거,
+카테고리 균형을 고려하여 최종 질문을 선택한다.
+"""
 async def selector_node(state: AgentState) -> AgentState:
     questions = state.get("questions", [])
     reviews_by_id = {
@@ -539,8 +625,27 @@ async def selector_node(state: AgentState) -> AgentState:
         "router_decision": state.get("router_decision") or "selector",
     }
 
-
+# 최종 응답 생성
 async def final_formatter_node(state: AgentState) -> AgentState:
+    '''
+    모든 결과를 API 응답 형태로 변환
+    포함내용:
+    1. 질문
+    2. 예상 답변
+    3. 꼬리 질문
+    4. 리뷰
+    5. 점수
+    
+    fallback : 데이터 없으면 자동 보완
+    _fallback_answer
+    _fallback_review
+    _fallback_score
+    
+    상태 결정
+    status:
+    - completed
+    - partial_completed
+    '''
     payload = state.get("source_payload", {})
     session = payload.get("session", {})
     candidate = payload.get("candidate", {})
