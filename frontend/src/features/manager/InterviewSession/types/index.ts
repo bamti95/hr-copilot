@@ -12,6 +12,11 @@ export type InterviewQuestionReviewStatus =
   | "approved"
   | "needs_revision"
   | "rejected";
+export type InterviewQuestionGenerationNodeStatus =
+  | "PENDING"
+  | "PROCESSING"
+  | "COMPLETED"
+  | "FAILED";
 
 export interface InterviewSessionListRequest {
   page: number;
@@ -159,6 +164,17 @@ export interface InterviewQuestionGenerationStatusResponse {
   error: string | null;
   requestedAt: string | null;
   completedAt: string | null;
+  progress: InterviewQuestionGenerationProgressStep[];
   generationSource: Record<string, string>;
   questions: InterviewGeneratedQuestion[];
+}
+
+export interface InterviewQuestionGenerationProgressStep {
+  key: string;
+  label: string;
+  status: InterviewQuestionGenerationNodeStatus;
+  startedAt: string | null;
+  completedAt: string | null;
+  attempt: number;
+  error?: string | null;
 }

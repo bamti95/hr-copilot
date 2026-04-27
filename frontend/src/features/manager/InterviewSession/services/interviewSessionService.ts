@@ -63,6 +63,15 @@ interface QuestionGenerationStatusApiResponse {
   error: string | null;
   requested_at: string | null;
   completed_at: string | null;
+  progress?: Array<{
+    key: string;
+    label: string;
+    status: string;
+    started_at?: string | null;
+    completed_at?: string | null;
+    attempt?: number | null;
+    error?: string | null;
+  }>;
   generation_source: Record<string, string>;
   questions: GeneratedQuestionApiResponse[];
 }
@@ -287,6 +296,8 @@ export async function triggerInterviewQuestionGeneration(
 ): Promise<void> {
   await api.post(`/interview-sessions/${sessionId}/generate-questions`, {
     trigger_type: requestBody?.triggerType?.trim() || "MANUAL",
+  }, {
+    skipGlobalLoading: true,
   });
 }
 
@@ -295,6 +306,9 @@ export async function fetchInterviewQuestionGenerationStatus(
 ): Promise<InterviewQuestionGenerationStatusResponse> {
   const response = await api.get<ApiEnvelope<QuestionGenerationStatusApiResponse>>(
     `/interview-sessions/${sessionId}/question-generation`,
+    {
+      skipGlobalLoading: true,
+    },
   );
   const data = response.data.data;
 
@@ -304,6 +318,20 @@ export async function fetchInterviewQuestionGenerationStatus(
     error: data.error,
     requestedAt: data.requested_at,
     completedAt: data.completed_at,
+    progress: (data.progress ?? []).map((step) => ({
+      key: step.key,
+      label: step.label,
+      status:
+        step.status === "PROCESSING" ||
+        step.status === "COMPLETED" ||
+        step.status === "FAILED"
+          ? step.status
+          : "PENDING",
+      startedAt: step.started_at ?? null,
+      completedAt: step.completed_at ?? null,
+      attempt: step.attempt ?? 0,
+      error: step.error ?? null,
+    })),
     generationSource: data.generation_source ?? {},
     questions: data.questions.map((question) => ({
       id: question.id,

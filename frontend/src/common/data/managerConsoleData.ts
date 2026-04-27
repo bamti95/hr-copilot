@@ -5,17 +5,14 @@ import type {
 import type { CandidateResponse } from "../../features/manager/Candidate/types";
 import type { DocumentResponse } from "../../features/manager/Document/types";
 import type { InterviewQuestionResponse } from "../../features/manager/InterviewQuestion/types";
-import type { ManagerResponse } from "../../features/manager/Manager/types";
 import type { OpsLogResponse } from "../../features/manager/OpsLog/types";
 
 export const managerNavItems = [
   { label: "대시보드", path: "/manager/dashboard", icon: "◈" },
   { label: "관리자 관리", path: "/manager/managers", icon: "◎" },
   { label: "지원자 관리", path: "/manager/candidates", icon: "◌" },
-  { label: "문서 관리", path: "/manager/documents", icon: "▣" },
   { label: "프롬프트 프로필 관리", path: "/manager/prompt-profiles", icon: "◇" },
   { label: "면접 세션 관리", path: "/manager/interview-sessions", icon: "△" },
-  { label: "면접 질문 관리", path: "/manager/interview-questions", icon: "✦" },
   { label: "운영 로그", path: "/manager/ops-logs", icon: "▤" },
 ];
 
@@ -32,14 +29,6 @@ export const dashboardActivities: DashboardActivity[] = [
   { id: 3, title: "프롬프트 프로파일 업데이트", owner: "AI PM", status: "REVIEW", dueDate: "2026-04-18" },
 ];
 
-export const managerList: ManagerResponse[] = [
-  { id: 1, loginId: "master.admin", name: "Evano Kim", email: "evano@hrcopilot.ai", roleType: "SUPER_ADMIN", status: "ACTIVE", lastLoginAt: "2026-04-16 09:10" },
-  { id: 2, loginId: "ops.lead", name: "Mina Park", email: "mina@hrcopilot.ai", roleType: "OPS_MANAGER", status: "ACTIVE", lastLoginAt: "2026-04-16 08:40" },
-  { id: 3, loginId: "recruit.pm", name: "Daniel Choi", email: "daniel@hrcopilot.ai", roleType: "RECRUIT_MANAGER", status: "ACTIVE", lastLoginAt: "2026-04-15 18:31" },
-  { id: 4, loginId: "doc.audit", name: "Sora Lee", email: "sora@hrcopilot.ai", roleType: "DOC_REVIEWER", status: "INACTIVE", lastLoginAt: "2026-04-14 16:05" },
-  { id: 5, loginId: "qa.manager", name: "Jin Woo", email: "jin@hrcopilot.ai", roleType: "QUALITY_MANAGER", status: "ACTIVE", lastLoginAt: "2026-04-15 13:27" },
-  { id: 6, loginId: "ai.curator", name: "Ari Song", email: "ari@hrcopilot.ai", roleType: "PROMPT_MANAGER", status: "ACTIVE", lastLoginAt: "2026-04-16 07:58" },
-];
 
 export const candidateList: CandidateResponse[] = [
   { id: 101, name: "Jane Cooper", email: "jane@sample.com", phone: "010-2012-1111", applyStatus: "ACTIVE", targetJob: "Frontend Engineer" },

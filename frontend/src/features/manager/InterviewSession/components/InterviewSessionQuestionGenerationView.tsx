@@ -17,6 +17,7 @@ import {
 import type {
   InterviewGeneratedQuestion,
   InterviewQuestionGenerationStatus,
+  InterviewQuestionGenerationProgressStep,
   InterviewQuestionReviewStatus,
   InterviewQuestionGenerationStatusResponse,
 } from "../types";
@@ -105,6 +106,54 @@ function getReviewStatusStyle(status: InterviewQuestionReviewStatus) {
   return "bg-rose-50 text-rose-700";
 }
 
+function getNodeStatusLabel(status: InterviewQuestionGenerationProgressStep["status"]) {
+  const labels: Record<InterviewQuestionGenerationProgressStep["status"], string> = {
+    PENDING: "대기",
+    PROCESSING: "진행 중",
+    COMPLETED: "완료",
+    FAILED: "실패",
+  };
+  return labels[status];
+}
+
+function getNodeStatusStyle(status: InterviewQuestionGenerationProgressStep["status"]) {
+  if (status === "COMPLETED") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  }
+  if (status === "PROCESSING") {
+    return "border-sky-200 bg-sky-50 text-sky-800";
+  }
+  if (status === "FAILED") {
+    return "border-rose-200 bg-rose-50 text-rose-700";
+  }
+  return "border-slate-200 bg-slate-50 text-slate-600";
+}
+
+function NodeStatusIcon({
+  status,
+}: {
+  status: InterviewQuestionGenerationProgressStep["status"];
+}) {
+  if (status === "PROCESSING") {
+    return <LoaderCircle className="h-4 w-4 animate-spin" />;
+  }
+  if (status === "COMPLETED") {
+    return <CheckCircle2 className="h-4 w-4" />;
+  }
+  if (status === "FAILED") {
+    return <AlertTriangle className="h-4 w-4" />;
+  }
+  return <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />;
+}
+
+function truncateText(value: string, maxLength = 320) {
+  const text = value.trim();
+  if (text.length <= maxLength) {
+    return text;
+  }
+  return `${text.slice(0, maxLength - 1).trim()}…`;
+}
+
 function QuestionCard({ question, index }: { question: InterviewGeneratedQuestion; index: number }) {
   return (
     <article className="rounded-2xl border border-[var(--line)] bg-white/85 p-5">
@@ -139,7 +188,7 @@ function QuestionCard({ question, index }: { question: InterviewGeneratedQuestio
             예상 답변
           </div>
           <p className="mt-2 text-sm leading-6 text-[var(--text)]">
-            {question.predictedAnswer || "-"}
+            {question.predictedAnswer ? truncateText(question.predictedAnswer) : "-"}
           </p>
         </div>
         <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
@@ -328,6 +377,16 @@ export function InterviewSessionQuestionGenerationView({
       rejected: questions.filter((question) => question.review.status === "rejected").length,
     };
   }, [data]);
+  const visibleProgress = useMemo(
+    () =>
+      (data?.progress ?? []).filter(
+        (step) =>
+          !step.key.startsWith("retry_") ||
+          step.status !== "PENDING" ||
+          step.attempt > 0,
+      ),
+    [data?.progress],
+  );
 
   return (
     <section className="rounded-[32px] border border-white/70 bg-[var(--panel)] p-7 shadow-[var(--shadow)]">
@@ -456,6 +515,54 @@ export function InterviewSessionQuestionGenerationView({
               {getGenerationStatusMessage(data.status)}
             </p>
           )}
+        </div>
+      ) : null}
+
+      {visibleProgress.length ? (
+        <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">
+                LangGraph 노드 진행 상태
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                생성 작업이 각 에이전트 노드를 통과한 상태입니다.
+              </p>
+            </div>
+            <span className="text-xs font-semibold text-slate-500">
+              {visibleProgress.filter((step) => step.status === "COMPLETED").length} /{" "}
+              {visibleProgress.length}
+            </span>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {visibleProgress.map((step) => (
+              <div
+                key={step.key}
+                className={`rounded-2xl border px-4 py-3 ${getNodeStatusStyle(
+                  step.status,
+                )}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <NodeStatusIcon status={step.status} />
+                    <span className="truncate text-sm font-bold">{step.label}</span>
+                  </div>
+                  <span className="shrink-0 text-xs font-bold">
+                    {getNodeStatusLabel(step.status)}
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs opacity-80">
+                  <span>시작 {formatDateTime(step.startedAt)}</span>
+                  <span>완료 {formatDateTime(step.completedAt)}</span>
+                  {step.attempt > 1 ? <span>{step.attempt}회 실행</span> : null}
+                </div>
+                {step.error ? (
+                  <p className="mt-2 text-xs font-medium text-rose-700">{step.error}</p>
+                ) : null}
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
 
