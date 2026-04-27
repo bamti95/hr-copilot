@@ -1,10 +1,13 @@
+import asyncio
 import json
 import logging
+from collections.abc import Awaitable, Callable
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai.interview_graph.runner import run_interview_question_graph
 from ai.interview_graph.schemas import QuestionGenerationResponse, ReviewResult
+from core.config import settings
 from core.database import AsyncSessionLocal
 from models.interview_question import InterviewQuestion
 from repositories.interview_question_repository import InterviewQuestionRepository
@@ -27,6 +30,7 @@ class QuestionGenerationService:
     async def request_candidate_interview_prep(
         self,
         payload: CandidateInterviewPrepInput,
+        on_node_complete: Callable[[str], Awaitable[None]] | None = None,
     ) -> QuestionGenerationResponse:
         logger.info(
             "Question Generation Request Payload\n%s",
@@ -37,7 +41,10 @@ class QuestionGenerationService:
             ),
         )
 
-        result = await run_interview_question_graph(payload)
+        result = await run_interview_question_graph(
+            payload,
+            on_node_complete=on_node_complete,
+        )
 
         logger.info(
             "Question Generation Completed session_id=%s candidate_id=%s status=%s question_count=%s",
@@ -67,7 +74,21 @@ class QuestionGenerationService:
         try:
             assembler = SessionGenerationPayloadAssembler(self.db)
             payload = await assembler.build_candidate_interview_prep_input(session_id)
-            result = await self.request_candidate_interview_prep(payload)
+
+            async def mark_node_complete(node_name: str) -> None:
+                await self.session_repo.mark_question_generation_progress_node(
+                    session,
+                    node_key=node_name,
+                )
+                await self.db.commit()
+
+            result = await asyncio.wait_for(
+                self.request_candidate_interview_prep(
+                    payload,
+                    on_node_complete=mark_node_complete,
+                ),
+                timeout=settings.QUESTION_GENERATION_JOB_TIMEOUT_SECONDS,
+            )
 
             await self._replace_stored_questions(
                 session_id=session_id,

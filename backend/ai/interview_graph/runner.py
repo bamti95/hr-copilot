@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from ai.interview_graph.nodes import (
@@ -6,15 +7,13 @@ from ai.interview_graph.nodes import (
     build_state_node,
     driller_node,
     final_formatter_node,
-    increment_retry_for_driller_node,
-    increment_retry_for_questioner_node,
     predictor_node,
     questioner_node,
     reviewer_node,
     scorer_node,
+    selector_lite_node,
     selector_node,
 )
-from ai.interview_graph.router import route_after_scoring
 from ai.interview_graph.schemas import DocumentAnalysisOutput, QuestionGenerationResponse
 from ai.interview_graph.state import AgentState
 from schemas.session_generation import CandidateInterviewPrepInput
@@ -67,30 +66,19 @@ def _build_graph() -> Any:
     graph.add_node("driller", driller_node)
     graph.add_node("reviewer", reviewer_node)
     graph.add_node("scorer", scorer_node)
-    graph.add_node("retry_questioner", increment_retry_for_questioner_node)
-    graph.add_node("retry_driller", increment_retry_for_driller_node)
+    graph.add_node("selector_lite", selector_lite_node)
     graph.add_node("selector", selector_node)
     graph.add_node("final_formatter", final_formatter_node)
 
     graph.add_edge(START, "build_state")
     graph.add_edge("build_state", "analyzer")
     graph.add_edge("analyzer", "questioner")
-    graph.add_edge("questioner", "predictor")
-    graph.add_edge("predictor", "driller")
-    graph.add_edge("driller", "reviewer")
-    graph.add_edge("reviewer", "scorer")
-
-    graph.add_conditional_edges(
-        "scorer",
-        route_after_scoring,
-        {
-            "retry_questioner": "retry_questioner",
-            "retry_driller": "retry_driller",
-            "selector": "selector",
-        },
-    )
-    graph.add_edge("retry_questioner", "questioner")
-    graph.add_edge("retry_driller", "driller")
+    graph.add_edge("questioner", "selector_lite")
+    graph.add_edge("selector_lite", "predictor")
+    graph.add_edge("selector_lite", "driller")
+    graph.add_edge("selector_lite", "reviewer")
+    graph.add_edge(["predictor", "driller", "reviewer"], "scorer")
+    graph.add_edge("scorer", "selector")
     graph.add_edge("selector", "final_formatter")
     graph.add_edge("final_formatter", END)
 
@@ -99,6 +87,7 @@ def _build_graph() -> Any:
 
 async def run_interview_question_graph(
     payload: CandidateInterviewPrepInput,
+    on_node_complete: Callable[[str], Awaitable[None]] | None = None,
 ) -> QuestionGenerationResponse:
     try:
         app = _build_graph()
@@ -106,8 +95,20 @@ async def run_interview_question_graph(
             "source_payload": payload.model_dump(mode="json"),
             "retry_count": 0,
             "max_retry_count": 3,
+            "node_warnings": [],
         }
-        result = await app.ainvoke(initial_state)
-        return QuestionGenerationResponse.model_validate(result["final_response"])
+        final_response: dict[str, Any] | None = None
+
+        async for update in app.astream(initial_state, stream_mode="updates"):
+            for node_name, node_update in update.items():
+                if on_node_complete is not None:
+                    await on_node_complete(node_name)
+                if node_name == "final_formatter":
+                    final_response = node_update.get("final_response")
+
+        if final_response is None:
+            raise RuntimeError("Interview question graph finished without final_response.")
+
+        return QuestionGenerationResponse.model_validate(final_response)
     except Exception as exc:  # noqa: BLE001 - service should receive typed failed result.
         return _failed_response(payload, exc)

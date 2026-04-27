@@ -5,6 +5,7 @@ from fastapi import BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai.interview_graph.schemas import InterviewQuestionItem, ReviewResult
+from core.config import settings
 from core.database import get_db
 from repositories.candidate_repository import CandidateRepository
 from repositories.interview_question_repository import InterviewQuestionRepository
@@ -221,6 +222,17 @@ class SessionService:
                 detail="면접 세션을 찾을 수 없습니다.",
             )
 
+        if self._is_stale_question_generation(entity):
+            await self.session_repo.mark_question_generation_completed(
+                entity,
+                status="FAILED",
+                error=(
+                    "질문 생성 작업이 제한 시간 안에 완료되지 않아 실패로 처리했습니다. "
+                    "전체 재생성으로 다시 요청해 주세요."
+                ),
+            )
+            await self.db.commit()
+
         questions = await self.question_repo.find_active_by_session_id(session_id)
         return SessionQuestionGenerationData(
             session_id=entity.id,
@@ -228,6 +240,7 @@ class SessionService:
             error=entity.question_generation_error,
             requested_at=entity.question_generation_requested_at,
             completed_at=entity.question_generation_completed_at,
+            progress=entity.question_generation_progress or [],
             generation_source={
                 "entrypoint": "services.question_generation_service.run_question_generation_background_job",
                 "service": "QuestionGenerationService.generate_and_store_for_session",
@@ -264,6 +277,20 @@ class SessionService:
                 for question in questions
             ],
         )
+
+    @staticmethod
+    def _is_stale_question_generation(entity) -> bool:
+        if entity.question_generation_status not in {"QUEUED", "PROCESSING"}:
+            return False
+
+        started_at = entity.question_generation_requested_at or entity.created_at
+        if started_at is None:
+            return False
+        if started_at.tzinfo is None:
+            started_at = started_at.replace(tzinfo=timezone.utc)
+
+        elapsed = datetime.now(timezone.utc) - started_at
+        return elapsed.total_seconds() > settings.QUESTION_GENERATION_STALE_SECONDS
 
 
 def get_session_service(db: AsyncSession = Depends(get_db)) -> SessionService:

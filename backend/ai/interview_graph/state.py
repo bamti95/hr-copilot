@@ -1,4 +1,5 @@
-from typing import Any, TypedDict
+import operator
+from typing import Annotated, Any, TypedDict
 
 
 class AgentState(TypedDict, total=False):
@@ -11,6 +12,7 @@ class AgentState(TypedDict, total=False):
 
     questions: list[dict[str, Any]]
     selected_questions: list[dict[str, Any]]
+    candidate_question_count: int
 
     answers: list[dict[str, Any]]
     follow_ups: list[dict[str, Any]]
@@ -18,6 +20,7 @@ class AgentState(TypedDict, total=False):
     scores: list[dict[str, Any]]
 
     review_summary: dict[str, Any]
+    node_warnings: Annotated[list[dict[str, Any]], operator.add]
 
     router_decision: str
     retry_feedback: str | None

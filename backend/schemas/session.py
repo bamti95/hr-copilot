@@ -42,6 +42,7 @@ class SessionResponse(SessionSchemaBase):
     question_generation_error: str | None = None
     question_generation_requested_at: datetime | None = None
     question_generation_completed_at: datetime | None = None
+    question_generation_progress: list[dict] | None = None
 
 
 class SessionDeleteResponse(SessionSchemaBase):
@@ -114,6 +115,7 @@ class SessionQuestionGenerationData(BaseModel):
     error: str | None = None
     requested_at: datetime | None = None
     completed_at: datetime | None = None
+    progress: list[dict] = Field(default_factory=list)
     generation_source: dict[str, str] = Field(default_factory=dict)
     questions: list[InterviewQuestionItem] = Field(default_factory=list)
 

@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.audit_base import AuditBase
@@ -31,5 +32,9 @@ class InterviewSession(Base, AuditBase):
     )
     question_generation_completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
+        nullable=True,
+    )
+    question_generation_progress: Mapped[list | None] = mapped_column(
+        JSONB,
         nullable=True,
     )
