@@ -5,6 +5,8 @@ import type {
   InterviewSessionCandidateOption,
   InterviewSessionCreateRequest,
   InterviewSessionDetailResponse,
+  InterviewQuestionGenerationStatus,
+  InterviewQuestionReviewStatus,
   InterviewQuestionGenerationStatusResponse,
   InterviewQuestionGenerationTriggerRequest,
   InterviewSessionListRequest,
@@ -25,7 +27,7 @@ interface SessionApiResponse {
   created_by: number | null;
   deleted_at: string | null;
   deleted_by: number | null;
-  question_generation_status: string;
+  question_generation_status: InterviewQuestionGenerationStatus;
   question_generation_error: string | null;
   question_generation_requested_at: string | null;
   question_generation_completed_at: string | null;
@@ -46,7 +48,7 @@ interface GeneratedQuestionApiResponse {
   competency_tags: string[];
   review: {
     question_id: string;
-    status: "approved" | "needs_revision" | "rejected";
+    status: InterviewQuestionReviewStatus;
     reason: string;
     reject_reason: string;
     recommended_revision: string;
@@ -57,7 +59,7 @@ interface GeneratedQuestionApiResponse {
 
 interface QuestionGenerationStatusApiResponse {
   session_id: number;
-  status: string;
+  status: InterviewQuestionGenerationStatus;
   error: string | null;
   requested_at: string | null;
   completed_at: string | null;

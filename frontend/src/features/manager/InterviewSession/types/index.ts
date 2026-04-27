@@ -1,6 +1,17 @@
 import type { PagedListResponse } from "../../../../common/types/pagination";
 
 export type InterviewDifficultyLevel = "JUNIOR" | "INTERMEDIATE" | "SENIOR";
+export type InterviewQuestionGenerationStatus =
+  | "NOT_REQUESTED"
+  | "QUEUED"
+  | "PROCESSING"
+  | "COMPLETED"
+  | "PARTIAL_COMPLETED"
+  | "FAILED";
+export type InterviewQuestionReviewStatus =
+  | "approved"
+  | "needs_revision"
+  | "rejected";
 
 export interface InterviewSessionListRequest {
   page: number;
@@ -39,7 +50,7 @@ export interface InterviewSessionResponse {
   createdBy: number | null;
   deletedAt: string | null;
   deletedBy: number | null;
-  questionGenerationStatus: string;
+  questionGenerationStatus: InterviewQuestionGenerationStatus;
   questionGenerationError: string | null;
   questionGenerationRequestedAt: string | null;
   questionGenerationCompletedAt: string | null;
@@ -118,7 +129,7 @@ export interface InterviewSessionDetailResponse extends InterviewSessionResponse
 
 export interface InterviewGeneratedQuestionReview {
   questionId: string;
-  status: "approved" | "needs_revision" | "rejected";
+  status: InterviewQuestionReviewStatus;
   reason: string;
   rejectReason: string;
   recommendedRevision: string;
@@ -144,7 +155,7 @@ export interface InterviewGeneratedQuestion {
 
 export interface InterviewQuestionGenerationStatusResponse {
   sessionId: number;
-  status: string;
+  status: InterviewQuestionGenerationStatus;
   error: string | null;
   requestedAt: string | null;
   completedAt: string | null;

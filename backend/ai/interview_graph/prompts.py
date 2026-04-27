@@ -200,6 +200,10 @@ REVIEWER_SYSTEM_PROMPT = """
 언어 규칙:
 - 모든 리뷰 설명은 한국어로 작성합니다.
 - 판정 값은 시스템 처리를 위해 approved, needs_revision, rejected 중 하나를 사용합니다.
+- decision/status 값만 approved, needs_revision, rejected 영문 값을 사용합니다.
+- review_summary, strengths, issues, revision_suggestion, fairness_check는 반드시 한국어 문장 또는 한국어 목록으로 작성합니다.
+- issues가 없더라도 영어 문장 대신 "특별한 반려 사유는 없습니다."처럼 한국어로 작성합니다.
+- 지원자 문서나 직무명이 영어이더라도 평가 사유 문장은 한국어로 설명합니다.
 
 검토 기준:
 - job_relevance: 대상 직무의 핵심 역량을 검증하는가?
@@ -224,6 +228,8 @@ REVIEWER_USER_PROMPT = """
 
 출력 조건:
 - 모든 설명은 한국어로 작성하세요.
+- decision/status 값을 제외한 모든 텍스트 필드는 한국어로 작성하세요.
+- review_summary, issues, revision_suggestion, fairness_check에 영어 문장을 쓰지 마세요.
 - 부적절한 질문은 명확히 rejected로 표시하세요.
 - 개선 가능성이 있는 질문은 needs_revision으로 표시하고 수정 방향을 제안하세요.
 - 좋은 질문은 approved로 표시하세요.
@@ -251,6 +257,9 @@ SCORER_SYSTEM_PROMPT = """
 언어 규칙:
 - 모든 평가 설명은 한국어로 작성합니다.
 - 점수는 정수로 반환합니다.
+- scoring_reason, score_breakdown, recommended_action은 반드시 한국어 문장 또는 한국어 목록으로 작성합니다.
+- quality flag나 내부 처리용 키워드가 필요할 때만 recommended_action 배열에 영문 코드를 사용할 수 있으며, scoring_reason에는 영문 문장을 쓰지 않습니다.
+- 지원자 문서나 직무명이 영어이더라도 평가 사유 문장은 한국어로 설명합니다.
 
 평가 항목:
 - 문서_근거_명확성: 문서 근거가 명확한가?
@@ -282,6 +291,8 @@ SCORER_USER_PROMPT = """
 
 출력 조건:
 - 모든 설명은 한국어로 작성하세요.
+- scoring_reason과 score_breakdown은 반드시 한국어로 작성하세요.
+- Reviewer 결과가 영어를 포함하더라도 그대로 복사하지 말고 한국어로 요약해 반영하세요.
 - 각 질문의 총점은 0~100 사이 정수로 작성하세요.
 - 점수 사유는 구체적으로 작성하세요.
 - Reviewer 결과를 반영하세요.

@@ -16,6 +16,8 @@ import {
 } from "../services/interviewSessionService";
 import type {
   InterviewGeneratedQuestion,
+  InterviewQuestionGenerationStatus,
+  InterviewQuestionReviewStatus,
   InterviewQuestionGenerationStatusResponse,
 } from "../types";
 
@@ -24,13 +26,20 @@ interface InterviewSessionQuestionGenerationViewProps {
   compact?: boolean;
 }
 
-const RUNNING_STATUSES = new Set(["QUEUED", "PROCESSING"]);
+const RUNNING_STATUSES = new Set<InterviewQuestionGenerationStatus>([
+  "QUEUED",
+  "PROCESSING",
+]);
+const SUCCESS_STATUSES = new Set<InterviewQuestionGenerationStatus>([
+  "COMPLETED",
+  "PARTIAL_COMPLETED",
+]);
 
 function formatDateTime(value: string | null) {
   return value ? value.replace("T", " ").slice(0, 16) : "-";
 }
 
-function getStatusStyle(status: string) {
+function getGenerationStatusStyle(status: InterviewQuestionGenerationStatus) {
   if (status === "COMPLETED") {
     return "border-emerald-200 bg-emerald-50 text-emerald-800";
   }
@@ -46,10 +55,10 @@ function getStatusStyle(status: string) {
   return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
-function getStatusLabel(status: string) {
-  const labels: Record<string, string> = {
+function getGenerationStatusLabel(status: InterviewQuestionGenerationStatus) {
+  const labels: Record<InterviewQuestionGenerationStatus, string> = {
     NOT_REQUESTED: "생성 전",
-    QUEUED: "대기 중",
+    QUEUED: "생성 대기 중",
     PROCESSING: "생성 중",
     COMPLETED: "생성 완료",
     PARTIAL_COMPLETED: "일부 완료",
@@ -58,9 +67,45 @@ function getStatusLabel(status: string) {
   return labels[status] ?? status;
 }
 
-function QuestionCard({ question, index }: { question: InterviewGeneratedQuestion; index: number }) {
-  const approved = question.review.status === "approved";
+function getGenerationStatusMessage(status: InterviewQuestionGenerationStatus) {
+  if (status === "QUEUED") {
+    return "질문 생성 작업이 대기열에 등록되었습니다. 곧 생성이 시작됩니다.";
+  }
+  if (status === "PROCESSING") {
+    return "질문 생성이 진행 중입니다. 완료되면 결과가 자동으로 갱신됩니다.";
+  }
+  if (status === "COMPLETED") {
+    return "질문 생성이 완료되었습니다.";
+  }
+  if (status === "PARTIAL_COMPLETED") {
+    return "질문 일부가 생성되었습니다. 실패한 항목은 오류 내용을 확인해 주세요.";
+  }
+  if (status === "FAILED") {
+    return "질문 생성에 실패했습니다. 오류 내용을 확인한 뒤 다시 생성할 수 있습니다.";
+  }
+  return "아직 질문 생성 작업이 요청되지 않았습니다.";
+}
 
+function getReviewStatusLabel(status: InterviewQuestionReviewStatus) {
+  const labels: Record<InterviewQuestionReviewStatus, string> = {
+    approved: "승인",
+    needs_revision: "수정 필요",
+    rejected: "반려",
+  };
+  return labels[status];
+}
+
+function getReviewStatusStyle(status: InterviewQuestionReviewStatus) {
+  if (status === "approved") {
+    return "bg-emerald-50 text-emerald-700";
+  }
+  if (status === "needs_revision") {
+    return "bg-amber-50 text-amber-700";
+  }
+  return "bg-rose-50 text-rose-700";
+}
+
+function QuestionCard({ question, index }: { question: InterviewGeneratedQuestion; index: number }) {
   return (
     <article className="rounded-2xl border border-[var(--line)] bg-white/85 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -72,11 +117,11 @@ function QuestionCard({ question, index }: { question: InterviewGeneratedQuestio
             {question.category}
           </span>
           <span
-            className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
-              approved ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
-            }`}
+            className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${getReviewStatusStyle(
+              question.review.status,
+            )}`}
           >
-            {approved ? "승인" : "반려"}
+            {getReviewStatusLabel(question.review.status)}
           </span>
         </div>
         <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-700">
@@ -207,6 +252,19 @@ export function InterviewSessionQuestionGenerationView({
   const [errorMessage, setErrorMessage] = useState("");
 
   const isRunning = data ? RUNNING_STATUSES.has(data.status) : false;
+  const generationProgress = useMemo(() => {
+    const status = data?.status ?? "NOT_REQUESTED";
+    const completed = SUCCESS_STATUSES.has(status) ? 1 : 0;
+    const running = RUNNING_STATUSES.has(status) ? 1 : 0;
+    const failed = status === "FAILED" ? 1 : 0;
+
+    return {
+      completed,
+      running,
+      failed,
+      total: status === "NOT_REQUESTED" ? 0 : 1,
+    };
+  }, [data?.status]);
 
   const loadStatus = useCallback(
     async (options?: { quiet?: boolean }) => {
@@ -264,10 +322,10 @@ export function InterviewSessionQuestionGenerationView({
     const questions = data?.questions ?? [];
     return {
       approved: questions.filter((question) => question.review.status === "approved").length,
-      rejected: questions.filter((question) => question.review.status === "rejected").length,
-      risk: questions.filter(
-        (question) => question.category === "RISK" || question.riskTags.length > 0,
+      needsRevision: questions.filter(
+        (question) => question.review.status === "needs_revision",
       ).length,
+      rejected: questions.filter((question) => question.review.status === "rejected").length,
     };
   }, [data]);
 
@@ -281,11 +339,11 @@ export function InterviewSessionQuestionGenerationView({
             </span>
             {data ? (
               <span
-                className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${getStatusStyle(
+                className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${getGenerationStatusStyle(
                   data.status,
                 )}`}
               >
-                {getStatusLabel(data.status)}
+                {getGenerationStatusLabel(data.status)}
               </span>
             ) : null}
           </div>
@@ -323,6 +381,14 @@ export function InterviewSessionQuestionGenerationView({
         </div>
       </div>
 
+      {isRunning ? (
+        <div className="mt-5 inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+          <LoaderCircle className="h-4 w-4 animate-spin" />
+          <span>{getGenerationStatusMessage(data.status)}</span>
+          {isRefreshing ? <span>· 상태 확인 중</span> : null}
+        </div>
+      ) : null}
+
       {errorMessage ? (
         <div className="mt-5 flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -330,7 +396,70 @@ export function InterviewSessionQuestionGenerationView({
         </div>
       ) : null}
 
-      <div className="mt-5 grid gap-3 md:grid-cols-4">
+      {data ? (
+        <div className="mt-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 md:grid-cols-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+              완료
+            </p>
+            <p className="mt-1 text-base font-semibold text-slate-900">
+              {generationProgress.completed} / {generationProgress.total}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+              생성 중
+            </p>
+            <p className="mt-1 text-base font-semibold text-amber-600">
+              {generationProgress.running}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+              실패
+            </p>
+            <p className="mt-1 text-base font-semibold text-rose-600">
+              {generationProgress.failed}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {data ? (
+        <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">
+                면접 질문 생성 작업
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                요청 {formatDateTime(data.requestedAt)} / 완료{" "}
+                {formatDateTime(data.completedAt)}
+              </p>
+            </div>
+            <span
+              className={`inline-flex min-w-[104px] items-center justify-center rounded-full border px-3 py-2 text-xs font-bold ${getGenerationStatusStyle(
+                data.status,
+              )}`}
+            >
+              {getGenerationStatusLabel(data.status)}
+            </span>
+          </div>
+
+          {isRunning ? (
+            <div className="mt-4 inline-flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+              <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+              <span>생성 처리 중입니다. 완료되면 질문 목록이 자동으로 갱신됩니다.</span>
+            </div>
+          ) : (
+            <p className="mt-4 text-xs font-medium text-slate-500">
+              {getGenerationStatusMessage(data.status)}
+            </p>
+          )}
+        </div>
+      ) : null}
+
+      <div className="mt-5 grid gap-3 md:grid-cols-5">
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
           <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
             Questions
@@ -341,7 +470,7 @@ export function InterviewSessionQuestionGenerationView({
         </div>
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
           <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
-            Approved
+            승인
           </div>
           <div className="mt-2 text-xl font-bold text-emerald-700">
             {statusSummary.approved}
@@ -349,13 +478,23 @@ export function InterviewSessionQuestionGenerationView({
         </div>
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
           <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
-            Risk
+            수정 필요
           </div>
-          <div className="mt-2 text-xl font-bold text-rose-700">{statusSummary.risk}</div>
+          <div className="mt-2 text-xl font-bold text-amber-600">
+            {statusSummary.needsRevision}
+          </div>
         </div>
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
           <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
-            Completed
+            반려
+          </div>
+          <div className="mt-2 text-xl font-bold text-rose-700">
+            {statusSummary.rejected}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
+          <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+            세션 완료 시각
           </div>
           <div className="mt-2 text-sm font-bold text-[var(--text)]">
             {formatDateTime(data?.completedAt ?? null)}
