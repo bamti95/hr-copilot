@@ -1,10 +1,13 @@
-import asyncio
 import json
 import logging
 from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
+from ai.interview_graph.llm_usage import (
+    StructuredOutputCallError,
+    call_structured_output_with_usage,
+)
 from ai.interview_graph import prompts
 from ai.interview_graph.schemas import (
     DocumentAnalysisOutput,
@@ -22,8 +25,6 @@ from ai.interview_graph.schemas import (
     ScorerOutput,
 )
 from ai.interview_graph.state import AgentState
-from ai.llm_client import client, get_openai_model
-from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -56,44 +57,23 @@ RISK_CATEGORIES = {"RISK", "리스크"}
 # LLM 응답을 Pydantic 모델로 강제 파싱 + 검증 + 재시도 하는 래퍼
 async def _call_structured_output(
     *,
+    node_name: str,
     system_prompt: str,
     user_prompt: str,
     response_model: type[T],
-) -> T:
+) -> tuple[T, list[dict[str, Any]]]:
     '''
     system_prompt, user_prompt -> LLM 입력
     response_model -> 출력 스키마 (Pydantic)
     text_format=response_model이
     LLM -> JSON -> Pydantic 객체 자동 변환
     '''
-    last_error: Exception | None = None
-    for _ in range(2):
-        try:
-            response = await asyncio.wait_for(
-                client.responses.parse(
-                    model=get_openai_model(),
-                    input=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    text_format=response_model,
-                ),
-                timeout=settings.OPENAI_TIMEOUT_SECONDS,
-            )
-            parsed = response.output_parsed
-            if parsed is None:
-                raise ValueError("Structured output was empty.")
-            return parsed
-        except Exception as exc:  # noqa: BLE001 - preserve original SDK/validation error.
-            last_error = exc
-            logger.warning(
-                "Structured output call failed for %s: %s",
-                response_model.__name__,
-                exc,
-            )
-    raise RuntimeError(
-        f"Structured output call failed for {response_model.__name__}"
-    ) from last_error
+    return await call_structured_output_with_usage(
+        node_name=node_name,
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        response_model=response_model,
+    )
 
 
 def _json(value: Any) -> str:
@@ -128,21 +108,17 @@ def _compact_predicted_answer(answer: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _merge_document_text(payload: dict[str, Any]) -> tuple[str, bool]:
-    candidate = payload.get("candidate", {})
-    session = payload.get("session", {})
-    documents = payload.get("candidate_documents", [])
-
+def _merge_document_text(state: AgentState) -> tuple[str, bool]:
+    documents = state.get("documents", [])
     sections = [
         "[Session]",
-        f"target_job: {session.get('target_job')}",
-        f"difficulty_level: {session.get('difficulty_level')}",
+        f"session_id: {state.get('session_id')}",
+        f"target_job: {state.get('target_job')}",
+        f"difficulty_level: {state.get('difficulty_level')}",
         "",
         "[Candidate]",
-        f"candidate_id: {candidate.get('candidate_id')}",
-        f"name: {candidate.get('name')}",
-        f"job_position: {candidate.get('job_position')}",
-        f"apply_status: {candidate.get('apply_status')}",
+        f"candidate_id: {state.get('candidate_id')}",
+        f"name: {state.get('candidate_name')}",
     ]
 
     has_extracted_text = False
@@ -348,9 +324,8 @@ async def build_state_node(state: AgentState) -> AgentState:
     프롬프트 프로필 (채용 기준) 세팅
     재시도(retry) 상태 초기화
     '''
-    payload = state.get("source_payload", {})
-    candidate_text, has_extracted_text = _merge_document_text(payload)
-    prompt_profile = payload.get("prompt_profile") or {}
+    candidate_text, has_extracted_text = _merge_document_text(state)
+    prompt_profile = state.get("prompt_profile") or {}
 
     recruitment_criteria = {
         "prompt_profile_id": prompt_profile.get("id"),
@@ -365,6 +340,7 @@ async def build_state_node(state: AgentState) -> AgentState:
     return {
         **state,
         "candidate_text": candidate_text,
+        "merged_candidate_context": candidate_text,
         "recruitment_criteria": recruitment_criteria,
         "retry_count": state.get("retry_count", 0),
         "max_retry_count": state.get("max_retry_count", 3),
@@ -380,7 +356,8 @@ async def analyzer_node(state: AgentState) -> AgentState:
     3. 리스크 포인트
     생성
     '''
-    result = await _call_structured_output(
+    result, llm_usages = await _call_structured_output(
+        node_name="analyzer",
         system_prompt=prompts.ANALYZER_SYSTEM_PROMPT,
         user_prompt=prompts.ANALYZER_USER_PROMPT.format(
             candidate_text=state.get("candidate_text", ""),
@@ -388,7 +365,11 @@ async def analyzer_node(state: AgentState) -> AgentState:
         ),
         response_model=DocumentAnalysisOutput,
     )
-    return {**state, "document_analysis": result.model_dump(mode="json")}
+    return {
+        **state,
+        "document_analysis": result.model_dump(mode="json"),
+        "llm_usages": llm_usages,
+    }
 
 # 면접 질문 생성 노드 - questioner_node
 async def questioner_node(state: AgentState) -> AgentState:
@@ -399,8 +380,6 @@ async def questioner_node(state: AgentState) -> AgentState:
     문서 분석 결과를 기반으로 질문을 생성하며,
     재생성(regenerate) 및 추가 생성(more) 요청을 처리
     '''
-    payload = state.get("source_payload", {})
-    session = payload.get("session", {})
     existing_questions = state.get("questions", [])
     human_action = state.get("human_action")
     regen_ids = set(state.get("regen_question_ids") or [])
@@ -410,11 +389,12 @@ async def questioner_node(state: AgentState) -> AgentState:
     if profile_prompt:
         system_prompt = f"{profile_prompt}\n\n{system_prompt}"
 
-    result = await _call_structured_output(
+    result, llm_usages = await _call_structured_output(
+        node_name="questioner",
         system_prompt=system_prompt,
         user_prompt=prompts.QUESTIONER_USER_PROMPT.format(
-            target_job=session.get("target_job"),
-            difficulty_level=session.get("difficulty_level"),
+            target_job=state.get("target_job"),
+            difficulty_level=state.get("difficulty_level"),
             human_action=human_action,
             additional_instruction=state.get("additional_instruction"),
             regen_question_ids=list(regen_ids),
@@ -476,6 +456,7 @@ async def questioner_node(state: AgentState) -> AgentState:
         **state,
         "questions": normalized_questions,
         "candidate_question_count": len(normalized_questions),
+        "llm_usages": llm_usages,
     }
 
 
@@ -503,7 +484,8 @@ async def predictor_node(state: AgentState) -> AgentState:
     - 검증
     '''
     try:
-        result = await _call_structured_output(
+        result, llm_usages = await _call_structured_output(
+            node_name="predictor",
             system_prompt=prompts.PREDICTOR_SYSTEM_PROMPT,
             user_prompt=prompts.PREDICTOR_USER_PROMPT.format(
                 candidate_text=_clip_text(
@@ -517,6 +499,7 @@ async def predictor_node(state: AgentState) -> AgentState:
         )
     except Exception as exc:  # noqa: BLE001 - keep graph alive with conservative answers.
         logger.warning("Predictor node failed; using fallback answers: %s", exc)
+        llm_usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
         fallback_answers = [
             _compact_predicted_answer(
                 _fallback_answer(_question_id(question, index)).model_dump(mode="json")
@@ -525,6 +508,7 @@ async def predictor_node(state: AgentState) -> AgentState:
         ]
         return {
             "answers": fallback_answers,
+            "llm_usages": llm_usages,
             "node_warnings": [
                 {
                     "node": "predictor",
@@ -539,6 +523,7 @@ async def predictor_node(state: AgentState) -> AgentState:
             _compact_predicted_answer(answer.model_dump(mode="json"))
             for answer in result.answers
         ],
+        "llm_usages": llm_usages,
     }
 
 # 꼬리 질문 생성 노드 - driller_node
@@ -555,7 +540,8 @@ async def driller_node(state: AgentState) -> AgentState:
     2. 꼬리 질문 타입(역할검증, 경험검증등)
     '''
     try:
-        result = await _call_structured_output(
+        result, llm_usages = await _call_structured_output(
+            node_name="driller",
             system_prompt=prompts.DRILLER_SYSTEM_PROMPT,
             user_prompt=prompts.DRILLER_USER_PROMPT.format(
                 questions=_json(state.get("questions", [])),
@@ -571,12 +557,14 @@ async def driller_node(state: AgentState) -> AgentState:
         )
     except Exception as exc:  # noqa: BLE001 - keep graph alive with conservative follow-ups.
         logger.warning("Driller node failed; using fallback follow-ups: %s", exc)
+        llm_usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
         fallback_follow_ups = [
             _fallback_follow_up(_question_id(question, index)).model_dump(mode="json")
             for index, question in enumerate(state.get("questions", []))
         ]
         return {
             "follow_ups": fallback_follow_ups,
+            "llm_usages": llm_usages,
             "node_warnings": [
                 {
                     "node": "driller",
@@ -591,6 +579,7 @@ async def driller_node(state: AgentState) -> AgentState:
             follow_up.model_dump(mode="json")
             for follow_up in result.follow_ups
         ],
+        "llm_usages": llm_usages,
     }
 
 # 질문 품질 검토 - reviewer_node
@@ -608,13 +597,12 @@ async def reviewer_node(state: AgentState) -> AgentState:
     - reason
     - 수정 권장사항
     '''
-    payload = state.get("source_payload", {})
-    session = payload.get("session", {})
     try:
-        result = await _call_structured_output(
+        result, llm_usages = await _call_structured_output(
+            node_name="reviewer",
             system_prompt=prompts.REVIEWER_SYSTEM_PROMPT,
             user_prompt=prompts.REVIEWER_USER_PROMPT.format(
-                target_job=session.get("target_job"),
+                target_job=state.get("target_job"),
                 recruitment_criteria=_json(state.get("recruitment_criteria", {})),
                 questions=_json(state.get("questions", [])),
                 answers=_json(state.get("answers", [])),
@@ -624,12 +612,14 @@ async def reviewer_node(state: AgentState) -> AgentState:
         )
     except Exception as exc:  # noqa: BLE001 - keep graph alive with conservative reviews.
         logger.warning("Reviewer node failed; using fallback reviews: %s", exc)
+        llm_usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
         fallback_reviews = [
             _fallback_review(_question_id(question, index)).model_dump(mode="json")
             for index, question in enumerate(state.get("questions", []))
         ]
         return {
             "reviews": fallback_reviews,
+            "llm_usages": llm_usages,
             "node_warnings": [
                 {
                     "node": "reviewer",
@@ -641,6 +631,7 @@ async def reviewer_node(state: AgentState) -> AgentState:
 
     return {
         "reviews": [review.model_dump(mode="json") for review in result.reviews],
+        "llm_usages": llm_usages,
     }
 
 # 질문 점수화 및 품질 요약 노드 점수화 + 품질 판단 - scorer_node
@@ -655,7 +646,8 @@ async def scorer_node(state: AgentState) -> AgentState:
        router의 입력값 생성
     '''
     try:
-        result = await _call_structured_output(
+        result, llm_usages = await _call_structured_output(
+            node_name="scorer",
             system_prompt=prompts.SCORER_SYSTEM_PROMPT,
             user_prompt=prompts.SCORER_USER_PROMPT.format(
                 questions=_json(state.get("questions", [])),
@@ -669,6 +661,7 @@ async def scorer_node(state: AgentState) -> AgentState:
         node_warnings: list[dict[str, Any]] = []
     except Exception as exc:  # noqa: BLE001 - keep graph alive with conservative scores.
         logger.warning("Scorer node failed; using fallback scores: %s", exc)
+        llm_usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
         scores = [
             _fallback_score(_question_id(question, index)).model_dump(mode="json")
             for index, question in enumerate(state.get("questions", []))
@@ -711,6 +704,7 @@ async def scorer_node(state: AgentState) -> AgentState:
             "avg_score": round(avg_score, 2),
             "quality_issues": quality_issues,
         },
+        "llm_usages": llm_usages,
     }
     if node_warnings:
         update["node_warnings"] = node_warnings
@@ -792,9 +786,6 @@ async def final_formatter_node(state: AgentState) -> AgentState:
     - completed
     - partial_completed
     '''
-    payload = state.get("source_payload", {})
-    session = payload.get("session", {})
-    candidate = payload.get("candidate", {})
     selected_questions = state.get("selected_questions", [])
     answers = state.get("answers", [])
     follow_ups = state.get("follow_ups", [])
@@ -859,10 +850,10 @@ async def final_formatter_node(state: AgentState) -> AgentState:
     )
 
     response = QuestionGenerationResponse(
-        session_id=session.get("session_id"),
-        candidate_id=candidate.get("candidate_id"),
-        target_job=session.get("target_job"),
-        difficulty_level=session.get("difficulty_level"),
+        session_id=state.get("session_id"),
+        candidate_id=state.get("candidate_id"),
+        target_job=state.get("target_job"),
+        difficulty_level=state.get("difficulty_level"),
         status="partial_completed" if is_partial else "completed",
         analysis_summary=analysis,
         questions=items,

@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, Integer, Numeric, String
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -13,15 +13,29 @@ class LlmCallLog(Base, AuditBase):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     candidate_id: Mapped[int] = mapped_column(ForeignKey("candidate.id"), nullable=False)
-    document_id: Mapped[int] = mapped_column(ForeignKey("document.id"), nullable=False)
-    prompt_profile_id: Mapped[int] = mapped_column(ForeignKey("prompt_profile.id"), nullable=False)
+    document_id: Mapped[int | None] = mapped_column(ForeignKey("document.id"), nullable=True)
+    prompt_profile_id: Mapped[int | None] = mapped_column(
+        ForeignKey("prompt_profile.id"),
+        nullable=True,
+    )
     interview_sessions_id: Mapped[int] = mapped_column(
         ForeignKey("interview_sessions.id"),
         nullable=False,
     )
     model_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    node_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     response_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    estimated_cost: Mapped[Decimal] = mapped_column(
+        Numeric(12, 6),
+        nullable=False,
+        default=Decimal("0"),
+    )
+    currency: Mapped[str] = mapped_column(String(10), nullable=False, default="USD")
+    elapsed_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     cost_amount: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
-    call_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    call_status: Mapped[str] = mapped_column(String(30), nullable=False, default="success")
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     call_time: Mapped[int] = mapped_column(Integer, nullable=False)
