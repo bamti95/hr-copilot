@@ -33,6 +33,14 @@ class Settings:
     )
 
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+    OPENAI_TIMEOUT_SECONDS: float = float(os.getenv("OPENAI_TIMEOUT_SECONDS", 180))
+    QUESTION_GENERATION_JOB_TIMEOUT_SECONDS: float = float(
+        os.getenv("QUESTION_GENERATION_JOB_TIMEOUT_SECONDS", 900)
+    )
+    QUESTION_GENERATION_STALE_SECONDS: float = float(
+        os.getenv("QUESTION_GENERATION_STALE_SECONDS", 1800)
+    )
     UPLOAD_PATH: str = os.getenv("UPLOAD_PATH")
 
     @property

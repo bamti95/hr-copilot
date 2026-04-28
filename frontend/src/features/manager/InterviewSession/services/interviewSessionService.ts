@@ -5,6 +5,9 @@ import type {
   InterviewSessionCandidateOption,
   InterviewSessionCreateRequest,
   InterviewSessionDetailResponse,
+  InterviewQuestionGenerationStatus,
+  InterviewQuestionReviewStatus,
+  InterviewQuestionGenerationStatusResponse,
   InterviewQuestionGenerationTriggerRequest,
   InterviewSessionListRequest,
   InterviewSessionListResponse,
@@ -24,6 +27,53 @@ interface SessionApiResponse {
   created_by: number | null;
   deleted_at: string | null;
   deleted_by: number | null;
+  question_generation_status: InterviewQuestionGenerationStatus;
+  question_generation_error: string | null;
+  question_generation_requested_at: string | null;
+  question_generation_completed_at: string | null;
+}
+
+interface GeneratedQuestionApiResponse {
+  id: string;
+  category: string;
+  question_text: string;
+  generation_basis: string;
+  document_evidence: string[];
+  evaluation_guide: string;
+  predicted_answer: string;
+  predicted_answer_basis: string;
+  follow_up_question: string;
+  follow_up_basis: string;
+  risk_tags: string[];
+  competency_tags: string[];
+  review: {
+    question_id: string;
+    status: InterviewQuestionReviewStatus;
+    reason: string;
+    reject_reason: string;
+    recommended_revision: string;
+  };
+  score: number;
+  score_reason: string;
+}
+
+interface QuestionGenerationStatusApiResponse {
+  session_id: number;
+  status: InterviewQuestionGenerationStatus;
+  error: string | null;
+  requested_at: string | null;
+  completed_at: string | null;
+  progress?: Array<{
+    key: string;
+    label: string;
+    status: string;
+    started_at?: string | null;
+    completed_at?: string | null;
+    attempt?: number | null;
+    error?: string | null;
+  }>;
+  generation_source: Record<string, string>;
+  questions: GeneratedQuestionApiResponse[];
 }
 
 interface SessionPayloadMetaApiResponse {
@@ -104,6 +154,10 @@ function mapSession(response: SessionApiResponse): InterviewSessionResponse {
     createdBy: response.created_by,
     deletedAt: response.deleted_at,
     deletedBy: response.deleted_by,
+    questionGenerationStatus: response.question_generation_status,
+    questionGenerationError: response.question_generation_error,
+    questionGenerationRequestedAt: response.question_generation_requested_at,
+    questionGenerationCompletedAt: response.question_generation_completed_at,
   };
 }
 
@@ -253,7 +307,67 @@ export async function triggerInterviewQuestionGeneration(
 ): Promise<void> {
   await api.post(`/interview-sessions/${sessionId}/generate-questions`, {
     trigger_type: requestBody?.triggerType?.trim() || "MANUAL",
+  }, {
+    skipGlobalLoading: true,
   });
+}
+
+export async function fetchInterviewQuestionGenerationStatus(
+  sessionId: number,
+): Promise<InterviewQuestionGenerationStatusResponse> {
+  const response = await api.get<ApiEnvelope<QuestionGenerationStatusApiResponse>>(
+    `/interview-sessions/${sessionId}/question-generation`,
+    {
+      skipGlobalLoading: true,
+    },
+  );
+  const data = response.data.data;
+
+  return {
+    sessionId: data.session_id,
+    status: data.status,
+    error: data.error,
+    requestedAt: data.requested_at,
+    completedAt: data.completed_at,
+    progress: (data.progress ?? []).map((step) => ({
+      key: step.key,
+      label: step.label,
+      status:
+        step.status === "PROCESSING" ||
+        step.status === "COMPLETED" ||
+        step.status === "FAILED"
+          ? step.status
+          : "PENDING",
+      startedAt: step.started_at ?? null,
+      completedAt: step.completed_at ?? null,
+      attempt: step.attempt ?? 0,
+      error: step.error ?? null,
+    })),
+    generationSource: data.generation_source ?? {},
+    questions: data.questions.map((question) => ({
+      id: question.id,
+      category: question.category,
+      questionText: question.question_text,
+      generationBasis: question.generation_basis,
+      documentEvidence: question.document_evidence,
+      evaluationGuide: question.evaluation_guide,
+      predictedAnswer: question.predicted_answer,
+      predictedAnswerBasis: question.predicted_answer_basis,
+      followUpQuestion: question.follow_up_question,
+      followUpBasis: question.follow_up_basis,
+      riskTags: question.risk_tags,
+      competencyTags: question.competency_tags,
+      review: {
+        questionId: question.review.question_id,
+        status: question.review.status,
+        reason: question.review.reason,
+        rejectReason: question.review.reject_reason,
+        recommendedRevision: question.review.recommended_revision,
+      },
+      score: question.score,
+      scoreReason: question.score_reason,
+    })),
+  };
 }
 
 export async function fetchInterviewSessionCandidateOptions(): Promise<

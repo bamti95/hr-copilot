@@ -1,6 +1,11 @@
 import { CheckSquare, RefreshCcw, Square, UserRound, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getJobPositionLabel } from "../../common/candidateJobPosition";
+<<<<<<< HEAD
+import { InterviewSessionAssembledPayloadView } from "./InterviewSessionAssembledPayloadView";
+import { InterviewSessionQuestionGenerationView } from "./InterviewSessionQuestionGenerationView";
+=======
+>>>>>>> main
 import type { InterviewSessionDetailResponse } from "../types";
 
 interface InterviewSessionDetailModalProps {
@@ -410,6 +415,12 @@ export function InterviewSessionDetailModal({
               <SummaryPill label="문서 수" value={String(context.documentCount)} />
             </div>
 
+<<<<<<< HEAD
+            <InterviewSessionQuestionGenerationView sessionId={detail.id} compact />
+
+            <InterviewSessionAssembledPayloadView detail={detail} compact />
+          </div>
+=======
             <div className="border-b border-[var(--line)] px-7 py-5">
               <div className="mb-3 flex items-center gap-3">
                 <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
@@ -530,6 +541,7 @@ export function InterviewSessionDetailModal({
               </div>
             </div>
           </>
+>>>>>>> main
         ) : null}
       </div>
     </div>

@@ -1,4 +1,5 @@
 from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.audit_base import AuditBase
@@ -16,6 +17,17 @@ class InterviewQuestion(Base, AuditBase):
     category: Mapped[str] = mapped_column(String(50), nullable=False)
     question_text: Mapped[str] = mapped_column(Text, nullable=False)
     expected_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expected_answer_basis: Mapped[str | None] = mapped_column(Text, nullable=True)
     follow_up_question: Mapped[str | None] = mapped_column(Text, nullable=True)
+    follow_up_basis: Mapped[str | None] = mapped_column(Text, nullable=True)
     evaluation_guide: Mapped[str | None] = mapped_column(Text, nullable=True)
     question_rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    document_evidence: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    risk_tags: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    competency_tags: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    review_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    review_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    review_reject_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    review_recommended_revision: Mapped[str | None] = mapped_column(Text, nullable=True)
+    score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    score_reason: Mapped[str | None] = mapped_column(Text, nullable=True)

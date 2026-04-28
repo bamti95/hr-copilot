@@ -1,11 +1,14 @@
 import math
 from datetime import datetime, timezone
 
-from fastapi import Depends, HTTPException, status
+from fastapi import BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ai.interview_graph.schemas import InterviewQuestionItem, ReviewResult
+from core.config import settings
 from core.database import get_db
 from repositories.candidate_repository import CandidateRepository
+from repositories.interview_question_repository import InterviewQuestionRepository
 from repositories.prompt_profile_repository import PromptProfileRepository
 from repositories.session_repo import SessionRepository
 from schemas.session import (
@@ -13,13 +16,17 @@ from schemas.session import (
     SessionDeleteResponse,
     SessionDetailResponse,
     SessionGenerateQuestionsRequest,
+    SessionQuestionGenerationData,
     SessionListData,
     SessionPagination,
     SessionResponse,
     SessionTriggerData,
     SessionUpdateRequest,
 )
-from services.question_generation_service import QuestionGenerationService
+from services.question_generation_service import (
+    QuestionGenerationService,
+    run_question_generation_background_job,
+)
 from services.session_generation_payload_assembler import SessionGenerationPayloadAssembler
 
 
@@ -29,12 +36,14 @@ class SessionService:
         self.session_repo = SessionRepository(db)
         self.candidate_repo = CandidateRepository(db)
         self.prompt_profile_repo = PromptProfileRepository(db)
-        self.question_generation_service = QuestionGenerationService()
+        self.question_repo = InterviewQuestionRepository(db)
+        self.question_generation_service = QuestionGenerationService(db)
 
     async def create_session(
         self,
         request: SessionCreateRequest,
         actor_id: int | None,
+        background_tasks: BackgroundTasks,
     ) -> SessionResponse:
         candidate = await self.candidate_repo.find_by_id_not_deleted(request.candidate_id)
         if not candidate:
@@ -61,13 +70,13 @@ class SessionService:
                 created_by=actor_id,
             )
         )
+        await self.session_repo.mark_question_generation_queued(entity)
         await self.session_repo.flush()
         await self.db.commit()
-
-        assembler = SessionGenerationPayloadAssembler(self.db)
-        generation_payload = await assembler.build_candidate_interview_prep_input(entity.id)
-        await self.question_generation_service.request_candidate_interview_prep(
-            generation_payload
+        background_tasks.add_task(
+            run_question_generation_background_job,
+            entity.id,
+            actor_id,
         )
 
         detail = await self.session_repo.get_detail_with_candidate(entity.id)
@@ -179,6 +188,7 @@ class SessionService:
         session_id: int,
         request: SessionGenerateQuestionsRequest,
         actor_id: int | None,
+        background_tasks: BackgroundTasks,
     ) -> SessionTriggerData:
         entity = await self.session_repo.find_by_id_not_deleted(session_id)
         if not entity:
@@ -187,14 +197,100 @@ class SessionService:
                 detail="면접 세션을 찾을 수 없습니다.",
             )
 
-        # Placeholder trigger only. A later step can replace this with
-        # actual queueing / LangGraph orchestration while keeping the API stable.
-        _ = actor_id
+        await self.session_repo.mark_question_generation_queued(entity)
+        await self.db.commit()
+        background_tasks.add_task(
+            run_question_generation_background_job,
+            entity.id,
+            actor_id,
+        )
 
         return SessionTriggerData(
             session_id=entity.id,
             trigger_type=request.trigger_type.strip(),
+            question_generation_status=entity.question_generation_status,
         )
+
+    async def get_question_generation_status(
+        self,
+        session_id: int,
+    ) -> SessionQuestionGenerationData:
+        entity = await self.session_repo.find_by_id_not_deleted(session_id)
+        if not entity:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="면접 세션을 찾을 수 없습니다.",
+            )
+
+        if self._is_stale_question_generation(entity):
+            await self.session_repo.mark_question_generation_completed(
+                entity,
+                status="FAILED",
+                error=(
+                    "질문 생성 작업이 제한 시간 안에 완료되지 않아 실패로 처리했습니다. "
+                    "전체 재생성으로 다시 요청해 주세요."
+                ),
+            )
+            await self.db.commit()
+
+        questions = await self.question_repo.find_active_by_session_id(session_id)
+        return SessionQuestionGenerationData(
+            session_id=entity.id,
+            status=entity.question_generation_status,
+            error=entity.question_generation_error,
+            requested_at=entity.question_generation_requested_at,
+            completed_at=entity.question_generation_completed_at,
+            progress=entity.question_generation_progress or [],
+            generation_source={
+                "entrypoint": "services.question_generation_service.run_question_generation_background_job",
+                "service": "QuestionGenerationService.generate_and_store_for_session",
+                "graph_runner": "ai.interview_graph.runner.run_interview_question_graph",
+                "graph": "BuildState -> Analyzer -> Questioner -> Predictor -> Driller -> Reviewer -> Scorer -> Router -> Selector -> FinalFormatter",
+            },
+            questions=[
+                InterviewQuestionItem(
+                    id=str(question.id),
+                    category=question.category,
+                    question_text=question.question_text,
+                    generation_basis=question.question_rationale or "",
+                    document_evidence=question.document_evidence or [],
+                    evaluation_guide=question.evaluation_guide or "",
+                    predicted_answer=question.expected_answer or "",
+                    predicted_answer_basis=question.expected_answer_basis or "",
+                    follow_up_question=question.follow_up_question or "",
+                    follow_up_basis=question.follow_up_basis or "",
+                    risk_tags=question.risk_tags or [],
+                    competency_tags=question.competency_tags or [],
+                    review=ReviewResult(
+                        question_id=str(question.id),
+                        status=question.review_status
+                        if question.review_status
+                        in {"approved", "needs_revision", "rejected"}
+                        else "rejected",
+                        reason=question.review_reason or "",
+                        reject_reason=question.review_reject_reason or "",
+                        recommended_revision=question.review_recommended_revision or "",
+                    ),
+                    score=question.score or 0,
+                    score_reason=question.score_reason or "",
+                )
+                for question in questions
+            ],
+        )
+
+    @staticmethod
+    def _is_stale_question_generation(entity) -> bool:
+        if entity.question_generation_status not in {"QUEUED", "PROCESSING"}:
+            return False
+
+        started_at = entity.question_generation_requested_at or entity.created_at
+        if started_at is None:
+            return False
+        if started_at.tzinfo is None:
+            started_at = started_at.replace(tzinfo=timezone.utc)
+
+        elapsed = datetime.now(timezone.utc) - started_at
+        return elapsed.total_seconds() > settings.QUESTION_GENERATION_STALE_SECONDS
 
 
 def get_session_service(db: AsyncSession = Depends(get_db)) -> SessionService:

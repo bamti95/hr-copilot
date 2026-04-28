@@ -1,6 +1,22 @@
 import type { PagedListResponse } from "../../../../common/types/pagination";
 
 export type InterviewDifficultyLevel = "JUNIOR" | "INTERMEDIATE" | "SENIOR";
+export type InterviewQuestionGenerationStatus =
+  | "NOT_REQUESTED"
+  | "QUEUED"
+  | "PROCESSING"
+  | "COMPLETED"
+  | "PARTIAL_COMPLETED"
+  | "FAILED";
+export type InterviewQuestionReviewStatus =
+  | "approved"
+  | "needs_revision"
+  | "rejected";
+export type InterviewQuestionGenerationNodeStatus =
+  | "PENDING"
+  | "PROCESSING"
+  | "COMPLETED"
+  | "FAILED";
 
 export interface InterviewSessionListRequest {
   page: number;
@@ -39,6 +55,10 @@ export interface InterviewSessionResponse {
   createdBy: number | null;
   deletedAt: string | null;
   deletedBy: number | null;
+  questionGenerationStatus: InterviewQuestionGenerationStatus;
+  questionGenerationError: string | null;
+  questionGenerationRequestedAt: string | null;
+  questionGenerationCompletedAt: string | null;
 }
 
 export interface InterviewSessionPayloadMeta {
@@ -110,4 +130,51 @@ export interface InterviewQuestionGenerationTriggerRequest {
 
 export interface InterviewSessionDetailResponse extends InterviewSessionResponse {
   assembledPayloadPreview: InterviewSessionPayloadPreview;
+}
+
+export interface InterviewGeneratedQuestionReview {
+  questionId: string;
+  status: InterviewQuestionReviewStatus;
+  reason: string;
+  rejectReason: string;
+  recommendedRevision: string;
+}
+
+export interface InterviewGeneratedQuestion {
+  id: string;
+  category: string;
+  questionText: string;
+  generationBasis: string;
+  documentEvidence: string[];
+  evaluationGuide: string;
+  predictedAnswer: string;
+  predictedAnswerBasis: string;
+  followUpQuestion: string;
+  followUpBasis: string;
+  riskTags: string[];
+  competencyTags: string[];
+  review: InterviewGeneratedQuestionReview;
+  score: number;
+  scoreReason: string;
+}
+
+export interface InterviewQuestionGenerationStatusResponse {
+  sessionId: number;
+  status: InterviewQuestionGenerationStatus;
+  error: string | null;
+  requestedAt: string | null;
+  completedAt: string | null;
+  progress: InterviewQuestionGenerationProgressStep[];
+  generationSource: Record<string, string>;
+  questions: InterviewGeneratedQuestion[];
+}
+
+export interface InterviewQuestionGenerationProgressStep {
+  key: string;
+  label: string;
+  status: InterviewQuestionGenerationNodeStatus;
+  startedAt: string | null;
+  completedAt: string | null;
+  attempt: number;
+  error?: string | null;
 }

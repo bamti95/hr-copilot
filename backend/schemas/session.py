@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 from schemas.session_generation import CandidateInterviewPrepInput
+from ai.interview_graph.schemas import InterviewQuestionItem
 
 
 class SessionSchemaBase(BaseModel):
@@ -37,6 +38,11 @@ class SessionResponse(SessionSchemaBase):
     created_by: int | None = None
     deleted_at: datetime | None = None
     deleted_by: int | None = None
+    question_generation_status: str = "NOT_REQUESTED"
+    question_generation_error: str | None = None
+    question_generation_requested_at: datetime | None = None
+    question_generation_completed_at: datetime | None = None
+    question_generation_progress: list[dict] | None = None
 
 
 class SessionDeleteResponse(SessionSchemaBase):
@@ -94,9 +100,27 @@ class SessionGenerateQuestionsRequest(BaseModel):
 class SessionTriggerData(BaseModel):
     session_id: int
     trigger_type: str
+    question_generation_status: str = "QUEUED"
 
 
 class SessionTriggerResponse(BaseModel):
     success: bool = True
     data: SessionTriggerData
+    message: str
+
+
+class SessionQuestionGenerationData(BaseModel):
+    session_id: int
+    status: str
+    error: str | None = None
+    requested_at: datetime | None = None
+    completed_at: datetime | None = None
+    progress: list[dict] = Field(default_factory=list)
+    generation_source: dict[str, str] = Field(default_factory=dict)
+    questions: list[InterviewQuestionItem] = Field(default_factory=list)
+
+
+class SessionQuestionGenerationResponse(BaseModel):
+    success: bool = True
+    data: SessionQuestionGenerationData
     message: str
