@@ -51,7 +51,7 @@ load_dotenv(BASE_DIR / ".env")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 MODEL = os.getenv("FAKE_APPLICANT_MODEL", "gpt-4.1")
-OUTPUT_DIR = BASE_DIR / "sample_data" / "fake_applicants"
+OUTPUT_DIR = BASE_DIR / "sample_data" / "fake_applicants" / "2차_지원자_문서"
 DELAY_SECONDS = 0.7
 HTTP_TIMEOUT_SECONDS = float(os.getenv("FAKE_APPLICANT_TIMEOUT_SECONDS", "180"))
 REQUEST_RETRY_COUNT = int(os.getenv("FAKE_APPLICANT_RETRY_COUNT", "3"))

@@ -8,6 +8,8 @@ from dependencies.auth import get_current_active_manager
 from models.candidate import ApplyStatus
 from models.manager import Manager
 from schemas.candidate import (
+    CandidateBulkImportRequest,
+    CandidateBulkImportResponse,
     CandidateCreateRequest,
     CandidateDetailResponse,
     CandidateDocumentDetailResponse,
@@ -17,6 +19,7 @@ from schemas.candidate import (
     CandidateDocumentUploadResponse,
     CandidateListResponse,
     CandidateResponse,
+    CandidateSampleFolderListResponse,
     CandidateStatisticsResponse,
     CandidateStatusPatchRequest,
     CandidateStatusPatchResponse,
@@ -53,6 +56,30 @@ async def get_candidate_statistics(
     db: AsyncSession = Depends(get_db),
 ) -> CandidateStatisticsResponse:
     return await CandidateService.get_statistics(db=db)
+
+
+@router.get("/sample-folders", response_model=CandidateSampleFolderListResponse)
+async def list_candidate_sample_folders(
+    _: Manager = Depends(get_current_active_manager),
+) -> CandidateSampleFolderListResponse:
+    return await CandidateService.list_sample_folders()
+
+
+@router.post(
+    "/bulk-import",
+    response_model=CandidateBulkImportResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def bulk_import_candidates(
+    request_body: CandidateBulkImportRequest,
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> CandidateBulkImportResponse:
+    return await CandidateService.bulk_import_candidates(
+        db=db,
+        request=request_body,
+        actor_id=current_manager.id,
+    )
 
 
 @router.get("/{candidate_id}", response_model=CandidateDetailResponse)

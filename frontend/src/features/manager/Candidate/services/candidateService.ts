@@ -8,9 +8,12 @@ import type {
   CandidateDocumentReplaceRequest,
   CandidateDocumentUploadRequest,
   CandidateDocumentUploadResponse,
+  CandidateBulkImportRequest,
+  CandidateBulkImportResponse,
   CandidateListRequest,
   CandidateListResponse,
   CandidateResponse,
+  CandidateSampleFolder,
   CandidateStatisticsResponse,
   CandidateStatusPatchRequest,
   CandidateUpdateRequest,
@@ -78,6 +81,29 @@ interface CandidateDocumentUploadApiResponse {
   candidate_id: number;
   count: number;
   documents: CandidateDocumentApiResponse[];
+}
+
+interface CandidateSampleFolderApiResponse {
+  folder_name: string;
+  candidate_count: number;
+}
+
+interface CandidateSampleFolderListApiResponse {
+  folders: CandidateSampleFolderApiResponse[];
+}
+
+interface CandidateBulkImportErrorApiResponse {
+  candidate_key: string;
+  reason: string;
+}
+
+interface CandidateBulkImportApiResponse {
+  folder_name: string;
+  requested_count: number;
+  created_count: number;
+  skipped_count: number;
+  document_count: number;
+  errors: CandidateBulkImportErrorApiResponse[];
 }
 
 function mapCandidate(response: CandidateApiResponse): CandidateResponse {
@@ -156,6 +182,15 @@ function mapCandidateStatistics(response: CandidateStatisticsApiResponse): Candi
   };
 }
 
+function mapCandidateSampleFolder(
+  response: CandidateSampleFolderApiResponse,
+): CandidateSampleFolder {
+  return {
+    folderName: response.folder_name,
+    candidateCount: response.candidate_count,
+  };
+}
+
 export async function fetchCandidateStatistics(
   options?: CandidateRequestOptions,
 ): Promise<CandidateStatisticsResponse> {
@@ -212,6 +247,36 @@ export async function createCandidate(
     toCandidatePayload(requestBody),
   );
   return mapCandidate(response.data);
+}
+
+export async function fetchCandidateSampleFolders(): Promise<CandidateSampleFolder[]> {
+  const response = await api.get<CandidateSampleFolderListApiResponse>(
+    "/candidates/sample-folders",
+  );
+  return response.data.folders.map(mapCandidateSampleFolder);
+}
+
+export async function bulkImportCandidates(
+  requestBody: CandidateBulkImportRequest,
+): Promise<CandidateBulkImportResponse> {
+  const response = await api.post<CandidateBulkImportApiResponse>(
+    "/candidates/bulk-import",
+    {
+      folder_name: requestBody.folderName,
+    },
+  );
+
+  return {
+    folderName: response.data.folder_name,
+    requestedCount: response.data.requested_count,
+    createdCount: response.data.created_count,
+    skippedCount: response.data.skipped_count,
+    documentCount: response.data.document_count,
+    errors: response.data.errors.map((error) => ({
+      candidateKey: error.candidate_key,
+      reason: error.reason,
+    })),
+  };
 }
 
 export async function updateCandidate(

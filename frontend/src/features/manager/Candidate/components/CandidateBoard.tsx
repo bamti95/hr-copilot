@@ -25,6 +25,7 @@ interface CandidateBoardProps {
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   onCreate: () => void;
+  onOpenBulkImport: () => void;
   onView: (candidateId: number) => void;
   onDelete: (row: CandidateResponse) => void;
   onToggleSelect: (candidateId: number) => void;
@@ -62,6 +63,7 @@ export function CandidateBoard({
   onPageChange,
   onPageSizeChange,
   onCreate,
+  onOpenBulkImport,
   onView,
   onDelete,
   onToggleSelect,
@@ -89,12 +91,12 @@ export function CandidateBoard({
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-[var(--text)]">지원자 관리</h2>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          직무와 지원 상태로 지원자를 필터링하고, 선택한 지원자 기준으로 분석 세션을
-          생성할 수 있습니다.
+          지원자를 직무와 상태 기준으로 조회하고, 선택한 지원자를 기반으로 분석 세션까지
+          준비할 수 있습니다.
         </p>
       </div>
 
-      <div className="mb-4 grid gap-3 rounded-[24px] border border-white/70 bg-[var(--panel-strong)] p-4 xl:grid-cols-[minmax(0,1fr)_160px_160px_150px_100px_auto_auto] xl:items-end">
+      <div className="mb-4 grid gap-3 rounded-[24px] border border-white/70 bg-[var(--panel-strong)] p-4 xl:grid-cols-[minmax(0,1fr)_160px_160px_150px_100px_auto_auto_auto] xl:items-end">
         <label className="text-sm font-medium text-[var(--text)]">
           검색어
           <input
@@ -178,14 +180,22 @@ export function CandidateBoard({
 
         <button
           type="button"
+          className={`${buttonClassName} border-emerald-300 bg-emerald-50 px-4 text-emerald-800 hover:bg-emerald-100`}
+          onClick={onOpenBulkImport}
+        >
+          단체 지원자 등록
+        </button>
+
+        <button
+          type="button"
           className={`${buttonClassName} border-violet-300 bg-violet-50 px-3 text-violet-900 hover:bg-violet-100`}
           onClick={onOpenAnalysisSessionCreateModal}
           disabled={!canCreateAnalysisSession}
           title={
             !jobSelected
-              ? "직무를 먼저 선택하세요."
+              ? "직무를 먼저 선택해 주세요."
               : selectedIds.length === 0
-                ? "지원자를 한 명 이상 선택하세요."
+                ? "지원자를 한 명 이상 선택해 주세요."
                 : undefined
           }
         >
@@ -197,7 +207,7 @@ export function CandidateBoard({
         <span>
           총 {data.paging.totalCount}건 / {Math.max(data.paging.totalPages, 1)} 페이지
         </span>
-        <span>선택된 지원자 {selectedIds.length}명</span>
+        <span>선택한 지원자 {selectedIds.length}명</span>
       </div>
 
       <div className="overflow-x-auto rounded-[24px] border border-white/70">

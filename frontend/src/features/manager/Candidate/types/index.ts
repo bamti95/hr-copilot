@@ -175,3 +175,26 @@ export interface CandidateDocumentReplaceRequest {
   documentType: CandidateDocumentType;
   file: File;
 }
+
+export interface CandidateSampleFolder {
+  folderName: string;
+  candidateCount: number;
+}
+
+export interface CandidateBulkImportRequest {
+  folderName: string;
+}
+
+export interface CandidateBulkImportError {
+  candidateKey: string;
+  reason: string;
+}
+
+export interface CandidateBulkImportResponse {
+  folderName: string;
+  requestedCount: number;
+  createdCount: number;
+  skippedCount: number;
+  documentCount: number;
+  errors: CandidateBulkImportError[];
+}
