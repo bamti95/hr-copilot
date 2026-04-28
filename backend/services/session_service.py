@@ -203,6 +203,7 @@ class SessionService:
             run_question_generation_background_job,
             entity.id,
             actor_id,
+            request.target_question_ids,
         )
 
         return SessionTriggerData(

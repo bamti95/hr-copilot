@@ -386,6 +386,13 @@ async def questioner_node(state: AgentState) -> AgentState:
     retry_feedback이 있으면 이전 질문/평가 결과를 참고해 다시 생성한다.
     '''
     existing_questions = state.get("questions", [])
+    target_question_ids = state.get("target_question_ids", [])
+    human_action = state.get("human_action")
+    question_count_instruction = "- 질문은 정확히 8개 생성하세요."
+    if human_action == "regenerate_question" and target_question_ids:
+        question_count_instruction = (
+            f"- 재생성 대상 질문 ID 개수에 맞춰 질문은 정확히 {len(target_question_ids)}개 생성하세요."
+        )
     profile_prompt = (state.get("prompt_profile") or {}).get("system_prompt")
     system_prompt = prompts.QUESTIONER_SYSTEM_PROMPT
     if profile_prompt:
@@ -395,11 +402,12 @@ async def questioner_node(state: AgentState) -> AgentState:
         node_name="questioner",
         system_prompt=system_prompt,
         user_prompt=prompts.QUESTIONER_USER_PROMPT.format(
+            question_count_instruction=question_count_instruction,
             target_job=state.get("target_job"),
             difficulty_level=state.get("difficulty_level"),
-            human_action=None,
+            human_action=human_action,
             additional_instruction=state.get("additional_instruction"),
-            regen_question_ids=[],
+            regen_question_ids=target_question_ids,
             candidate_text=state.get("candidate_context", ""),
             document_analysis=_json(state.get("document_analysis", {})),
             existing_questions=_json(

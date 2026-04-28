@@ -126,6 +126,7 @@ export type InterviewSessionListResponse =
 
 export interface InterviewQuestionGenerationTriggerRequest {
   triggerType?: string;
+  targetQuestionIds?: string[];
 }
 
 export interface InterviewSessionDetailResponse extends InterviewSessionResponse {

@@ -305,8 +305,11 @@ export async function triggerInterviewQuestionGeneration(
   sessionId: number,
   requestBody?: InterviewQuestionGenerationTriggerRequest,
 ): Promise<void> {
+  const targetQuestionIds = requestBody?.targetQuestionIds ?? [];
+
   await api.post(`/interview-sessions/${sessionId}/generate-questions`, {
     trigger_type: requestBody?.triggerType?.trim() || "MANUAL",
+    target_question_ids: targetQuestionIds,
   }, {
     skipGlobalLoading: true,
   });

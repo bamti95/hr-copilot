@@ -63,6 +63,10 @@ class CandidateInterviewPrepInput(BaseModel):
     candidate: CandidatePayload
     prompt_profile: PromptProfilePayload | None = None
     candidate_documents: list[CandidateDocumentPayload] = Field(default_factory=list)
+    additional_instruction: str | None = None
+    human_action: str | None = None
+    target_question_ids: list[str] = Field(default_factory=list)
+    existing_questions: list[dict[str, Any]] = Field(default_factory=list)
 
 
 def _truncate_text(value: str | None, max_length: int = 500) -> str | None:

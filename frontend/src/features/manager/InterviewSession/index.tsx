@@ -32,7 +32,6 @@ export default function InterviewSessionPage() {
     handleCloseDetailModal,
     handleEdit,
     handleDelete,
-    handleTriggerQuestionGeneration,
     handleCloseForm,
     handleSave,
     updateField,
@@ -99,12 +98,8 @@ export default function InterviewSessionPage() {
         isLoading={detailModalLoading}
         isSaving={isSaving}
         onClose={handleCloseDetailModal}
-        onEdit={(sessionId) => void handleEdit(sessionId)}
         onDelete={(sessionId, candidateName) =>
           void handleDelete(sessionId, candidateName)
-        }
-        onTriggerQuestionGeneration={(sessionId) =>
-          void handleTriggerQuestionGeneration(sessionId)
         }
       />
     </div>

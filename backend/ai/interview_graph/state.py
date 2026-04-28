@@ -38,6 +38,8 @@ class InputState(TypedDict, total=False):
     prompt_profile: PromptProfileRef
     documents: list[DocumentRef]
     additional_instruction: str | None
+    human_action: str | None
+    target_question_ids: list[str]
 
 
 class WorkflowState(TypedDict, total=False):

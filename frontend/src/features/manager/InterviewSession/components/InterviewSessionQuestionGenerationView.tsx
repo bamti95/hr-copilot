@@ -3,10 +3,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronDown,
-  FileSearch,
   LoaderCircle,
   RefreshCw,
-  RotateCcw,
   Sparkles,
 } from "lucide-react";
 import { getErrorMessage } from "../../../../utils/getErrorMessage";
@@ -25,6 +23,11 @@ import type {
 interface InterviewSessionQuestionGenerationViewProps {
   sessionId: number;
   compact?: boolean;
+  selectable?: boolean;
+  selectedQuestionIds?: string[];
+  refreshKey?: number;
+  onBusyChange?: (isBusy: boolean) => void;
+  onSelectedQuestionIdsChange?: (questionIds: string[]) => void;
 }
 
 const RUNNING_STATUSES = new Set<InterviewQuestionGenerationStatus>([
@@ -154,12 +157,46 @@ function truncateText(value: string, maxLength = 320) {
   return `${text.slice(0, maxLength - 1).trim()}…`;
 }
 
-function QuestionCard({ question, index }: { question: InterviewGeneratedQuestion; index: number }) {
+interface QuestionCardProps {
+  question: InterviewGeneratedQuestion;
+  index: number;
+  selectable?: boolean;
+  isSelected?: boolean;
+  selectionDisabled?: boolean;
+  onToggleSelection?: (questionId: string) => void;
+}
+
+function QuestionCard({
+  question,
+  index,
+  selectable = false,
+  isSelected = false,
+  selectionDisabled = false,
+  onToggleSelection,
+}: QuestionCardProps) {
+  const checkboxId = `question-select-${question.id}`;
+
   return (
- 
     <article className="min-w-0 rounded-2xl border border-[var(--line)] bg-white/85 p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
+          {selectable ? (
+            <label
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 transition hover:border-slate-400"
+              htmlFor={checkboxId}
+              title="재생성할 질문 선택"
+            >
+              <input
+                id={checkboxId}
+                type="checkbox"
+                className="h-4 w-4 accent-[var(--primary)]"
+                checked={isSelected}
+                disabled={selectionDisabled}
+                onChange={() => onToggleSelection?.(question.id)}
+                aria-label={`Q${index + 1} 재생성 대상 선택`}
+              />
+            </label>
+          ) : null}
           <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
             Q{index + 1}
           </span>
@@ -256,35 +293,6 @@ function QuestionCard({ question, index }: { question: InterviewGeneratedQuestio
         </div>
       </details>
 
-      <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--line)] pt-4">
-        <button
-          type="button"
-          className="inline-flex h-9 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] px-3 text-xs font-bold text-[var(--text)] opacity-60"
-          disabled
-          title="후처리 API 연결 후 활성화됩니다."
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-          질문 재생성
-        </button>
-        <button
-          type="button"
-          className="inline-flex h-9 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] px-3 text-xs font-bold text-[var(--text)] opacity-60"
-          disabled
-          title="후처리 API 연결 후 활성화됩니다."
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          꼬리질문 재생성
-        </button>
-        <button
-          type="button"
-          className="inline-flex h-9 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] px-3 text-xs font-bold text-[var(--text)] opacity-60"
-          disabled
-          title="후처리 API 연결 후 활성화됩니다."
-        >
-          <FileSearch className="h-3.5 w-3.5" />
-          근거 보강
-        </button>
-      </div>
     </article>
   );
 }
@@ -292,6 +300,11 @@ function QuestionCard({ question, index }: { question: InterviewGeneratedQuestio
 export function InterviewSessionQuestionGenerationView({
   sessionId,
   compact = false,
+  selectable = false,
+  selectedQuestionIds = [],
+  refreshKey = 0,
+  onBusyChange,
+  onSelectedQuestionIdsChange,
 }: InterviewSessionQuestionGenerationViewProps) {
   const [data, setData] = useState<InterviewQuestionGenerationStatusResponse | null>(
     null,
@@ -341,7 +354,7 @@ export function InterviewSessionQuestionGenerationView({
 
   useEffect(() => {
     void loadStatus();
-  }, [loadStatus]);
+  }, [loadStatus, refreshKey]);
 
   useEffect(() => {
     if (!isRunning) {
@@ -358,6 +371,7 @@ export function InterviewSessionQuestionGenerationView({
       setIsTriggering(true);
       setErrorMessage("");
       await triggerInterviewQuestionGeneration(sessionId, { triggerType: "MANUAL" });
+      onSelectedQuestionIdsChange?.([]);
       await loadStatus({ quiet: true });
     } catch (error) {
       setErrorMessage(
@@ -366,6 +380,22 @@ export function InterviewSessionQuestionGenerationView({
     } finally {
       setIsTriggering(false);
     }
+  };
+
+  useEffect(() => {
+    onBusyChange?.(isLoading || isRefreshing || isTriggering || isRunning);
+  }, [isLoading, isRefreshing, isTriggering, isRunning, onBusyChange]);
+
+  const handleToggleQuestionSelection = (questionId: string) => {
+    if (!onSelectedQuestionIdsChange) {
+      return;
+    }
+
+    onSelectedQuestionIdsChange(
+      selectedQuestionIds.includes(questionId)
+        ? selectedQuestionIds.filter((id) => id !== questionId)
+        : [...selectedQuestionIds, questionId],
+    );
   };
 
   const statusSummary = useMemo(() => {
@@ -660,7 +690,15 @@ export function InterviewSessionQuestionGenerationView({
       {!isLoading && data && data.questions.length > 0 ? (
         <div className={`mt-6 grid gap-4 ${compact ? "" : "xl:grid-cols-2"}`}>
           {data.questions.map((question, index) => (
-            <QuestionCard key={question.id} question={question} index={index} />
+            <QuestionCard
+              key={question.id}
+              question={question}
+              index={index}
+              selectable={selectable}
+              isSelected={selectedQuestionIds.includes(question.id)}
+              selectionDisabled={isRunning || isTriggering}
+              onToggleSelection={handleToggleQuestionSelection}
+            />
           ))}
         </div>
       ) : null}
@@ -668,7 +706,7 @@ export function InterviewSessionQuestionGenerationView({
       {!compact ? (
         <div className="mt-5 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
-          질문별 재생성, 꼬리질문 재생성, 근거 보강 버튼은 후처리 API가 연결되면 활성화됩니다.
+          질문을 체크한 뒤 하단의 질문 재생성 버튼으로 선택 항목을 다시 생성할 수 있습니다.
         </div>
       ) : null}
     </section>

@@ -175,6 +175,9 @@ async def run_interview_question_graph(
                 for document in payload.candidate_documents
             ],
             "additional_instruction": getattr(payload, "additional_instruction", None),
+            "human_action": getattr(payload, "human_action", None),
+            "target_question_ids": getattr(payload, "target_question_ids", []),
+            "questions": getattr(payload, "existing_questions", []),
             "retry_count": 0,
             "max_retry_count": 3,
             "node_warnings": [],
