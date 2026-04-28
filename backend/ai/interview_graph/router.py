@@ -5,7 +5,7 @@ FOLLOW_UP_WEAK_FLAGS = {
     "꼬리질문_약함",
     "꼬리질문_연결성_부족",
     "꼬리질문_보강_필요",
-}
+} 
 QUESTION_REWRITE_FLAGS = {
     "QUESTION_REWRITE_NEEDED",
     "REVIEW_NOT_APPROVED",
@@ -21,7 +21,6 @@ QUESTION_REWRITE_FLAGS = {
     "보완_필요",
     "재작성_권장",
 }
-
 
 def route_after_scoring(state: AgentState) -> str:
     retry_count = state.get("retry_count", 0)
