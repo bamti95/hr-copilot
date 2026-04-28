@@ -25,9 +25,11 @@ LINEAR_NEXT_PROGRESS_STEP = {
     "build_state": ["analyzer"],
     "analyzer": ["questioner"],
     "questioner": ["selector_lite"],
-    "selector_lite": ["predictor", "driller", "reviewer"],
-    "predictor": ["scorer"],
-    "driller": ["scorer"],
+    # The compiled LangGraph executes these nodes sequentially:
+    # selector_lite -> predictor -> driller -> reviewer -> scorer
+    "selector_lite": ["predictor"],
+    "predictor": ["driller"],
+    "driller": ["reviewer"],
     "reviewer": ["scorer"],
     "scorer": ["selector"],
     "selector": ["final_formatter"],
@@ -183,7 +185,10 @@ class SessionRepository(BaseRepository[InterviewSession]):
             progress = list(session.question_generation_progress or [])
             now = _now_iso()
             for step in progress:
-                if step.get("status") == "PROCESSING":
+                # If the overall job is completed, normalize all steps to completed.
+                # This helps reconcile sessions where the job finished but progress updates were lost.
+                if step.get("status") != "FAILED":
+                    step["started_at"] = step.get("started_at") or now
                     step["status"] = "COMPLETED"
                     step["completed_at"] = step.get("completed_at") or now
             session.question_generation_progress = progress

@@ -223,7 +223,32 @@ class SessionService:
                 detail="면접 세션을 찾을 수 없습니다.",
             )
 
-        if self._is_stale_question_generation(entity):
+        questions = await self.question_repo.find_active_by_session_id(session_id)
+
+        # Reconcile inconsistent state:
+        # - Sometimes questions are already stored, but session status/progress remains QUEUED/PROCESSING.
+        if entity.question_generation_status in {"QUEUED", "PROCESSING"} and questions:
+            inferred_status = self._infer_question_generation_final_status(questions)
+            await self.session_repo.mark_question_generation_completed(
+                entity,
+                status=inferred_status,
+                error=entity.question_generation_error,
+            )
+            await self.db.commit()
+
+        # Even when status is already terminal, progress can be left in PROCESSING due to partial DB updates.
+        if entity.question_generation_status in {"COMPLETED", "PARTIAL_COMPLETED"}:
+            progress = entity.question_generation_progress or []
+            if any(step.get("status") == "PROCESSING" for step in progress):
+                await self.session_repo.mark_question_generation_completed(
+                    entity,
+                    status=entity.question_generation_status,
+                    error=entity.question_generation_error,
+                )
+                await self.db.commit()
+
+        # Stale protection should not override a successful run that already produced questions.
+        if not questions and self._is_stale_question_generation(entity):
             await self.session_repo.mark_question_generation_completed(
                 entity,
                 status="FAILED",
@@ -233,8 +258,6 @@ class SessionService:
                 ),
             )
             await self.db.commit()
-
-        questions = await self.question_repo.find_active_by_session_id(session_id)
         return SessionQuestionGenerationData(
             session_id=entity.id,
             status=entity.question_generation_status,
@@ -278,6 +301,41 @@ class SessionService:
                 for question in questions
             ],
         )
+
+    @staticmethod
+    def _infer_question_generation_final_status(questions) -> str:
+        """
+        Best-effort inference when DB state is inconsistent.
+        - COMPLETED: enough questions exist and most core fields are present.
+        - PARTIAL_COMPLETED: questions exist but look incomplete.
+        """
+        if not questions:
+            return "FAILED"
+
+        # Typical pipeline selects 5 questions; treat <5 as partial.
+        if len(questions) < 5:
+            return "PARTIAL_COMPLETED"
+
+        def _is_present(value) -> bool:
+            if value is None:
+                return False
+            if isinstance(value, str):
+                return bool(value.strip())
+            return True
+
+        completed_like = 0
+        for q in questions[:5]:
+            core_fields = [
+                q.question_text,
+                q.expected_answer,
+                q.follow_up_question,
+                q.review_status,
+                q.score,
+            ]
+            if sum(1 for v in core_fields if _is_present(v)) >= 4:
+                completed_like += 1
+
+        return "COMPLETED" if completed_like >= 4 else "PARTIAL_COMPLETED"
 
     @staticmethod
     def _is_stale_question_generation(entity) -> bool:
