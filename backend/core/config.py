@@ -41,6 +41,16 @@ class Settings:
     QUESTION_GENERATION_STALE_SECONDS: float = float(
         os.getenv("QUESTION_GENERATION_STALE_SECONDS", 1800)
     )
+    CELERY_BROKER_URL: str = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+    CELERY_RESULT_BACKEND: str = os.getenv(
+        "CELERY_RESULT_BACKEND",
+        "redis://localhost:6379/1",
+    )
+    CELERY_TASK_DEFAULT_QUEUE: str = os.getenv(
+        "CELERY_TASK_DEFAULT_QUEUE",
+        "question-generation",
+    )
+    CELERY_WORKER_CONCURRENCY: int = int(os.getenv("CELERY_WORKER_CONCURRENCY", 5))
     UPLOAD_PATH: str = os.getenv("UPLOAD_PATH")
 
     @property

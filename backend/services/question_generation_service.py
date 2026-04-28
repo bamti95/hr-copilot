@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ai.interview_graph.runner import run_interview_question_graph
 from ai.interview_graph.schemas import QuestionGenerationResponse, ReviewResult
 from core.config import settings
-from core.database import AsyncSessionLocal
 from models.interview_question import InterviewQuestion
 from repositories.interview_question_repository import InterviewQuestionRepository
 from repositories.session_repo import SessionRepository
@@ -60,6 +59,7 @@ class QuestionGenerationService:
         self,
         session_id: int,
         actor_id: int | None,
+        mark_failed_on_error: bool = True,
     ) -> QuestionGenerationResponse:
         if self.db is None or self.question_repo is None or self.session_repo is None:
             raise RuntimeError("QuestionGenerationService requires a database session.")
@@ -111,19 +111,42 @@ class QuestionGenerationService:
             return result
         except Exception as exc:
             await self.db.rollback()
-            session = await self.session_repo.find_by_id_not_deleted(session_id)
-            if session is not None:
-                await self.session_repo.mark_question_generation_completed(
-                    session,
-                    status="FAILED",
-                    error=str(exc),
+            if mark_failed_on_error:
+                await self.mark_generation_failed(
+                    session_id=session_id,
+                    actor_id=actor_id,
+                    reason=str(exc),
                 )
-                await self.db.commit()
             logger.exception(
-                "Question generation background job failed session_id=%s",
+                "Question generation job failed session_id=%s",
                 session_id,
             )
             raise
+
+    async def mark_generation_failed(
+        self,
+        session_id: int,
+        actor_id: int | None,
+        reason: str,
+    ) -> None:
+        if self.db is None or self.session_repo is None:
+            raise RuntimeError("QuestionGenerationService requires a database session.")
+
+        session = await self.session_repo.find_by_id_not_deleted(session_id)
+        if session is None:
+            logger.warning(
+                "Cannot mark question generation failed; session not found. session_id=%s actor_id=%s",
+                session_id,
+                actor_id,
+            )
+            return
+
+        await self.session_repo.mark_question_generation_completed(
+            session,
+            status="FAILED",
+            error=reason,
+        )
+        await self.db.commit()
 
     async def _replace_stored_questions(
         self,
@@ -163,15 +186,3 @@ class QuestionGenerationService:
                     created_by=actor_id,
                 )
             )
-
-
-async def run_question_generation_background_job(
-    session_id: int,
-    actor_id: int | None,
-) -> None:
-    async with AsyncSessionLocal() as db:
-        service = QuestionGenerationService(db)
-        await service.generate_and_store_for_session(
-            session_id=session_id,
-            actor_id=actor_id,
-        )

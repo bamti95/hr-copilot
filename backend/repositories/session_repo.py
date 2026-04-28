@@ -25,16 +25,15 @@ LINEAR_NEXT_PROGRESS_STEP = {
     "build_state": ["analyzer"],
     "analyzer": ["questioner"],
     "questioner": ["selector_lite"],
-    "selector_lite": ["predictor", "driller", "reviewer"],
-    "predictor": ["scorer"],
-    "driller": ["scorer"],
+    "selector_lite": ["predictor"],
+    "predictor": ["driller"],
+    "driller": ["reviewer"],
     "reviewer": ["scorer"],
     "scorer": ["selector"],
     "selector": ["final_formatter"],
 }
 
 PROGRESS_STEP_PREREQUISITES = {
-    "scorer": {"predictor", "driller", "reviewer"},
     "selector": {"scorer"},
     "final_formatter": {"selector"},
 }

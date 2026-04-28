@@ -1,7 +1,7 @@
 import math
 from datetime import datetime, timezone
 
-from fastapi import BackgroundTasks, Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai.interview_graph.schemas import InterviewQuestionItem, ReviewResult
@@ -23,11 +23,9 @@ from schemas.session import (
     SessionTriggerData,
     SessionUpdateRequest,
 )
-from services.question_generation_service import (
-    QuestionGenerationService,
-    run_question_generation_background_job,
-)
+from services.question_generation_service import QuestionGenerationService
 from services.session_generation_payload_assembler import SessionGenerationPayloadAssembler
+from tasks.question_generation_tasks import generate_questions_for_session_task
 
 
 class SessionService:
@@ -43,7 +41,6 @@ class SessionService:
         self,
         request: SessionCreateRequest,
         actor_id: int | None,
-        background_tasks: BackgroundTasks,
     ) -> SessionResponse:
         candidate = await self.candidate_repo.find_by_id_not_deleted(request.candidate_id)
         if not candidate:
@@ -73,10 +70,10 @@ class SessionService:
         await self.session_repo.mark_question_generation_queued(entity)
         await self.session_repo.flush()
         await self.db.commit()
-        background_tasks.add_task(
-            run_question_generation_background_job,
-            entity.id,
-            actor_id,
+
+        await self._enqueue_question_generation_task(
+            session_id=entity.id,
+            actor_id=actor_id,
         )
 
         detail = await self.session_repo.get_detail_with_candidate(entity.id)
@@ -188,7 +185,6 @@ class SessionService:
         session_id: int,
         request: SessionGenerateQuestionsRequest,
         actor_id: int | None,
-        background_tasks: BackgroundTasks,
     ) -> SessionTriggerData:
         entity = await self.session_repo.find_by_id_not_deleted(session_id)
         if not entity:
@@ -197,12 +193,18 @@ class SessionService:
                 detail="면접 세션을 찾을 수 없습니다.",
             )
 
+        if entity.question_generation_status in {"QUEUED", "PROCESSING"}:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Question generation is already queued or processing.",
+            )
+
         await self.session_repo.mark_question_generation_queued(entity)
         await self.db.commit()
-        background_tasks.add_task(
-            run_question_generation_background_job,
-            entity.id,
-            actor_id,
+
+        await self._enqueue_question_generation_task(
+            session_id=entity.id,
+            actor_id=actor_id,
         )
 
         return SessionTriggerData(
@@ -242,10 +244,11 @@ class SessionService:
             completed_at=entity.question_generation_completed_at,
             progress=entity.question_generation_progress or [],
             generation_source={
-                "entrypoint": "services.question_generation_service.run_question_generation_background_job",
+                "entrypoint": "tasks.question_generation_tasks.generate_questions_for_session_task",
+                "queue": settings.CELERY_TASK_DEFAULT_QUEUE,
                 "service": "QuestionGenerationService.generate_and_store_for_session",
                 "graph_runner": "ai.interview_graph.runner.run_interview_question_graph",
-                "graph": "BuildState -> Analyzer -> Questioner -> Predictor -> Driller -> Reviewer -> Scorer -> Router -> Selector -> FinalFormatter",
+                "graph": "BuildState -> Analyzer -> Questioner -> SelectorLite -> Predictor -> Driller -> Reviewer -> Scorer -> Router -> Selector -> FinalFormatter",
             },
             questions=[
                 InterviewQuestionItem(
@@ -291,6 +294,33 @@ class SessionService:
 
         elapsed = datetime.now(timezone.utc) - started_at
         return elapsed.total_seconds() > settings.QUESTION_GENERATION_STALE_SECONDS
+
+    async def _enqueue_question_generation_task(
+        self,
+        session_id: int,
+        actor_id: int | None,
+    ) -> None:
+        try:
+            generate_questions_for_session_task.apply_async(
+                kwargs={
+                    "session_id": session_id,
+                    "actor_id": actor_id,
+                },
+                queue=settings.CELERY_TASK_DEFAULT_QUEUE,
+            )
+        except Exception as exc:  # noqa: BLE001 - report broker failures clearly.
+            session = await self.session_repo.find_by_id_not_deleted(session_id)
+            if session is not None:
+                await self.session_repo.mark_question_generation_completed(
+                    session,
+                    status="FAILED",
+                    error=f"Failed to enqueue question generation task: {exc}",
+                )
+                await self.db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Failed to enqueue question generation task.",
+            ) from exc
 
 
 def get_session_service(db: AsyncSession = Depends(get_db)) -> SessionService:
