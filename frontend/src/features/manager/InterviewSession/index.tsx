@@ -13,8 +13,8 @@ export default function InterviewSessionPage() {
     form,
     validationErrors,
     pageSize,
-    candidateFilterId,
-    targetJobInput,
+    jobFilter,
+    candidateNameInput,
     isLoading,
     isSaving,
     errorMessage,
@@ -24,8 +24,8 @@ export default function InterviewSessionPage() {
     selectedDetail,
     setPage,
     setPageSize,
-    setCandidateFilterId,
-    setTargetJobInput,
+    setJobFilter,
+    setCandidateNameInput,
     handleSearchSubmit,
     handleCreate,
     handleViewDetail,
@@ -43,7 +43,7 @@ export default function InterviewSessionPage() {
       <PageIntro
         eyebrow="interview session"
         title="면접 세션 관리"
-        description="면접 세션을 조회하고, 세션 생성 및 질문 분석 트리거를 실행할 수 있습니다."
+        description="현재 백엔드 세션 API 스펙에 맞춰 목록, 생성, 수정, 모달 상세 흐름을 제공합니다."
       />
 
       {errorMessage ? (
@@ -69,13 +69,13 @@ export default function InterviewSessionPage() {
         isLoading={isLoading}
         isSaving={isSaving}
         pageSize={pageSize}
-        candidateFilterId={candidateFilterId}
-        targetJobInput={targetJobInput}
-        onCandidateFilterChange={(value) => {
+        jobFilter={jobFilter}
+        candidateNameInput={candidateNameInput}
+        onJobFilterChange={(value) => {
           setPage(1);
-          setCandidateFilterId(value);
+          setJobFilter(value);
         }}
-        onTargetJobInputChange={setTargetJobInput}
+        onCandidateNameInputChange={setCandidateNameInput}
         onSearchSubmit={handleSearchSubmit}
         onPageChange={setPage}
         onPageSizeChange={(size) => {
@@ -83,7 +83,11 @@ export default function InterviewSessionPage() {
           setPageSize(size);
         }}
         onCreate={() => void handleCreate()}
-        onView={handleViewDetail}
+        onView={(sessionId) => void handleViewDetail(sessionId)}
+        onEdit={(sessionId) => void handleEdit(sessionId)}
+        onDelete={(sessionId, candidateName) =>
+          void handleDelete(sessionId, candidateName)
+        }
         onCloseForm={handleCloseForm}
         onSave={() => void handleSave()}
         onFormChange={updateField}

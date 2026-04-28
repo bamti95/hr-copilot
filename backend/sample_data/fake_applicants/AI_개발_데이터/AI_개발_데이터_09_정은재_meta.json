@@ -1,0 +1,31 @@
+{
+  "job_code": "AI_DEV_DATA",
+  "job_display_name": "AI_개발_데이터",
+  "candidate_index": 9,
+  "candidate_name": "정은재",
+  "candidate_type": "성과 과장 의심형",
+  "candidate_type_slug": "inflated_impact",
+  "candidate_test_intent": "성과 수치와 임팩트는 매우 화려하게 보이지만, 실제로 본인이 어느 범위까지 기여했는지가 희미한 지원자다. 팀의 공을 개인의 공처럼 보이게 쓰거나, 본인 역할을 넓게 포장했을 가능성이 있어 면접에서 기여 범위와 실행 주체를 구체적으로 캐내야 한다.",
+  "hidden_signals": [
+    "성과 수치는 구체적으로 쓰되, 그 숫자를 본인이 직접 만든 것인지 팀 단위 결과인지 모호하게 남긴다.",
+    "주도, 리드, 총괄, 주관 같은 표현을 자주 사용하지만 실제 행동 설명은 상대적으로 적게 한다.",
+    "업무 성과를 설명할 때 본인 기여, 타 부서 협업, 조직 지원의 경계가 흐릿하다.",
+    "프로젝트 과정 설명보다 결과 요약과 임팩트 강조에 더 많은 분량을 쓴다.",
+    "읽는 사람이 '이 수치가 진짜 네가 만든 거 맞아?'라는 의심을 자연스럽게 하게 만든다."
+  ],
+  "summary": "다양한 산업군에서 AI와 데이터 엔지니어링 프로젝트를 리드하며 눈에 띄는 성과를 거둔 경력 5년차입니다. 비정형 데이터 구축, AI 모델 성능 개선, 서비스 자동화 및 운영 최적화에 있어 수치를 기반으로 한 임팩트 창출에 강한 자신감을 지니고 있습니다. 빠른 이직에도 불구하고 프로젝트마다 주도적 역할로 두각을 드러냈으며, 각 조직의 성장에 핵심적인 기여를 해왔습니다. 실행력과 조직 간 소통 능력, 최신 MLOps 트렌드에 기반한 솔루션 제시에 강점이 있습니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_09_정은재_bundle.pdf",
+    "portfolio_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_09_정은재_portfolio.pdf",
+    "career_description_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_09_정은재_career_description.pdf",
+    "source_json": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_09_정은재_source.json"
+  },
+  "candidate_case_code": "job_hopper_weak_evidence",
+  "candidate_case_title": "이직 많음 - 포장은 잘 되어 있으나 근거 부족",
+  "candidate_case_description": "이직이 잦고 서류 포장은 꽤 잘했지만 각 회사에서 실제로 뭘 했는지 근거가 약하다. 이직 사유도 명확하지 않아 면접관이 반복적으로 이동한 이유를 캐묻게 되는 지원자다.",
+  "candidate_case_must_haves": [
+    "짧은 재직 반복",
+    "성과 표현은 화려함",
+    "이직 사유가 불분명함"
+  ]
+}

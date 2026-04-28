@@ -1,0 +1,29 @@
+{
+  "job_code": "STRATEGY_PLANNING",
+  "job_display_name": "기획_전략",
+  "candidate_index": 11,
+  "candidate_name": "임수연",
+  "candidate_type": "검증형 우수 인재",
+  "candidate_type_slug": "elite_verification",
+  "candidate_test_intent": "성과, 사고력, 표현력, 커리어 흐름이 모두 안정적으로 좋아 보이는 상위권 지원자다. 서류만 보면 바로 합격권처럼 느껴지지만, 실제 면접에서는 이 성과가 우연이 아닌지, 본인의 판단 기준과 문제 해결 사고가 얼마나 깊은지, 스스로 만든 원칙과 기준이 있는지를 검증해야 하는 유형이다.",
+  "hidden_signals": [
+    "성과 수치와 맥락이 자연스럽고 과장 없이 연결되어 읽힌다.",
+    "업무 배경, 본인 행동, 결과, 회고가 비교적 일관되게 서술된다.",
+    "자기소개서 표현이 과하지 않고 차분하지만, 기준과 관점이 느껴지게 작성한다.",
+    "무조건 잘난 척하는 인상보다 깊이 있는 실무자처럼 보이게 한다.",
+    "읽는 사람이 '좋아 보이는데 정말 이 사람 생각이 맞는지 더 깊게 검증하고 싶다'고 느끼게 한다."
+  ],
+  "summary": "디지털 플랫폼, 신사업 기획 및 운영 전략 분야에서 일관된 성과를 내온 기획/전략 전문가입니다. 제품 론칭, 시장 구조 분석, 사업성 평가 및 조직 내외 커뮤니케이션을 주도하며 명확한 목표 설정과 실행 경험을 쌓았습니다. 데이터 기반의 문제 정의, 이해관계자 의견 조율, 실행 방안 도출에 일가견이 있으며, 회사의 비즈니스 성장에 기여하는 현실적이고 내실 있는 전략 수립을 지향합니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\기획_전략\\기획_전략_11_임수연_bundle.pdf",
+    "source_json": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\기획_전략\\기획_전략_11_임수연_source.json"
+  },
+  "candidate_case_code": "career_general_top",
+  "candidate_case_title": "일반 경력직 - 우수 인재",
+  "candidate_case_description": "전형적인 경력직이며 실제로도 상당히 우수해 보이는 지원자다. 경력 흐름, 성과 수치, 자소서 논리가 안정적이고 좋아서 서류만 봐도 면접으로 불러보고 싶지만, 진짜 깊이와 기준을 확인하고 싶게 만들어야 한다.",
+  "candidate_case_must_haves": [
+    "경력 흐름 안정적",
+    "성과와 역할이 일관됨",
+    "과장보다 깊이 검증이 필요한 상위 지원자"
+  ]
+}

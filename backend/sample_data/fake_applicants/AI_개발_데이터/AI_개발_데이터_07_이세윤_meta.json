@@ -1,0 +1,31 @@
+{
+  "job_code": "AI_DEV_DATA",
+  "job_display_name": "AI_개발_데이터",
+  "candidate_index": 7,
+  "candidate_name": "이세윤",
+  "candidate_type": "공백 및 전환형",
+  "candidate_type_slug": "career_gap_switch",
+  "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+  "hidden_signals": [
+    "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+    "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+    "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+    "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+    "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+  ],
+  "summary": "비즈니스 데이터 분석과 시스템 운영 경험을 바탕으로 AI 데이터 개발 분야로 경력 전환을 준비하고 있습니다. 업무 공백 기간 동안 머신러닝과 데이터 엔지니어링에 집중하며 실무 역량을 보완해왔습니다. 복귀에 대한 신중함과 변화를 수용하는 태도를 가지고 있습니다. 실제 현장에서 발생할 수 있는 문제를 예측하고 대응하는 데 강점을 보입니다. 변화된 환경에서 적응하고 성장하고자 진심으로 도전합니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_07_이세윤_bundle.pdf",
+    "portfolio_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_07_이세윤_portfolio.pdf",
+    "career_description_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_07_이세윤_career_description.pdf",
+    "source_json": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_07_이세윤_source.json"
+  },
+  "candidate_case_code": "career_gap_bullying",
+  "candidate_case_title": "경력단절 복귀 - 직장 내 괴롭힘 퇴사 후 2년 공백",
+  "candidate_case_description": "직장 내 괴롭힘으로 퇴사한 뒤 약 2년 정도 경력 공백이 있었고, 최근 다시 사회로 나오려는 지원자다. 피해 서사를 과도하게 늘어놓기보다 조심스럽고 현실적인 복귀 서사로 작성해야 하며, 적응 가능성이 궁금해지게 해야 한다.",
+  "candidate_case_must_haves": [
+    "직장 내 괴롭힘 퇴사",
+    "2년 전후 공백",
+    "복귀 의지는 있으나 적응 우려 존재"
+  ]
+}

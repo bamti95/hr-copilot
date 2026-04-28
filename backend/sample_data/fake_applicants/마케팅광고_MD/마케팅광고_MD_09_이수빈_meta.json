@@ -1,0 +1,29 @@
+{
+  "job_code": "MARKETING",
+  "job_display_name": "마케팅광고_MD",
+  "candidate_index": 9,
+  "candidate_name": "이수빈",
+  "candidate_type": "성과 과장 의심형",
+  "candidate_type_slug": "inflated_impact",
+  "candidate_test_intent": "성과 수치와 임팩트는 매우 화려하게 보이지만, 실제로 본인이 어느 범위까지 기여했는지가 희미한 지원자다. 팀의 공을 개인의 공처럼 보이게 쓰거나, 본인 역할을 넓게 포장했을 가능성이 있어 면접에서 기여 범위와 실행 주체를 구체적으로 캐내야 한다.",
+  "hidden_signals": [
+    "성과 수치는 구체적으로 쓰되, 그 숫자를 본인이 직접 만든 것인지 팀 단위 결과인지 모호하게 남긴다.",
+    "주도, 리드, 총괄, 주관 같은 표현을 자주 사용하지만 실제 행동 설명은 상대적으로 적게 한다.",
+    "업무 성과를 설명할 때 본인 기여, 타 부서 협업, 조직 지원의 경계가 흐릿하다.",
+    "프로젝트 과정 설명보다 결과 요약과 임팩트 강조에 더 많은 분량을 쓴다.",
+    "읽는 사람이 '이 수치가 진짜 네가 만든 거 맞아?'라는 의심을 자연스럽게 하게 만든다."
+  ],
+  "summary": "다양한 이커머스와 브랜드 기업에서 빠른 변화와 높은 성과를 경험한 마케팅/MD 전문가입니다. 신제품 론칭, 프로모션 기획, 전환율 개선 등 굵직한 프로젝트를 리드하며 두각을 나타냈습니다. 주요 커머스 채널 운영과 캠페인 매출 극대화에 강점이 있으며, 수치 기반의 임팩트에 집중하는 업무 스타일을 지향합니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\마케팅광고_MD\\마케팅광고_MD_09_이수빈_bundle.pdf",
+    "source_json": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\마케팅광고_MD\\마케팅광고_MD_09_이수빈_source.json"
+  },
+  "candidate_case_code": "job_hopper_weak_evidence",
+  "candidate_case_title": "이직 많음 - 포장은 잘 되어 있으나 근거 부족",
+  "candidate_case_description": "이직이 잦고 서류 포장은 꽤 잘했지만 각 회사에서 실제로 뭘 했는지 근거가 약하다. 이직 사유도 명확하지 않아 면접관이 반복적으로 이동한 이유를 캐묻게 되는 지원자다.",
+  "candidate_case_must_haves": [
+    "짧은 재직 반복",
+    "성과 표현은 화려함",
+    "이직 사유가 불분명함"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "job_code": "AI_DEV_DATA",
+  "job_display_name": "AI_개발_데이터",
+  "candidate_index": 14,
+  "candidate_name": "조민수",
+  "candidate_type": "공백 및 전환형",
+  "candidate_type_slug": "career_gap_switch",
+  "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+  "hidden_signals": [
+    "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+    "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+    "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+    "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+    "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+  ],
+  "summary": "기존 유통업계에서 커뮤니케이션 및 데이터 분석 기반의 영업지원 업무를 수행하다가, AI·데이터 직무로 전향을 결심해 학습과 경험을 쌓아온 지원자입니다. 비전공자로서 열정적으로 Python 및 데이터 처리 도구를 익히며 부트캠프 과정을 성실히 수료하였고, 실무 활용성과 데이터 품질에 집중하여 다양한 프로젝트를 수행했습니다. 급격한 변화보다는 차근차근 준비해온 전환형 인재로, 실제 현업에 필요한 데이터 엔지니어링 및 머신러닝 운영 경험을 쌓아보고자 합니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_14_조민수_bundle.pdf",
+    "portfolio_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_14_조민수_portfolio.pdf",
+    "career_description_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_14_조민수_career_description.pdf",
+    "source_json": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_14_조민수_source.json"
+  },
+  "candidate_case_code": "it_bootcamp_career_switch_stable",
+  "candidate_case_title": "IT 부트캠프 비전공자 - 사회경험 있는 직무전환 무난형",
+  "candidate_case_description": "다른 직무 사회경험이 있고, 부트캠프 수료 후 개발/데이터 직무로 전환한 지원자다. 공부를 열심히 한 흔적이 있고 자격증도 단기간에 3개 취득했다. 서류상으로 거짓말 같지는 않으며 전반적으로 무난하고 성실한 전환 사례처럼 보여야 한다.",
+  "candidate_case_must_haves": [
+    "기존 사회경험 존재",
+    "부트캠프 후 전환",
+    "자격증 3개 취득",
+    "거짓말보다는 무난한 준비형"
+  ]
+}

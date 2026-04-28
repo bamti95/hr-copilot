@@ -78,7 +78,7 @@ export function PromptProfileBoard({
                 onSearchSubmit();
               }
             }}
-            placeholder="프로필 키 또는 시스템 프롬프트"
+            placeholder="프로필 키 (부분 일치)"
           />
         </label>
 

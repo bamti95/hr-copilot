@@ -1,0 +1,31 @@
+{
+  "job_code": "AI_DEV_DATA",
+  "job_display_name": "AI_개발_데이터",
+  "candidate_index": 4,
+  "candidate_name": "이정우",
+  "candidate_type": "검증형 우수 인재",
+  "candidate_type_slug": "elite_verification",
+  "candidate_test_intent": "성과, 사고력, 표현력, 커리어 흐름이 모두 안정적으로 좋아 보이는 상위권 지원자다. 서류만 보면 바로 합격권처럼 느껴지지만, 실제 면접에서는 이 성과가 우연이 아닌지, 본인의 판단 기준과 문제 해결 사고가 얼마나 깊은지, 스스로 만든 원칙과 기준이 있는지를 검증해야 하는 유형이다.",
+  "hidden_signals": [
+    "성과 수치와 맥락이 자연스럽고 과장 없이 연결되어 읽힌다.",
+    "업무 배경, 본인 행동, 결과, 회고가 비교적 일관되게 서술된다.",
+    "자기소개서 표현이 과하지 않고 차분하지만, 기준과 관점이 느껴지게 작성한다.",
+    "무조건 잘난 척하는 인상보다 깊이 있는 실무자처럼 보이게 한다.",
+    "읽는 사람이 '좋아 보이는데 정말 이 사람 생각이 맞는지 더 깊게 검증하고 싶다'고 느끼게 한다."
+  ],
+  "summary": "컴퓨터공학 전공자로 대학 재학 중 다양한 AI 및 데이터 관련 프로젝트와 인턴 경험을 쌓았습니다. 데이터 수집부터 모델링, 운영 자동화, 그리고 실제 서비스 적용까지 실질적인 경험을 가지고 있으며, 항상 문제의 본질을 파악하고 구조적으로 해결하는 데 집중해 왔습니다. 꾸준한 자기 발전과 협업, 그리고 데이터 기반 의사결정에 대한 신뢰를 바탕으로 성장해왔습니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_04_이정우_bundle.pdf",
+    "portfolio_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_04_이정우_portfolio.pdf",
+    "career_description_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_04_이정우_career_description.pdf",
+    "source_json": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\AI_개발_데이터\\AI_개발_데이터_04_이정우_source.json"
+  },
+  "candidate_case_code": "intern_top_spec",
+  "candidate_case_title": "인턴 경험 신입 - 인턴/자격증/봉사 모두 좋은 엄친아형",
+  "candidate_case_description": "인턴, 자격증, 봉사활동, 교내외 활동이 모두 안정적으로 좋은 모범생형 신입이다. 지나친 과장보다 성실성과 준비성이 잘 보이는 서류여야 하며, 면접에서는 깊이와 실제 실무 전환 가능성을 검증하고 싶게 만들어야 한다.",
+  "candidate_case_must_haves": [
+    "인턴 경험 좋음",
+    "자격증/봉사활동/대외활동 고르게 좋음",
+    "안정적이고 모범적인 인상"
+  ]
+}

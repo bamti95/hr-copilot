@@ -1,0 +1,28 @@
+{
+  "job_code": "MARKETING",
+  "job_display_name": "마케팅광고_MD",
+  "candidate_index": 5,
+  "candidate_name": "김서연",
+  "candidate_type": "직무 적합도 의심형",
+  "candidate_type_slug": "job_fit_doubt",
+  "candidate_test_intent": "학력, 활동, 기본 역량은 나쁘지 않지만 현재 지원 직무와의 직접 연결이 약해 보이는 지원자다. 왜 이 직무를 선택했는지, 실제로 얼마나 준비했는지, 적합성이 진짜인지 면접에서 확인해야 한다.",
+  "hidden_signals": [
+    "이전 전공이나 경험은 성실하고 우수하지만 현재 직무와 직접 연결되는 증거는 제한적이다.",
+    "지원 동기와 전환 계기는 존재하지만 완전히 매끈하게 이어지지는 않는다.",
+    "읽는 사람이 '좋은 사람 같긴 한데 이 직무랑 정말 맞나?'라는 의문을 갖게 만든다.",
+    "서류에는 가능성이 보이되, 적합성 검증 질문이 반드시 필요하게 한다."
+  ],
+  "summary": "경영학이 아닌 생명과학을 전공했지만 문제를 다각도에서 분석하고, 논리적으로 결론을 도출해내는 과정에 익숙합니다. 학창시절 다양한 연구 프로젝트와 외부 활동을 통해 성실함과 책임감을 인정받았습니다. 최근 트렌드와 소비자 행동에 깊은 흥미를 느끼며, 마케팅/MD 직무에 새로운 도전을 시작했습니다. 적극적으로 신규 역량을 개발하고자 데이터 분석과 브랜딩, 프로모션 실습 프로젝트에 직접 참여했습니다. 마케팅 현장의 실무 경험이 부족하다는 점은 인지하고 있으나, 빠른 학습력과 유연한 사고로 팀에 기여할 수 있을 것이라 자신합니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\마케팅광고_MD\\마케팅광고_MD_05_김서연_bundle.pdf",
+    "source_json": "C:\\Users\\USER\\깃허브 저장소\\새싹_팀프로젝트\\Hr-Copilot\\backend\\sample_data\\fake_applicants\\마케팅광고_MD\\마케팅광고_MD_05_김서연_source.json"
+  },
+  "candidate_case_code": "high_edu_nonmajor",
+  "candidate_case_title": "전공 불일치 신입 - 학력은 높고 기존 전공 성취도도 좋음",
+  "candidate_case_description": "지원 직무 전공은 아니지만 기존 전공에서 학점, 자격증, 수상경력 등은 좋은 편인 신입이다. 전공은 다르지만 성실하고 역량 있는 사람으로 보이며, 왜 지금 직무로 오게 되었는지 설득력이 관건이다.",
+  "candidate_case_must_haves": [
+    "전공 불일치",
+    "기존 전공 학점/수상/자격증 우수",
+    "새 직무로 넘어오는 이유가 중요"
+  ]
+}

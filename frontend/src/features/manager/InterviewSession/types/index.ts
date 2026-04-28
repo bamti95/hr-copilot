@@ -21,8 +21,8 @@ export type InterviewQuestionGenerationNodeStatus =
 export interface InterviewSessionListRequest {
   page: number;
   limit: number;
-  candidateId?: number;
   targetJob?: string;
+  candidateName?: string;
 }
 
 export interface InterviewSessionCreateRequest {

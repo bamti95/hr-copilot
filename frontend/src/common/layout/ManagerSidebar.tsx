@@ -21,13 +21,13 @@ export function ManagerSidebar({ isOpen, onClose }: ManagerSidebarProps) {
           "shadow-[0_24px_60px_rgba(8,15,30,0.36)] transition-all duration-300 ease-out",
           "lg:sticky lg:top-0 lg:h-screen",
           isOpen
-            ? "w-[292px] translate-x-0 opacity-100 lg:w-[292px] lg:min-w-[292px]"
+            ? "w-73 translate-x-0 opacity-100 lg:w-73 lg:min-w-73"
             : "-translate-x-full opacity-0 lg:w-0 lg:min-w-0 lg:translate-x-0 lg:opacity-0 lg:border-r-0 lg:shadow-none",
         ].join(" ")}
       >
         <div className="flex items-center justify-between border-b border-white/10 px-5 pb-5 pt-5">
           <div className="flex items-center gap-3">
-            <div className="flex h-[48px] w-[48px] items-center justify-center rounded-2xl bg-linear-to-br from-white via-[#d9e7ff] to-[#8ab2ff] text-base font-extrabold text-[#192232] shadow-[0_8px_24px_rgba(137,173,255,0.24)]">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-white via-[#d9e7ff] to-[#8ab2ff] text-base font-extrabold text-[#192232] shadow-[0_8px_24px_rgba(137,173,255,0.24)]">
               HR
             </div>
             <div>
