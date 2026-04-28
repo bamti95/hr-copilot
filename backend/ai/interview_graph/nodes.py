@@ -149,6 +149,26 @@ def _merge_document_text(state: AgentState) -> tuple[str, bool]:
     return "\n".join(sections), has_extracted_text
 
 
+def _build_recruitment_context(state: AgentState) -> dict[str, Any]:
+    prompt_profile = state.get("prompt_profile") or {}
+    return {
+        "prompt_profile_id": prompt_profile.get("id"),
+        "profile_key": prompt_profile.get("profile_key"),
+        "target_job": prompt_profile.get("target_job"),
+        "system_prompt": prompt_profile.get("system_prompt"),
+        "output_schema": prompt_profile.get("output_schema"),
+        "has_prompt_profile": bool(prompt_profile),
+        "has_extracted_text": _has_extracted_text(state),
+    }
+
+
+def _has_extracted_text(state: AgentState) -> bool:
+    return any(
+        bool((document.get("extracted_text") or "").strip())
+        for document in state.get("documents", [])
+    )
+
+
 def _question_id(question: dict[str, Any], index: int) -> str:
     value = str(question.get("id") or "").strip()
     return value or f"q_{index + 1:03d}"
@@ -324,24 +344,11 @@ async def build_state_node(state: AgentState) -> AgentState:
     프롬프트 프로필 (채용 기준) 세팅
     재시도(retry) 상태 초기화
     '''
-    candidate_text, has_extracted_text = _merge_document_text(state)
-    prompt_profile = state.get("prompt_profile") or {}
-
-    recruitment_criteria = {
-        "prompt_profile_id": prompt_profile.get("id"),
-        "profile_key": prompt_profile.get("profile_key"),
-        "target_job": prompt_profile.get("target_job"),
-        "system_prompt": prompt_profile.get("system_prompt"),
-        "output_schema": prompt_profile.get("output_schema"),
-        "has_prompt_profile": bool(prompt_profile),
-        "has_extracted_text": has_extracted_text,
-    }
+    candidate_context, _ = _merge_document_text(state)
 
     return {
         **state,
-        "candidate_text": candidate_text,
-        "merged_candidate_context": candidate_text,
-        "recruitment_criteria": recruitment_criteria,
+        "candidate_context": candidate_context,
         "retry_count": state.get("retry_count", 0),
         "max_retry_count": state.get("max_retry_count", 3),
     }
@@ -360,8 +367,8 @@ async def analyzer_node(state: AgentState) -> AgentState:
         node_name="analyzer",
         system_prompt=prompts.ANALYZER_SYSTEM_PROMPT,
         user_prompt=prompts.ANALYZER_USER_PROMPT.format(
-            candidate_text=state.get("candidate_text", ""),
-            recruitment_criteria=_json(state.get("recruitment_criteria", {})),
+            candidate_text=state.get("candidate_context", ""),
+            recruitment_criteria=_json(_build_recruitment_context(state)),
         ),
         response_model=DocumentAnalysisOutput,
     )
@@ -375,16 +382,11 @@ async def analyzer_node(state: AgentState) -> AgentState:
 async def questioner_node(state: AgentState) -> AgentState:
     '''
     면접 질문 생성 엔진
-    1. 신규 질문 생성
-    2. 기존 질문 유지 / 추가 / 재생성
-    문서 분석 결과를 기반으로 질문을 생성하며,
-    재생성(regenerate) 및 추가 생성(more) 요청을 처리
+    문서 분석 결과를 기반으로 신규 질문을 생성한다.
+    retry_feedback이 있으면 이전 질문/평가 결과를 참고해 다시 생성한다.
     '''
     existing_questions = state.get("questions", [])
-    human_action = state.get("human_action")
-    regen_ids = set(state.get("regen_question_ids") or [])
-
-    profile_prompt = (state.get("recruitment_criteria") or {}).get("system_prompt")
+    profile_prompt = (state.get("prompt_profile") or {}).get("system_prompt")
     system_prompt = prompts.QUESTIONER_SYSTEM_PROMPT
     if profile_prompt:
         system_prompt = f"{profile_prompt}\n\n{system_prompt}"
@@ -395,10 +397,10 @@ async def questioner_node(state: AgentState) -> AgentState:
         user_prompt=prompts.QUESTIONER_USER_PROMPT.format(
             target_job=state.get("target_job"),
             difficulty_level=state.get("difficulty_level"),
-            human_action=human_action,
+            human_action=None,
             additional_instruction=state.get("additional_instruction"),
-            regen_question_ids=list(regen_ids),
-            candidate_text=state.get("candidate_text", ""),
+            regen_question_ids=[],
+            candidate_text=state.get("candidate_context", ""),
             document_analysis=_json(state.get("document_analysis", {})),
             existing_questions=_json(
                 {
@@ -414,39 +416,7 @@ async def questioner_node(state: AgentState) -> AgentState:
         question.model_dump(mode="json")
         for question in result.questions
     ]
-    if human_action == "more_questions":
-        questions = existing_questions + new_questions
-    elif human_action == "regenerate_question" and regen_ids:
-        replacements = {
-            question["id"]: question
-            for question in new_questions
-            if question.get("id") in regen_ids
-        }
-        replacement_queue = [
-            question
-            for question in new_questions
-            if question.get("id") not in replacements
-        ]
-        used_replacement_ids: set[str] = set()
-        questions = [
-            (
-                replacements[question.get("id")]
-                if question.get("id") in replacements
-                else replacement_queue.pop(0)
-                if question.get("id") in regen_ids and replacement_queue
-                else question
-            )
-            for question in existing_questions
-        ]
-        used_replacement_ids.update(replacements)
-        missing_replacements = [
-            question
-            for question in replacement_queue
-            if question.get("id") not in used_replacement_ids
-        ]
-        questions.extend(missing_replacements)
-    else:
-        questions = new_questions
+    questions = new_questions
 
     normalized_questions = []
     for index, question in enumerate(questions):
@@ -455,7 +425,6 @@ async def questioner_node(state: AgentState) -> AgentState:
     return {
         **state,
         "questions": normalized_questions,
-        "candidate_question_count": len(normalized_questions),
         "llm_usages": llm_usages,
     }
 
@@ -468,8 +437,6 @@ async def selector_lite_node(state: AgentState) -> AgentState:
     selected = _select_question_candidates(state.get("questions", []), limit=5)
     return {
         "questions": selected,
-        "selected_questions": selected,
-        "router_decision": "selector_lite",
     }
 
 # 예상 답변 생성 노드 - predictor_node
@@ -488,7 +455,7 @@ async def predictor_node(state: AgentState) -> AgentState:
             system_prompt=prompts.PREDICTOR_SYSTEM_PROMPT,
             user_prompt=prompts.PREDICTOR_USER_PROMPT.format(
                 candidate_text=_clip_text(
-                    state.get("candidate_text", ""),
+                    state.get("candidate_context", ""),
                     PREDICTOR_DOCUMENT_CHARS,
                 ),
                 document_analysis=_json(state.get("document_analysis", {})),
@@ -602,7 +569,7 @@ async def reviewer_node(state: AgentState) -> AgentState:
             system_prompt=prompts.REVIEWER_SYSTEM_PROMPT,
             user_prompt=prompts.REVIEWER_USER_PROMPT.format(
                 target_job=state.get("target_job"),
-                recruitment_criteria=_json(state.get("recruitment_criteria", {})),
+                recruitment_criteria=_json(_build_recruitment_context(state)),
                 questions=_json(state.get("questions", [])),
                 answers=_json(state.get("answers", [])),
                 follow_ups=_json(state.get("follow_ups", [])),
@@ -718,7 +685,6 @@ questioner 재실행을 위한 피드백을 생성한다.
 async def increment_retry_for_questioner_node(state: AgentState) -> AgentState:
     return {
         "retry_count": state.get("retry_count", 0) + 1,
-        "router_decision": "questioner",
         "retry_feedback": _build_retry_feedback(state),
     }
 
@@ -731,7 +697,6 @@ driller 재실행을 위한 피드백을 생성한다.
 async def increment_retry_for_driller_node(state: AgentState) -> AgentState:
     return {
         "retry_count": state.get("retry_count", 0) + 1,
-        "router_decision": "driller",
         "retry_feedback": _build_retry_feedback(state),
     }
 
@@ -758,8 +723,7 @@ async def selector_node(state: AgentState) -> AgentState:
     )
 
     return {
-        "selected_questions": selected,
-        "router_decision": state.get("router_decision") or "selector",
+        "questions": selected,
     }
 
 # 최종 응답 생성
@@ -783,7 +747,7 @@ async def final_formatter_node(state: AgentState) -> AgentState:
     - completed
     - partial_completed
     '''
-    selected_questions = state.get("selected_questions", [])
+    selected_questions = state.get("questions", [])
     answers = state.get("answers", [])
     follow_ups = state.get("follow_ups", [])
     reviews = state.get("reviews", [])
@@ -833,10 +797,7 @@ async def final_formatter_node(state: AgentState) -> AgentState:
             "job_fit": "분석 결과가 없어 직무 적합성을 판단하지 못했습니다.",
         }
     )
-    has_extracted_text = (state.get("recruitment_criteria") or {}).get(
-        "has_extracted_text",
-        False,
-    )
+    has_extracted_text = _has_extracted_text(state)
     approved_count = sum(1 for item in items if item.review.status == "approved")
     is_partial = (
         not has_extracted_text
@@ -855,13 +816,10 @@ async def final_formatter_node(state: AgentState) -> AgentState:
         analysis_summary=analysis,
         questions=items,
         generation_metadata={
-            "total_candidate_questions": state.get(
-                "candidate_question_count",
-                len(state.get("questions", [])),
-            ),
+            "total_candidate_questions": len(state.get("questions", [])),
             "selected_question_count": len(items),
             "retry_count": state.get("retry_count", 0),
-            "router_decision": state.get("router_decision", "selector"),
+            "router_decision": "selector",
             "is_all_approved": bool(items) and approved_count == len(items),
             "review_summary": state.get("review_summary", {}),
             "node_warnings": state.get("node_warnings", []),

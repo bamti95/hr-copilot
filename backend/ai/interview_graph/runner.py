@@ -174,8 +174,6 @@ async def run_interview_question_graph(
                 }
                 for document in payload.candidate_documents
             ],
-            "recruitment_criteria": {},
-            "candidate_question_count": 0,
             "additional_instruction": getattr(payload, "additional_instruction", None),
             "retry_count": 0,
             "max_retry_count": 3,

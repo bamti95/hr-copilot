@@ -37,27 +37,13 @@ class InputState(TypedDict, total=False):
     difficulty_level: str | None
     prompt_profile: PromptProfileRef
     documents: list[DocumentRef]
-    recruitment_criteria: dict[str, Any]
-    candidate_question_count: int
     additional_instruction: str | None
 
 
-class PreparedState(TypedDict, total=False):
-    candidate_text: str
-    merged_candidate_context: str
-
-
-class AnalysisState(TypedDict, total=False):
+class WorkflowState(TypedDict, total=False):
+    candidate_context: str
     document_analysis: dict[str, Any]
-
-
-class QuestionState(TypedDict, total=False):
     questions: list[dict[str, Any]]
-    selected_questions: list[dict[str, Any]]
-    regen_question_ids: list[str] | None
-
-
-class EvaluationState(TypedDict, total=False):
     answers: list[dict[str, Any]]
     follow_ups: list[dict[str, Any]]
     reviews: list[dict[str, Any]]
@@ -66,12 +52,9 @@ class EvaluationState(TypedDict, total=False):
 
 
 class ControlState(TypedDict, total=False):
-    router_decision: str
     retry_feedback: str | None
     retry_count: int
     max_retry_count: int
-    human_action: str | None
-    is_all_approved: bool
     node_warnings: Annotated[list[dict[str, Any]], operator.add]
 
 
@@ -85,10 +68,7 @@ class OutputState(TypedDict, total=False):
 
 class AgentState(
     InputState,
-    PreparedState,
-    AnalysisState,
-    QuestionState,
-    EvaluationState,
+    WorkflowState,
     ControlState,
     ObservabilityState,
     OutputState,
