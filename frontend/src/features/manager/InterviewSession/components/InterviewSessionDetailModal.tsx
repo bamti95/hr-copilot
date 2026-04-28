@@ -1,11 +1,8 @@
 import { CheckSquare, RefreshCcw, Square, UserRound, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getJobPositionLabel } from "../../common/candidateJobPosition";
-<<<<<<< HEAD
 import { InterviewSessionAssembledPayloadView } from "./InterviewSessionAssembledPayloadView";
 import { InterviewSessionQuestionGenerationView } from "./InterviewSessionQuestionGenerationView";
-=======
->>>>>>> main
 import type { InterviewSessionDetailResponse } from "../types";
 
 interface InterviewSessionDetailModalProps {
@@ -367,21 +364,21 @@ export function InterviewSessionDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-[95] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[95] flex items-center justify-center overflow-hidden bg-slate-950/45 p-2 backdrop-blur-sm sm:p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[34px] border border-white/70 bg-[var(--panel)] shadow-[0_40px_120px_rgba(15,23,42,0.25)]"
+        className="flex h-[92dvh] max-h-[92dvh] w-full max-w-6xl min-w-0 flex-col overflow-hidden rounded-[24px] border border-white/70 bg-[var(--panel)] shadow-[0_40px_120px_rgba(15,23,42,0.25)] sm:rounded-[34px]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between border-b border-[var(--line)] px-7 py-6">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--line)] px-4 py-4 sm:px-7 sm:py-6">
           <div className="min-w-0">
             <div className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
               Interview Session Brief
             </div>
-            <h2 className="mt-2 truncate text-3xl font-bold text-[var(--text)]">
+            <h2 className="mt-2 truncate text-xl font-bold text-[var(--text)] sm:text-3xl">
               {detail ? `${detail.candidateName}님의 면접 세션` : "면접 세션"}
             </h2>
             <p className="mt-2 text-sm text-[var(--muted)]">
@@ -401,27 +398,26 @@ export function InterviewSessionDetailModal({
         </div>
 
         {isLoading ? (
-          <div className="px-7 py-16 text-center text-sm text-[var(--muted)]">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-16 text-center text-sm text-[var(--muted)] sm:px-7">
             세션 상세 정보를 불러오는 중입니다...
           </div>
         ) : null}
 
         {detail && context ? (
           <>
-            <div className="grid gap-4 border-b border-[var(--line)] px-7 py-5 md:grid-cols-4">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <div className="grid gap-3 border-b border-[var(--line)] px-4 py-4 sm:px-7 sm:py-5 md:grid-cols-4">
               <SummaryPill label="세션" value={`#${detail.id}`} />
               <SummaryPill label="목표 직무" value={context.targetJobLabel} />
               <SummaryPill label="난이도" value={context.difficulty} />
               <SummaryPill label="문서 수" value={String(context.documentCount)} />
             </div>
 
-<<<<<<< HEAD
             <InterviewSessionQuestionGenerationView sessionId={detail.id} compact />
 
             <InterviewSessionAssembledPayloadView detail={detail} compact />
-          </div>
-=======
-            <div className="border-b border-[var(--line)] px-7 py-5">
+
+            <div className="border-b border-[var(--line)] px-4 py-5 sm:px-7">
               <div className="mb-3 flex items-center gap-3">
                 <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
                   <UserRound className="h-5 w-5" />
@@ -442,7 +438,7 @@ export function InterviewSessionDetailModal({
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-7 py-6">
+            <div className="px-4 py-5 sm:px-7 sm:py-6">
               <div className="space-y-5">
                 {questions.map((item, index) => {
                   const isSelected = selectedQuestionIds.includes(item.id);
@@ -450,7 +446,7 @@ export function InterviewSessionDetailModal({
                   return (
                     <article
                       key={`${item.id}-${index}-${item.question}`}
-                      className="rounded-[28px] border-2 border-[color:var(--line)] bg-white/90 shadow-[0_20px_48px_rgba(15,23,42,0.08)]"
+                      className="min-w-0 rounded-[24px] border-2 border-[color:var(--line)] bg-white/90 shadow-[0_20px_48px_rgba(15,23,42,0.08)] sm:rounded-[28px]"
                     >
                       <button
                         type="button"
@@ -468,14 +464,14 @@ export function InterviewSessionDetailModal({
                           <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
                             {item.category}
                           </div>
-                          <h3 className="mt-2 text-[1.65rem] leading-9 font-bold text-[var(--text)]">
+                          <h3 className="mt-2 break-words text-lg font-bold leading-7 text-[var(--text)] [overflow-wrap:anywhere] sm:text-[1.35rem] sm:leading-8 lg:text-[1.65rem] lg:leading-9">
                             {index + 1}. {item.question}
                           </h3>
                         </div>
                       </button>
 
                       <div className="border-t border-slate-200 px-6 py-5">
-                        <div className="space-y-4 text-[1.18rem] leading-9 text-[var(--text)]">
+                        <div className="space-y-4 break-words text-base leading-7 text-[var(--text)] [overflow-wrap:anywhere] sm:text-[1.08rem] sm:leading-8 lg:text-[1.18rem] lg:leading-9">
                           <div>
                             <span className="font-extrabold">💡 생성 근거:</span>{" "}
                             {item.generationReason}
@@ -509,8 +505,9 @@ export function InterviewSessionDetailModal({
                 })}
               </div>
             </div>
+            </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] px-7 py-5">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] bg-[var(--panel)] px-4 py-4 sm:px-7 sm:py-5">
               <button
                 type="button"
                 className="inline-flex h-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
@@ -541,7 +538,6 @@ export function InterviewSessionDetailModal({
               </div>
             </div>
           </>
->>>>>>> main
         ) : null}
       </div>
     </div>

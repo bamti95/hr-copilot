@@ -156,7 +156,8 @@ function truncateText(value: string, maxLength = 320) {
 
 function QuestionCard({ question, index }: { question: InterviewGeneratedQuestion; index: number }) {
   return (
-    <article className="rounded-2xl border border-[var(--line)] bg-white/85 p-5">
+ 
+    <article className="min-w-0 rounded-2xl border border-[var(--line)] bg-white/85 p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
@@ -178,7 +179,7 @@ function QuestionCard({ question, index }: { question: InterviewGeneratedQuestio
         </div>
       </div>
 
-      <h3 className="mt-4 text-lg font-bold leading-7 text-[var(--text)]">
+      <h3 className="mt-4 break-words text-base font-bold leading-7 text-[var(--text)] [overflow-wrap:anywhere] sm:text-lg">
         {question.questionText}
       </h3>
 
@@ -187,7 +188,7 @@ function QuestionCard({ question, index }: { question: InterviewGeneratedQuestio
           <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
             예상 답변
           </div>
-          <p className="mt-2 text-sm leading-6 text-[var(--text)]">
+          <p className="mt-2 break-words text-sm leading-6 text-[var(--text)] [overflow-wrap:anywhere]">
             {question.predictedAnswer ? truncateText(question.predictedAnswer) : "-"}
           </p>
         </div>
@@ -195,7 +196,7 @@ function QuestionCard({ question, index }: { question: InterviewGeneratedQuestio
           <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
             꼬리 질문
           </div>
-          <p className="mt-2 text-sm leading-6 text-[var(--text)]">
+          <p className="mt-2 break-words text-sm leading-6 text-[var(--text)] [overflow-wrap:anywhere]">
             {question.followUpQuestion || "-"}
           </p>
         </div>
@@ -225,7 +226,7 @@ function QuestionCard({ question, index }: { question: InterviewGeneratedQuestio
           근거와 평가 가이드
           <ChevronDown className="h-4 w-4 text-[var(--muted)]" />
         </summary>
-        <div className="mt-4 grid gap-3 text-sm leading-6 text-[var(--text)]">
+        <div className="mt-4 grid gap-3 break-words text-sm leading-6 text-[var(--text)] [overflow-wrap:anywhere]">
           <div>
             <div className="font-bold">질문 생성 근거</div>
             <p className="mt-1 text-[var(--muted)]">{question.generationBasis || "-"}</p>
@@ -389,7 +390,13 @@ export function InterviewSessionQuestionGenerationView({
   );
 
   return (
-    <section className="rounded-[32px] border border-white/70 bg-[var(--panel)] p-7 shadow-[var(--shadow)]">
+    <section
+      className={
+        compact
+          ? "min-w-0 border-b border-[var(--line)] bg-white/45 px-4 py-5 sm:px-7"
+          : "min-w-0 rounded-[32px] border border-white/70 bg-[var(--panel)] p-5 shadow-[var(--shadow)] sm:p-7"
+      }
+    >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -406,10 +413,10 @@ export function InterviewSessionQuestionGenerationView({
               </span>
             ) : null}
           </div>
-          <h2 className="mt-3 text-2xl font-bold text-[var(--text)]">
+          <h2 className="mt-3 text-xl font-bold text-[var(--text)] sm:text-2xl">
             생성된 면접 질문
           </h2>
-          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+          <p className="mt-2 break-words text-sm leading-6 text-[var(--muted)] [overflow-wrap:anywhere]">
             LangGraph 멀티 에이전트가 만든 질문, 예상 답변, 꼬리 질문, 근거와 점수를 확인합니다.
           </p>
         </div>
@@ -441,9 +448,11 @@ export function InterviewSessionQuestionGenerationView({
       </div>
 
       {isRunning ? (
-        <div className="mt-5 inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+        <div className="mt-5 inline-flex max-w-full items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
           <LoaderCircle className="h-4 w-4 animate-spin" />
-          <span>{getGenerationStatusMessage(data.status)}</span>
+          <span className="break-words [overflow-wrap:anywhere]">
+            {getGenerationStatusMessage(data.status)}
+          </span>
           {isRefreshing ? <span>· 상태 확인 중</span> : null}
         </div>
       ) : null}
@@ -451,7 +460,7 @@ export function InterviewSessionQuestionGenerationView({
       {errorMessage ? (
         <div className="mt-5 flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          {errorMessage}
+          <span className="break-words [overflow-wrap:anywhere]">{errorMessage}</span>
         </div>
       ) : null}
 
@@ -491,7 +500,7 @@ export function InterviewSessionQuestionGenerationView({
               <p className="text-sm font-semibold text-slate-900">
                 면접 질문 생성 작업
               </p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 break-words text-xs text-slate-500 [overflow-wrap:anywhere]">
                 요청 {formatDateTime(data.requestedAt)} / 완료{" "}
                 {formatDateTime(data.completedAt)}
               </p>
@@ -506,12 +515,12 @@ export function InterviewSessionQuestionGenerationView({
           </div>
 
           {isRunning ? (
-            <div className="mt-4 inline-flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+            <div className="mt-4 inline-flex max-w-full items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
               <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
               <span>생성 처리 중입니다. 완료되면 질문 목록이 자동으로 갱신됩니다.</span>
             </div>
           ) : (
-            <p className="mt-4 text-xs font-medium text-slate-500">
+            <p className="mt-4 break-words text-xs font-medium text-slate-500 [overflow-wrap:anywhere]">
               {getGenerationStatusMessage(data.status)}
             </p>
           )}
@@ -525,7 +534,7 @@ export function InterviewSessionQuestionGenerationView({
               <p className="text-sm font-semibold text-slate-900">
                 LangGraph 노드 진행 상태
               </p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 break-words text-xs text-slate-500 [overflow-wrap:anywhere]">
                 생성 작업이 각 에이전트 노드를 통과한 상태입니다.
               </p>
             </div>
@@ -552,7 +561,7 @@ export function InterviewSessionQuestionGenerationView({
                     {getNodeStatusLabel(step.status)}
                   </span>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs opacity-80">
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 break-words text-xs opacity-80 [overflow-wrap:anywhere]">
                   <span>시작 {formatDateTime(step.startedAt)}</span>
                   <span>완료 {formatDateTime(step.completedAt)}</span>
                   {step.attempt > 1 ? <span>{step.attempt}회 실행</span> : null}
