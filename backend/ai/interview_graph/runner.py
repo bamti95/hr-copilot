@@ -8,6 +8,8 @@ from ai.interview_graph.nodes import (
     build_state_node,
     driller_node,
     final_formatter_node,
+    increment_retry_for_driller_node,
+    increment_retry_for_questioner_node,
     predictor_node,
     questioner_node,
     reviewer_node,
@@ -15,6 +17,7 @@ from ai.interview_graph.nodes import (
     selector_lite_node,
     selector_node,
 )
+from ai.interview_graph.router import route_after_scoring
 from ai.interview_graph.schemas import DocumentAnalysisOutput, QuestionGenerationResponse
 from ai.interview_graph.state import AgentState
 from core.database import AsyncSessionLocal
@@ -113,6 +116,8 @@ def _build_graph() -> Any:
     graph.add_node("driller", driller_node)
     graph.add_node("reviewer", reviewer_node)
     graph.add_node("scorer", scorer_node)
+    graph.add_node("retry_questioner", increment_retry_for_questioner_node)
+    graph.add_node("retry_driller", increment_retry_for_driller_node)
     graph.add_node("selector_lite", selector_lite_node)
     graph.add_node("selector", selector_node)
     graph.add_node("final_formatter", final_formatter_node)
@@ -122,10 +127,20 @@ def _build_graph() -> Any:
     graph.add_edge("analyzer", "questioner")
     graph.add_edge("questioner", "selector_lite")
     graph.add_edge("selector_lite", "predictor")
-    graph.add_edge("selector_lite", "driller")
-    graph.add_edge("selector_lite", "reviewer")
-    graph.add_edge(["predictor", "driller", "reviewer"], "scorer")
-    graph.add_edge("scorer", "selector")
+    graph.add_edge("predictor", "driller")
+    graph.add_edge("driller", "reviewer")
+    graph.add_edge("reviewer", "scorer")
+    graph.add_conditional_edges(
+        "scorer",
+        route_after_scoring,
+        {
+            "retry_questioner": "retry_questioner",
+            "retry_driller": "retry_driller",
+            "selector": "selector",
+        },
+    )
+    graph.add_edge("retry_questioner", "questioner")
+    graph.add_edge("retry_driller", "driller")
     graph.add_edge("selector", "final_formatter")
     graph.add_edge("final_formatter", END)
 

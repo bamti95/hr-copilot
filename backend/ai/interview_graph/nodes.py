@@ -467,7 +467,6 @@ async def selector_lite_node(state: AgentState) -> AgentState:
     """
     selected = _select_question_candidates(state.get("questions", []), limit=5)
     return {
-        **state,
         "questions": selected,
         "selected_questions": selected,
         "router_decision": "selector_lite",
@@ -718,7 +717,6 @@ questioner 재실행을 위한 피드백을 생성한다.
 """
 async def increment_retry_for_questioner_node(state: AgentState) -> AgentState:
     return {
-        **state,
         "retry_count": state.get("retry_count", 0) + 1,
         "router_decision": "questioner",
         "retry_feedback": _build_retry_feedback(state),
@@ -732,7 +730,6 @@ driller 재실행을 위한 피드백을 생성한다.
 """
 async def increment_retry_for_driller_node(state: AgentState) -> AgentState:
     return {
-        **state,
         "retry_count": state.get("retry_count", 0) + 1,
         "router_decision": "driller",
         "retry_feedback": _build_retry_feedback(state),
