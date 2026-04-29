@@ -12,8 +12,10 @@ class LlmCallLog(Base, AuditBase):
     __tablename__ = "llm_call_log"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    manager_id: Mapped[int | None] = mapped_column(ForeignKey("manager.id"), nullable=True)
     candidate_id: Mapped[int] = mapped_column(ForeignKey("candidate.id"), nullable=False)
     document_id: Mapped[int | None] = mapped_column(ForeignKey("document.id"), nullable=True)
+
     prompt_profile_id: Mapped[int | None] = mapped_column(
         ForeignKey("prompt_profile.id"),
         nullable=True,

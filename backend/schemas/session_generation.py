@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class SessionGenerationMeta(BaseModel):
     session_id: int
+    manager_id: int | None = None
     candidate_id: int
     target_job: str
     difficulty_level: str | None = None

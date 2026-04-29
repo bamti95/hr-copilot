@@ -89,7 +89,10 @@ class QuestionGenerationService:
                 raise ValueError("Regeneration target questions were not found.")
 
             assembler = SessionGenerationPayloadAssembler(self.db)
-            payload = await assembler.build_candidate_interview_prep_input(session_id)
+            payload = await assembler.build_candidate_interview_prep_input(
+                session_id,
+                manager_id=actor_id,
+            )
             if selected_question_ids:
                 payload.human_action = "regenerate_question"
                 payload.target_question_ids = selected_question_ids

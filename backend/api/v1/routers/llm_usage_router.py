@@ -149,6 +149,7 @@ async def get_llm_usage_summary(
             recent_calls=[
                 LlmUsageCallLog(
                     id=log.id,
+                    manager_id=log.manager_id,
                     session_id=log.interview_sessions_id,
                     candidate_id=log.candidate_id,
                     candidate_name=candidate_name,

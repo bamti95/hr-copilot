@@ -39,6 +39,7 @@ class LlmUsageSessionSummary(BaseModel):
 
 class LlmUsageCallLog(BaseModel):
     id: int
+    manager_id: int | None = None
     session_id: int
     candidate_id: int
     candidate_name: str

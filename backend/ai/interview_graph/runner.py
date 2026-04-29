@@ -43,6 +43,7 @@ async def save_llm_call_logs(
                 estimated_cost = Decimal(str(usage.get("estimated_cost", 0) or 0))
                 db.add(
                     LlmCallLog(
+                        manager_id=payload.session.manager_id,
                         candidate_id=payload.candidate.candidate_id,
                         document_id=None,
                         prompt_profile_id=prompt_profile_id,
