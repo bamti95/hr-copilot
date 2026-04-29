@@ -22,6 +22,54 @@ router = APIRouter(prefix="/interview-sessions", tags=["interview-sessions"])
 logger = logging.getLogger(__name__)
 
 
+async def _create_session_core(
+    request_body: SessionCreateRequest,
+    background_tasks: BackgroundTasks,
+    current_manager: Manager,
+    service: SessionService,
+    *,
+    graph_impl: str,
+    success_message: str,
+) -> SessionSingleResponse:
+    logger.info(
+        "Session Create Request Payload\n%s",
+        json.dumps(
+            {
+                "actor_id": current_manager.id,
+                "graph_impl": graph_impl,
+                "payload": request_body.model_dump(),
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+    )
+
+    data = await service.create_session(
+        request=request_body,
+        actor_id=current_manager.id,
+        background_tasks=background_tasks,
+        graph_impl=graph_impl,
+    )
+
+    logger.info(
+        "Session Create Success Response\n%s",
+        json.dumps(
+            {
+                "actor_id": current_manager.id,
+                "graph_impl": graph_impl,
+                "response": data.model_dump(mode="json"),
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+    )
+
+    return SessionSingleResponse(
+        data=data,
+        message=success_message,
+    )
+
+
 @router.get("", response_model=SessionListResponse)
 async def list_sessions(
     page: int = Query(1, ge=1),
@@ -79,39 +127,64 @@ async def create_session(
     current_manager: Manager = Depends(get_current_active_manager),
     service: SessionService = Depends(get_session_service),
 ) -> SessionSingleResponse:
-    logger.info(
-        "Session Create Request Payload\n%s",
-        json.dumps(
-            {
-                "actor_id": current_manager.id,
-                "payload": request_body.model_dump(),
-            },
-            ensure_ascii=False,
-            indent=2,
-        ),
+    return await _create_session_core(
+        request_body,
+        background_tasks,
+        current_manager,
+        service,
+        graph_impl="default",
+        success_message="면접 세션 생성 성공. 질문 생성 작업이 대기열에 등록되었습니다.",
     )
 
-    data = await service.create_session(
-        request=request_body,
-        actor_id=current_manager.id,
-        background_tasks=background_tasks,
+
+@router.post("/pipeline/jh", response_model=SessionSingleResponse, status_code=status.HTTP_201_CREATED)
+async def create_session_jh(
+    request_body: SessionCreateRequest,
+    background_tasks: BackgroundTasks,
+    current_manager: Manager = Depends(get_current_active_manager),
+    service: SessionService = Depends(get_session_service),
+) -> SessionSingleResponse:
+    return await _create_session_core(
+        request_body,
+        background_tasks,
+        current_manager,
+        service,
+        graph_impl="jh",
+        success_message="면접 세션 생성 성공. 질문 생성 작업이 대기열에 등록되었습니다. (그래프: jh)",
     )
 
-    logger.info(
-        "Session Create Success Response\n%s",
-        json.dumps(
-            {
-                "actor_id": current_manager.id,
-                "response": data.model_dump(mode="json"),
-            },
-            ensure_ascii=False,
-            indent=2,
-        ),
+
+@router.post("/pipeline/hy", response_model=SessionSingleResponse, status_code=status.HTTP_201_CREATED)
+async def create_session_hy(
+    request_body: SessionCreateRequest,
+    background_tasks: BackgroundTasks,
+    current_manager: Manager = Depends(get_current_active_manager),
+    service: SessionService = Depends(get_session_service),
+) -> SessionSingleResponse:
+    return await _create_session_core(
+        request_body,
+        background_tasks,
+        current_manager,
+        service,
+        graph_impl="hy",
+        success_message="면접 세션 생성 성공. 질문 생성 작업이 대기열에 등록되었습니다. (그래프: hy)",
     )
 
-    return SessionSingleResponse(
-        data=data,
-        message="면접 세션 생성 성공. 질문 생성 작업이 대기열에 등록되었습니다.",
+
+@router.post("/pipeline/jy", response_model=SessionSingleResponse, status_code=status.HTTP_201_CREATED)
+async def create_session_jy(
+    request_body: SessionCreateRequest,
+    background_tasks: BackgroundTasks,
+    current_manager: Manager = Depends(get_current_active_manager),
+    service: SessionService = Depends(get_session_service),
+) -> SessionSingleResponse:
+    return await _create_session_core(
+        request_body,
+        background_tasks,
+        current_manager,
+        service,
+        graph_impl="jy",
+        success_message="면접 세션 생성 성공. 질문 생성 작업이 대기열에 등록되었습니다. (그래프: jy)",
     )
 
 

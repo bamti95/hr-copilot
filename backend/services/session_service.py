@@ -44,6 +44,8 @@ class SessionService:
         request: SessionCreateRequest,
         actor_id: int | None,
         background_tasks: BackgroundTasks,
+        *,
+        graph_impl: str = "default",
     ) -> SessionResponse:
         candidate = await self.candidate_repo.find_by_id_not_deleted(request.candidate_id)
         if not candidate:
@@ -77,6 +79,8 @@ class SessionService:
             run_question_generation_background_job,
             entity.id,
             actor_id,
+            None,
+            graph_impl,
         )
 
         detail = await self.session_repo.get_detail_with_candidate(entity.id)

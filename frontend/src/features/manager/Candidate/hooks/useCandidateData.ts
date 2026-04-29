@@ -11,6 +11,7 @@ import {
 } from "../services/candidateService";
 import type {
   AnalysisSessionCreateRequest,
+  AnalysisSessionGraphPipeline,
   CandidateApplyStatus,
   CandidateSampleFolder,
   CandidateListResponse,
@@ -258,12 +259,19 @@ export function useCandidateData() {
         difficultyLevel: payload.difficultyLevel ?? null,
         promptProfileId: payload.promptProfileId,
         promptProfileSnapshot: payload.promptProfileSnapshot ?? null,
+        graphPipeline: payload.graphPipeline,
       });
 
       setIsAnalysisSessionCreateModalOpen(false);
       setSelectedIds([]);
+      const pipelineLabel: Record<AnalysisSessionGraphPipeline, string> = {
+        default: "기본",
+        jh: "JH",
+        hy: "HY",
+        jy: "JY",
+      };
       setSuccessMessage(
-        `${response.items.length}개의 분석 세션을 생성했습니다. 실제 분석은 이후 단계에서 시작할 수 있습니다.`,
+        `${response.items.length}개의 분석 세션을 생성했습니다. (그래프: ${pipelineLabel[payload.graphPipeline]}) 실제 분석은 이후 단계에서 시작할 수 있습니다.`,
       );
     } catch (error) {
       setErrorMessage(

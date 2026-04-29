@@ -40,6 +40,7 @@ export async function createAnalysisSessions(
         targetJob: request.targetJob,
         difficultyLevel: request.difficultyLevel ?? null,
         promptProfileId: request.promptProfileId,
+        graphPipeline: request.graphPipeline,
       });
 
       return {

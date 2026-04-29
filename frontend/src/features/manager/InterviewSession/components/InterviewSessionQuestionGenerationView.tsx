@@ -341,6 +341,17 @@ export function InterviewSessionQuestionGenerationView({
         const response = await fetchInterviewQuestionGenerationStatus(sessionId);
         setData(response);
       } catch (error) {
+        // 401: refresh token 갱신까지 실패한 인증 만료 상태.
+        // data를 null로 리셋해 isRunning=false로 만들어 폴링 인터벌이 즉시
+        // 정리되도록 한다(useEffect cleanup이 동작). axios 인터셉터가 이미
+        // auth:unauthorized 이벤트를 발생시켜 전역 로그아웃 처리를 진행하므로,
+        // 여기서는 화면 안내와 폴링 중단만 담당한다.
+        const status = (error as { response?: { status?: number } })?.response?.status;
+        if (status === 401) {
+          setData(null);
+          setErrorMessage("로그인이 만료되었습니다. 다시 로그인해 주세요.");
+          return;
+        }
         setErrorMessage(
           getErrorMessage(error, "질문 생성 결과를 불러오지 못했습니다."),
         );

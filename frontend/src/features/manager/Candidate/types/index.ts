@@ -1,4 +1,5 @@
 import type { PagedListResponse } from "../../../../common/types/pagination";
+import type { InterviewSessionGraphPipeline } from "../../InterviewSession/types";
 
 export type CandidateApplyStatus =
   | "APPLIED"
@@ -56,12 +57,15 @@ export interface PromptProfileOption {
   systemPromptPreview: string;
 }
 
+export type AnalysisSessionGraphPipeline = InterviewSessionGraphPipeline;
+
 export interface AnalysisSessionCreateRequest {
   candidateIds: number[];
   targetJob: string;
   difficultyLevel?: DifficultyLevel | null;
   promptProfileId: number;
   promptProfileSnapshot?: Record<string, unknown> | null;
+  graphPipeline: AnalysisSessionGraphPipeline;
 }
 
 export interface AnalysisSessionCreateItem {

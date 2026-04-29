@@ -5,7 +5,6 @@ from collections.abc import Awaitable, Callable
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ai.interview_graph.runner import run_interview_question_graph
 from ai.interview_graph.schemas import InterviewQuestionItem, QuestionGenerationResponse, ReviewResult
 from core.config import settings
 from core.database import AsyncSessionLocal
@@ -20,6 +19,30 @@ from services.session_generation_payload_assembler import SessionGenerationPaylo
 
 logger = logging.getLogger(__name__)
 
+GraphRunner = Callable[
+    [CandidateInterviewPrepInput, Callable[[str], Awaitable[None]] | None],
+    Awaitable[QuestionGenerationResponse],
+]
+
+
+def resolve_question_graph_runner(graph_impl: str) -> GraphRunner:
+    impl = (graph_impl or "default").strip().lower()
+    if impl == "jh":
+        from ai.interview_graph_JH.runner import run_interview_question_graph
+
+        return run_interview_question_graph
+    if impl == "hy":
+        from ai.interview_graph_HY.runner import run_interview_question_graph
+
+        return run_interview_question_graph
+    if impl == "jy":
+        from ai.interview_graph_JY.runner import run_interview_question_graph
+
+        return run_interview_question_graph
+    from ai.interview_graph.runner import run_interview_question_graph as run_default
+
+    return run_default
+
 
 class QuestionGenerationService:
     def __init__(self, db: AsyncSession | None = None):
@@ -31,6 +54,8 @@ class QuestionGenerationService:
         self,
         payload: CandidateInterviewPrepInput,
         on_node_complete: Callable[[str], Awaitable[None]] | None = None,
+        *,
+        graph_impl: str = "default",
     ) -> QuestionGenerationResponse:
         logger.info(
             "Question Generation Request Payload\n%s",
@@ -41,10 +66,8 @@ class QuestionGenerationService:
             ),
         )
 
-        result = await run_interview_question_graph(
-            payload,
-            on_node_complete=on_node_complete,
-        )
+        runner = resolve_question_graph_runner(graph_impl)
+        result = await runner(payload, on_node_complete)
 
         logger.info(
             "Question Generation Completed session_id=%s candidate_id=%s status=%s question_count=%s",
@@ -61,6 +84,8 @@ class QuestionGenerationService:
         session_id: int,
         actor_id: int | None,
         target_question_ids: list[str] | None = None,
+        *,
+        graph_impl: str = "default",
     ) -> QuestionGenerationResponse:
         if self.db is None or self.question_repo is None or self.session_repo is None:
             raise RuntimeError("QuestionGenerationService requires a database session.")
@@ -116,6 +141,7 @@ class QuestionGenerationService:
                 self.request_candidate_interview_prep(
                     payload,
                     on_node_complete=mark_node_complete,
+                    graph_impl=graph_impl,
                 ),
                 timeout=settings.QUESTION_GENERATION_JOB_TIMEOUT_SECONDS,
             )
@@ -260,6 +286,7 @@ async def run_question_generation_background_job(
     session_id: int,
     actor_id: int | None,
     target_question_ids: list[str] | None = None,
+    graph_impl: str = "default",
 ) -> None:
     async with AsyncSessionLocal() as db:
         service = QuestionGenerationService(db)
@@ -267,4 +294,5 @@ async def run_question_generation_background_job(
             session_id=session_id,
             actor_id=actor_id,
             target_question_ids=target_question_ids,
+            graph_impl=graph_impl,
         )

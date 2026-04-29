@@ -25,11 +25,15 @@ export interface InterviewSessionListRequest {
   candidateName?: string;
 }
 
+export type InterviewSessionGraphPipeline = "default" | "jh" | "hy" | "jy";
+
 export interface InterviewSessionCreateRequest {
   candidateId: number;
   targetJob: string;
   difficultyLevel?: string | null;
   promptProfileId: number;
+  /** 생략 시 팀 공용(default) 파이프라인 */
+  graphPipeline?: InterviewSessionGraphPipeline;
 }
 
 export interface InterviewSessionUpdateRequest {
