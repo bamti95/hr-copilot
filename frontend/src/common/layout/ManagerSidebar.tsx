@@ -99,7 +99,7 @@ export function ManagerSidebar({ isOpen, onClose }: ManagerSidebarProps) {
                   }
                 }}
               >
-                <span>LLM 사용량</span>
+                <span>AI 운영 현황</span>
                 <ChevronRight
                   className={`h-4 w-4 transition-transform ${
                     location.pathname === "/manager/llm-usage"

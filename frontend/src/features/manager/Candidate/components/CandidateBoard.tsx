@@ -2,6 +2,8 @@ import { useLayoutEffect, useRef } from "react";
 import { Pagination } from "../../../../common/components/Pagination";
 import { StatusPill } from "../../../../common/components/StatusPill";
 import { getJobPositionLabel } from "../../common/candidateJobPosition";
+import { formatDateTime } from "../../common/formatDateTime";
+
 import type {
   CandidateApplyStatus,
   CandidateListResponse,
@@ -43,9 +45,7 @@ function formatDate(value: string | null) {
   return value ? value.slice(0, 10) : "-";
 }
 
-function formatDateTime(value: string) {
-  return value.replace("T", " ").slice(0, 16);
-}
+
 
 export function CandidateBoard({
   data,
@@ -87,17 +87,17 @@ export function CandidateBoard({
   }, [allOnPageSelected, someOnPageSelected]);
 
   return (
-    <section className="rounded-[32px] border border-white/70 bg-[var(--panel)] p-7 shadow-[var(--shadow)] backdrop-blur-[14px]">
+    <section className="rounded-4xl border border-white/70 bg-(--panel) p-7 shadow-(--shadow) backdrop-blur-[14px]">
       <div className="mb-5">
-        <h2 className="text-2xl font-bold text-[var(--text)]">지원자 관리</h2>
-        <p className="mt-2 text-sm text-[var(--muted)]">
+        <h2 className="text-2xl font-bold text-(--text)">지원자 관리</h2>
+        <p className="mt-2 text-sm text-(--muted)">
           지원자를 직무와 상태 기준으로 조회하고, 선택한 지원자를 기반으로 분석 세션까지
           준비할 수 있습니다.
         </p>
       </div>
 
-      <div className="mb-4 grid gap-3 rounded-[24px] border border-white/70 bg-[var(--panel-strong)] p-4 xl:grid-cols-[minmax(0,1fr)_160px_160px_150px_100px_auto_auto_auto] xl:items-end">
-        <label className="text-sm font-medium text-[var(--text)]">
+      <div className="mb-4 grid gap-3 rounded-3xl border border-white/70 bg-(--panel-strong) p-4 xl:grid-cols-[minmax(0,1fr)_160px_160px_150px_100px_auto_auto_auto] xl:items-end">
+        <label className="text-sm font-medium text-(--text)">
           검색어
           <input
             className={inputClassName}
@@ -112,7 +112,7 @@ export function CandidateBoard({
           />
         </label>
 
-        <label className="text-sm font-medium text-[var(--text)]">
+        <label className="text-sm font-medium text-(--text)">
           지원 직무
           <select
             className={inputClassName}
@@ -147,7 +147,7 @@ export function CandidateBoard({
           </select>
         </label>
 
-        <label className="text-sm font-medium text-[var(--text)]">
+        <label className="text-sm font-medium text-(--text)">
           페이지 크기
           <select
             className={inputClassName}
@@ -172,7 +172,7 @@ export function CandidateBoard({
 
         <button
           type="button"
-          className={`${buttonClassName} border-transparent bg-[var(--primary)] px-4 text-white hover:opacity-90`}
+          className={`${buttonClassName} border-transparent bg-(--primary) px-4 text-white hover:opacity-90`}
           onClick={onCreate}
         >
           신규 등록
@@ -203,22 +203,22 @@ export function CandidateBoard({
         </button>
       </div>
 
-      <div className="mb-4 flex items-center justify-between gap-3 text-sm text-[var(--muted)]">
+      <div className="mb-4 flex items-center justify-between gap-3 text-sm text-(--muted)">
         <span>
           총 {data.paging.totalCount}건 / {Math.max(data.paging.totalPages, 1)} 페이지
         </span>
         <span>선택한 지원자 {selectedIds.length}명</span>
       </div>
 
-      <div className="overflow-x-auto rounded-[24px] border border-white/70">
+      <div className="overflow-x-auto rounded-3xl border border-white/70">
         <table className="w-full border-collapse">
           <thead className="bg-white/60">
             <tr>
-              <th className="w-10 border-b border-[var(--line)] px-2 py-3 text-left text-[0.84rem] font-bold whitespace-nowrap text-[var(--muted)]">
+              <th className="w-10 border-b border-(--line) px-2 py-3 text-left text-[0.84rem] font-bold whitespace-nowrap text-[var(--muted)]">
                 <input
                   ref={headerCheckboxRef}
                   type="checkbox"
-                  className="h-4 w-4 rounded border-[var(--line)]"
+                  className="h-4 w-4 rounded border-(--line)"
                   checked={allOnPageSelected}
                   onChange={onSelectAllOnPage}
                   disabled={isLoading || data.items.length === 0}
