@@ -57,6 +57,10 @@ class ControlState(TypedDict, total=False):
     retry_feedback: str | None
     retry_count: int
     max_retry_count: int
+    questioner_retry_count: int
+    driller_retry_count: int
+    max_questioner_retry_count: int
+    max_driller_retry_count: int
     node_warnings: Annotated[list[dict[str, Any]], operator.add]
 
 

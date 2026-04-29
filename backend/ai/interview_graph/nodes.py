@@ -53,6 +53,8 @@ QUESTION_REWRITE_FLAGS = {
     "재작성_권장",
 }
 RISK_CATEGORIES = {"RISK", "리스크"}
+LOW_SCORE_THRESHOLD = 80
+PARTIAL_RETRY_MAX_LOW_SCORE_COUNT = 2
 
 # LLM 응답을 Pydantic 모델로 강제 파싱 + 검증 + 재시도 하는 래퍼
 async def _call_structured_output(
@@ -176,6 +178,62 @@ def _question_id(question: dict[str, Any], index: int) -> str:
 
 def _find_by_question_id(items: list[dict[str, Any]], question_id: str) -> dict[str, Any]:
     return next((item for item in items if item.get("question_id") == question_id), {})
+
+
+def _replace_questions_by_id(
+    questions: list[dict[str, Any]],
+    replacements: list[dict[str, Any]],
+    target_question_ids: list[str],
+) -> list[dict[str, Any]]:
+    if not questions or not replacements or not target_question_ids:
+        return replacements or questions
+
+    replacement_by_id = {
+        question_id: {**replacement, "id": question_id}
+        for question_id, replacement in zip(
+            target_question_ids,
+            replacements,
+            strict=False,
+        )
+    }
+
+    merged = [
+        replacement_by_id.get(str(question.get("id")), question)
+        for question in questions
+    ]
+    replaced_ids = {str(question.get("id")) for question in questions}
+    merged.extend(
+        replacement
+        for question_id, replacement in replacement_by_id.items()
+        if question_id not in replaced_ids
+    )
+    return merged
+
+
+def _count_values(values: list[str]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for value in values:
+        if not value:
+            continue
+        counts[value] = counts.get(value, 0) + 1
+    return counts
+
+
+def _dominant_flags(scores: list[dict[str, Any]], limit: int = 5) -> list[str]:
+    counts = _count_values(
+        [
+            str(flag)
+            for score in scores
+            for flag in score.get("quality_flags", [])
+        ]
+    )
+    return [
+        flag
+        for flag, _ in sorted(
+            counts.items(),
+            key=lambda item: (-item[1], item[0]),
+        )[:limit]
+    ]
 
 
 def _is_approved_review(review: dict[str, Any]) -> bool:
@@ -424,15 +482,25 @@ async def questioner_node(state: AgentState) -> AgentState:
         question.model_dump(mode="json")
         for question in result.questions
     ]
-    questions = new_questions
 
     normalized_questions = []
-    for index, question in enumerate(questions):
+    for index, question in enumerate(new_questions):
         normalized_questions.append({**question, "id": _question_id(question, index)})
+
+    if human_action == "regenerate_question" and target_question_ids and existing_questions:
+        questions = _replace_questions_by_id(
+            existing_questions,
+            normalized_questions,
+            target_question_ids,
+        )
+    else:
+        questions = normalized_questions
 
     return {
         **state,
-        "questions": normalized_questions,
+        "questions": questions,
+        "target_question_ids": [],
+        "human_action": None,
         "llm_usages": llm_usages,
     }
 
@@ -669,6 +737,36 @@ async def scorer_node(state: AgentState) -> AgentState:
     if any(flag in QUESTION_REWRITE_FLAGS for flag in quality_issue_set):
         quality_issue_set.add("QUESTION_REWRITE_NEEDED")
     quality_issues = sorted(quality_issue_set)
+    score_values = [int(score.get("score", 0)) for score in scores]
+    low_score_question_ids = [
+        str(score.get("question_id"))
+        for score in scores
+        if int(score.get("score", 0)) < LOW_SCORE_THRESHOLD
+    ]
+    rejected_question_ids = [
+        str(review.get("question_id"))
+        for review in reviews
+        if review.get("status") == "rejected"
+    ]
+    needs_revision_question_ids = [
+        str(review.get("question_id"))
+        for review in reviews
+        if review.get("status") == "needs_revision"
+    ]
+    follow_up_issue_question_ids = [
+        str(score.get("question_id"))
+        for score in scores
+        if any(flag in FOLLOW_UP_WEAK_FLAGS for flag in score.get("quality_flags", []))
+    ]
+    question_rewrite_question_ids = [
+        str(score.get("question_id"))
+        for score in scores
+        if int(score.get("score", 0)) < LOW_SCORE_THRESHOLD
+        or any(flag in QUESTION_REWRITE_FLAGS for flag in score.get("quality_flags", []))
+    ]
+    review_status_counts = _count_values(
+        [str(review.get("status") or "unknown") for review in reviews]
+    )
 
     update: dict[str, Any] = {
         "scores": scores,
@@ -677,6 +775,20 @@ async def scorer_node(state: AgentState) -> AgentState:
             "rejected_count": rejected_count,
             "avg_score": round(avg_score, 2),
             "quality_issues": quality_issues,
+            "low_score_question_ids": low_score_question_ids,
+            "low_score_count": len(low_score_question_ids),
+            "score_distribution": {
+                "min": min(score_values) if score_values else 0,
+                "max": max(score_values) if score_values else 0,
+                "avg": round(avg_score, 2),
+            },
+            "dominant_quality_flags": _dominant_flags(scores),
+            "review_status_counts": review_status_counts,
+            "rejected_question_ids": rejected_question_ids,
+            "needs_revision_question_ids": needs_revision_question_ids,
+            "follow_up_issue_question_ids": follow_up_issue_question_ids,
+            "question_rewrite_question_ids": question_rewrite_question_ids,
+            "scored_question_count": len(scores),
         },
         "llm_usages": llm_usages,
     }
@@ -691,8 +803,32 @@ retry_count를 증가시키고,
 questioner 재실행을 위한 피드백을 생성한다.
 """
 async def increment_retry_for_questioner_node(state: AgentState) -> AgentState:
+    summary = state.get("review_summary", {})
+    low_score_question_ids = [
+        str(question_id)
+        for question_id in summary.get("low_score_question_ids", [])
+        if question_id
+    ]
+    target_question_ids = (
+        low_score_question_ids
+        if 0 < len(low_score_question_ids) <= PARTIAL_RETRY_MAX_LOW_SCORE_COUNT
+        else []
+    )
+    additional_instruction = state.get("additional_instruction")
+    human_action = state.get("human_action")
+    if target_question_ids:
+        human_action = "regenerate_question"
+        additional_instruction = (
+            "점수가 낮은 대상 질문만 개선해 새 질문으로 재생성하세요. "
+            "통과한 기존 질문과 중복되지 않게 하고, 지적된 quality_flags와 review 사유를 우선 보완하세요."
+        )
+
     return {
         "retry_count": state.get("retry_count", 0) + 1,
+        "questioner_retry_count": state.get("questioner_retry_count", 0) + 1,
+        "target_question_ids": target_question_ids,
+        "human_action": human_action,
+        "additional_instruction": additional_instruction,
         "retry_feedback": _build_retry_feedback(state),
     }
 
@@ -705,6 +841,7 @@ driller 재실행을 위한 피드백을 생성한다.
 async def increment_retry_for_driller_node(state: AgentState) -> AgentState:
     return {
         "retry_count": state.get("retry_count", 0) + 1,
+        "driller_retry_count": state.get("driller_retry_count", 0) + 1,
         "retry_feedback": _build_retry_feedback(state),
     }
 
@@ -827,6 +964,8 @@ async def final_formatter_node(state: AgentState) -> AgentState:
             "total_candidate_questions": len(state.get("questions", [])),
             "selected_question_count": len(items),
             "retry_count": state.get("retry_count", 0),
+            "questioner_retry_count": state.get("questioner_retry_count", 0),
+            "driller_retry_count": state.get("driller_retry_count", 0),
             "router_decision": "selector",
             "is_all_approved": bool(items) and approved_count == len(items),
             "review_summary": state.get("review_summary", {}),

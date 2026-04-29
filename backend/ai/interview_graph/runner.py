@@ -180,6 +180,10 @@ async def run_interview_question_graph(
             "questions": getattr(payload, "existing_questions", []),
             "retry_count": 0,
             "max_retry_count": 3,
+            "questioner_retry_count": 0,
+            "driller_retry_count": 0,
+            "max_questioner_retry_count": 1,
+            "max_driller_retry_count": 1,
             "node_warnings": [],
             "llm_usages": [],
         }
