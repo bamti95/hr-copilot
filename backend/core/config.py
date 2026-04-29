@@ -1,9 +1,13 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
 
-load_dotenv()
+BASE_DIR = Path(__file__).resolve().parents[1]
+DEFAULT_OPENAI_MODEL = "gpt-5-mini"
+
+load_dotenv(BASE_DIR / ".env")
 
 def _parse_bool(value: str | None, default: bool = False) -> bool:
     if value is None:
@@ -33,8 +37,8 @@ class Settings:
     )
 
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
-    OPENAI_TIMEOUT_SECONDS: float = float(os.getenv("OPENAI_TIMEOUT_SECONDS", 180))
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", DEFAULT_OPENAI_MODEL).strip() or DEFAULT_OPENAI_MODEL
+    OPENAI_TIMEOUT_SECONDS: float = float(os.getenv("OPENAI_TIMEOUT_SECONDS", 360))
     QUESTION_GENERATION_JOB_TIMEOUT_SECONDS: float = float(
         os.getenv("QUESTION_GENERATION_JOB_TIMEOUT_SECONDS", 900)
     )
