@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
@@ -6,7 +7,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from models.audit_base import AuditBase
 from models.base import Base
-
 
 class LlmCallLog(Base, AuditBase):
     __tablename__ = "llm_call_log"
@@ -41,3 +41,22 @@ class LlmCallLog(Base, AuditBase):
     call_status: Mapped[str] = mapped_column(String(30), nullable=False, default="success")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     call_time: Mapped[int] = mapped_column(Integer, nullable=False)
+    
+        # LangSmith 연결
+    run_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    parent_run_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    trace_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    # 노드 타입
+    run_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
+
+    # 실행 순서
+    execution_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # input / output 분리
+    request_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    output_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    # 시간 추적
+    started_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    ended_at: Mapped[datetime | None] = mapped_column(nullable=True)
