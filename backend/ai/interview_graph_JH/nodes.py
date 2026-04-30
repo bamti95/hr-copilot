@@ -1,5 +1,4 @@
-"""`interview_graph_JH`의 LangGraph 노드 구현 파일.
-
+"""
 각 노드는 `AgentState`를 입력받아 필요한 필드만 갱신합니다.
 흐름은 `prepare_context -> questioner -> predictor -> driller -> reviewer`이며,
 Reviewer가 반려한 질문은 Questioner로 되돌려 재작성합니다.
