@@ -1,7 +1,8 @@
-"""질문 생성 LangGraph 진입점 (`interview_graph_HY`).
+from __future__ import annotations
 
-이 모듈과 `interview_graph_HY` 패키지만 수정하면 다른 파이프라인 구현에는 영향이 없습니다.
-현재는 동작 연결을 위해 공용 그래프에 위임합니다.
+"""Question generation LangGraph implementation (HY).
+
+Per request: only this package (`backend/ai/interview_graph_HY`) is modified.
 """
 
 from collections.abc import Awaitable, Callable
@@ -9,11 +10,27 @@ from collections.abc import Awaitable, Callable
 from ai.interview_graph.schemas import QuestionGenerationResponse
 from schemas.session_generation import CandidateInterviewPrepInput
 
+from .graph import build_graph
+
 
 async def run_interview_question_graph(
     payload: CandidateInterviewPrepInput,
     on_node_complete: Callable[[str], Awaitable[None]] | None = None,
 ) -> QuestionGenerationResponse:
-    from ai.interview_graph.runner import run_interview_question_graph as run_default
+    app = build_graph()
 
-    return await run_default(payload, on_node_complete=on_node_complete)
+    initial_state = {"_payload": payload}
+    final_response: dict | None = None
+
+    async for update in app.astream(initial_state, stream_mode="updates"):
+        for node_name, node_update in update.items():
+            if on_node_complete is not None:
+                await on_node_complete(node_name)
+            if node_name == "final":
+                final_response = node_update.get("final_response")
+
+    if final_response is None:
+        raise RuntimeError("HY interview graph finished without final_response.")
+
+    return QuestionGenerationResponse.model_validate(final_response)
+
