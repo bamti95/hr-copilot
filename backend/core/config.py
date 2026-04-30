@@ -46,7 +46,25 @@ class Settings:
         os.getenv("QUESTION_GENERATION_STALE_SECONDS", 1800)
     )
     UPLOAD_PATH: str = os.getenv("UPLOAD_PATH")
+    
+    # ==============================
+    # LANGSMITH 추가
+    # ==============================
+    LANGCHAIN_TRACING_V2: bool = _parse_bool(
+        os.getenv("LANGCHAIN_TRACING_V2"), True
+    )
+    
+    # API 키 (LangSmith 설정 페이지에서 발급)
+    LANGCHAIN_API_KEY: str = os.getenv("LANGCHAIN_API_KEY", "")
 
+    # 프로젝트 이름 (LangSmith 대시보드에서 구분할 이름)
+    LANGCHAIN_PROJECT: str = os.getenv("LANGCHAIN_PROJECT", "HR-Copilot")
+    
+    # (선택) 엔드포인트
+    LANGCHAIN_ENDPOINT: str = os.getenv(
+        "LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com"
+    )
+    
     @property
     def DATABASE_URL(self) -> str:
         user = quote_plus(self.DB_USER)
