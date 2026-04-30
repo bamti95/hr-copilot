@@ -177,10 +177,13 @@ class SessionRepository(BaseRepository[InterviewSession]):
         session: InterviewSession,
         status: str,
         error: str | None = None,
+        *,
+        refresh_completed_timestamp: bool = True,
     ) -> None:
         session.question_generation_status = status
         session.question_generation_error = error
-        session.question_generation_completed_at = datetime.now(timezone.utc)
+        if refresh_completed_timestamp or session.question_generation_completed_at is None:
+            session.question_generation_completed_at = datetime.now(timezone.utc)
         if status in {"COMPLETED", "PARTIAL_COMPLETED"}:
             progress = list(session.question_generation_progress or [])
             now = _now_iso()

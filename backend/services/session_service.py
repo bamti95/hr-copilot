@@ -237,6 +237,7 @@ class SessionService:
                 entity,
                 status=inferred_status,
                 error=entity.question_generation_error,
+                refresh_completed_timestamp=entity.question_generation_completed_at is None,
             )
             await self.db.commit()
 
@@ -248,6 +249,7 @@ class SessionService:
                     entity,
                     status=entity.question_generation_status,
                     error=entity.question_generation_error,
+                    refresh_completed_timestamp=False,
                 )
                 await self.db.commit()
 
