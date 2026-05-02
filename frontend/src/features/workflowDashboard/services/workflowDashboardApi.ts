@@ -1,13 +1,13 @@
-import api from "../../../../services/api";
+import api from "../../../services/api";
 import type {
-  LlmUsageCallLog,
   LlmCallLog,
   LlmCallLogListResponse,
+  LlmUsageCallLog,
   LlmUsageMetric,
   LlmUsageNodeSummary,
   LlmUsageSessionSummary,
   LlmUsageSummaryResponse,
-} from "../types";
+} from "../types/workflowDashboard.types";
 
 interface ApiEnvelope<T> {
   success: boolean;
@@ -243,10 +243,9 @@ function mapWorkflowLog(response: LlmCallLogApiResponse): LlmCallLog {
   };
 }
 
-export async function fetchLlmUsageSummary(): Promise<LlmUsageSummaryResponse> {
+export async function fetchWorkflowSessions(): Promise<LlmUsageSummaryResponse> {
   const response = await api.get<ApiEnvelope<LlmUsageSummaryApiResponse>>(
     "/llm-usage/summary",
-    { skipGlobalLoading: true },
   );
 
   const data = response.data.data;
@@ -263,7 +262,6 @@ export async function fetchSessionLlmLogs(
 ): Promise<LlmCallLogListResponse> {
   const response = await api.get<LlmCallLogListApiResponse>(
     `/interview-sessions/${sessionId}/llm-logs`,
-    { skipGlobalLoading: true },
   );
 
   return {

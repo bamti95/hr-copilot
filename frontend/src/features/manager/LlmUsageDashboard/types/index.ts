@@ -55,3 +55,43 @@ export interface LlmUsageSummaryResponse {
   bySession: LlmUsageSessionSummary[];
   recentCalls: LlmUsageCallLog[];
 }
+
+export type WorkflowLogStatus = "success" | "failed" | "retry" | "running" | "skipped";
+
+export interface LlmCallLog {
+  id: number;
+  managerId: number | null;
+  candidateId: number;
+  documentId: number | null;
+  promptProfileId: number | null;
+  interviewSessionsId: number;
+  modelName: string;
+  nodeName: string | null;
+  runId: string | null;
+  parentRunId: string | null;
+  traceId: string | null;
+  runType: string | null;
+  executionOrder: number | null;
+  requestJson: Record<string, unknown> | null;
+  outputJson: Record<string, unknown> | null;
+  responseJson: Record<string, unknown> | null;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  estimatedCost: number;
+  currency: string;
+  elapsedMs: number | null;
+  costAmount: number | null;
+  callStatus: string;
+  errorMessage: string | null;
+  callTime: number;
+  startedAt: string | null;
+  endedAt: string | null;
+  createdAt: string;
+}
+
+export interface LlmCallLogListResponse {
+  sessionId: number;
+  traceId: string | null;
+  items: LlmCallLog[];
+}
