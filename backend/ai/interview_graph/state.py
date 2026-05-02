@@ -20,6 +20,14 @@ class PromptProfileRef(TypedDict):
 class LlmUsageState(TypedDict, total=False):
     node: str
     model_name: str
+    run_id: str
+    parent_run_id: str
+    trace_id: str
+    run_type: str
+    execution_order: int
+    request_json: dict[str, Any]
+    output_json: dict[str, Any] | None
+    response_json: dict[str, Any] | None
     input_tokens: int
     output_tokens: int
     total_tokens: int
@@ -27,6 +35,8 @@ class LlmUsageState(TypedDict, total=False):
     call_status: str
     elapsed_ms: int
     error_message: str
+    started_at: Any
+    ended_at: Any
 
 
 class InputState(TypedDict, total=False):

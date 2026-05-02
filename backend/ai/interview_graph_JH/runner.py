@@ -8,7 +8,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from ai.interview_graph.runner import save_llm_call_logs
+from ai.interview_graph.runner import build_node_execution_log, save_llm_call_logs
 from ai.interview_graph_JH.schemas import DocumentAnalysisOutput, QuestionGenerationResponse
 from ai.interview_graph_JH.nodes import (
     build_response,
@@ -185,6 +185,7 @@ async def run_interview_question_graph(
 ) -> QuestionGenerationResponse:
     """JH 그래프를 실행하고 최종 응답 객체를 반환한다."""
     collected_llm_usages: list[dict[str, Any]] = []
+    saved_usage_count = 0
     try:
         app = _build_graph()
         final_state = _initial_state(payload)
@@ -195,8 +196,17 @@ async def run_interview_question_graph(
                     await on_node_complete(node_name)
                 if isinstance(node_update, dict):
                     final_state.update(node_update)
-                    if "llm_usages" in node_update:
-                        collected_llm_usages = list(node_update["llm_usages"])
+                    llm_usages = list(node_update.get("llm_usages") or [])
+                    if llm_usages:
+                        collected_llm_usages.extend(llm_usages[saved_usage_count:])
+                        saved_usage_count = len(llm_usages)
+                    else:
+                        collected_llm_usages.append(
+                            build_node_execution_log(
+                                node_name=node_name,
+                                node_update=node_update,
+                            )
+                        )
 
         response = build_response(final_state)
         await save_llm_call_logs(payload=payload, usages=collected_llm_usages)

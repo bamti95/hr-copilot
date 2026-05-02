@@ -33,7 +33,6 @@ class QuestionCandidate(GraphBaseModel):
         "RISK",
         "CULTURE_FIT",
         "MOTIVATION",
-        "LEADERSHIP",
         "COMMUNICATION",
         "OTHER",
         "기술",
@@ -42,7 +41,6 @@ class QuestionCandidate(GraphBaseModel):
         "리스크",
         "조직_적합성",
         "지원_동기",
-        "리더십",
         "커뮤니케이션",
         "기타",
     ]

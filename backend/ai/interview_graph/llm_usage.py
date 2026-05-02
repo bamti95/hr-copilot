@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+from datetime import datetime, timezone
 from typing import Any, TypeVar
 
 from pydantic import BaseModel
@@ -49,6 +50,22 @@ def _usage_value(usage: Any, key: str, default: int = 0) -> int:
     return int(value or default)
 
 
+def _jsonable(value: Any) -> Any:
+    if value is None:
+        return None
+    if isinstance(value, BaseModel):
+        return value.model_dump(mode="json")
+    if hasattr(value, "model_dump"):
+        return value.model_dump(mode="json")
+    if isinstance(value, dict):
+        return {str(key): _jsonable(item) for key, item in value.items()}
+    if isinstance(value, list | tuple):
+        return [_jsonable(item) for item in value]
+    if isinstance(value, str | int | float | bool):
+        return value
+    return str(value)
+
+
 async def call_structured_output_with_usage(
     *,
     node_name: str,
@@ -62,6 +79,16 @@ async def call_structured_output_with_usage(
 
     for _ in range(2):
         started_at = time.perf_counter()
+        started_datetime = datetime.now(timezone.utc)
+        request_json = {
+            "node": node_name,
+            "model": model_name,
+            "response_model": response_model.__name__,
+            "input": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        }
         try:
             response = await asyncio.wait_for(
                 client.responses.parse(
@@ -74,6 +101,7 @@ async def call_structured_output_with_usage(
                 ),
                 timeout=settings.OPENAI_TIMEOUT_SECONDS,
             )
+            ended_datetime = datetime.now(timezone.utc)
             elapsed_ms = int((time.perf_counter() - started_at) * 1000)
             usage = getattr(response, "usage", None) or getattr(
                 response,
@@ -90,10 +118,14 @@ async def call_structured_output_with_usage(
             parsed = response.output_parsed
             if parsed is None:
                 raise ValueError("Structured output was empty.")
+            output_json = _jsonable(parsed)
             usages.append(
                 {
                     "node": node_name,
                     "model_name": model_name,
+                    "request_json": request_json,
+                    "output_json": output_json,
+                    "response_json": _jsonable(response),
                     "input_tokens": input_tokens,
                     "output_tokens": output_tokens,
                     "total_tokens": total_tokens,
@@ -104,16 +136,22 @@ async def call_structured_output_with_usage(
                     ),
                     "call_status": "success",
                     "elapsed_ms": elapsed_ms,
+                    "started_at": started_datetime,
+                    "ended_at": ended_datetime,
                 }
             )
             return parsed, usages
         except Exception as exc:  # noqa: BLE001 - preserve SDK/validation details.
+            ended_datetime = datetime.now(timezone.utc)
             elapsed_ms = int((time.perf_counter() - started_at) * 1000)
             last_error = exc
             usages.append(
                 {
                     "node": node_name,
                     "model_name": model_name,
+                    "request_json": request_json,
+                    "output_json": None,
+                    "response_json": None,
                     "input_tokens": 0,
                     "output_tokens": 0,
                     "total_tokens": 0,
@@ -121,6 +159,8 @@ async def call_structured_output_with_usage(
                     "call_status": "failed",
                     "elapsed_ms": elapsed_ms,
                     "error_message": str(exc),
+                    "started_at": started_datetime,
+                    "ended_at": ended_datetime,
                 }
             )
             logger.warning(
