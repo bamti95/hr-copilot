@@ -22,7 +22,6 @@ from ai.interview_graph.schemas import (
     ReviewResult,
     ReviewerOutput,
     ScoreResult,
-    ScorerOutput,
 )
 from ai.interview_graph.state import AgentState
 
@@ -55,6 +54,11 @@ QUESTION_REWRITE_FLAGS = {
 RISK_CATEGORIES = {"RISK", "리스크"}
 LOW_SCORE_THRESHOLD = 80
 PARTIAL_RETRY_MAX_LOW_SCORE_COUNT = 2
+REVIEW_SCORE_BASE = {
+    "approved": 35,
+    "needs_revision": 20,
+    "rejected": 0,
+}
 
 # LLM 응답을 Pydantic 모델로 강제 파싱 + 검증 + 재시도 하는 래퍼
 async def _call_structured_output(
@@ -234,6 +238,40 @@ def _dominant_flags(scores: list[dict[str, Any]], limit: int = 5) -> list[str]:
             key=lambda item: (-item[1], item[0]),
         )[:limit]
     ]
+
+
+def _clamp_score(value: int) -> int:
+    return max(0, min(100, value))
+
+
+def _has_text(value: Any) -> bool:
+    return bool(str(value or "").strip())
+
+
+def _has_items(value: Any) -> bool:
+    if isinstance(value, list):
+        return any(_has_text(item) for item in value)
+    return _has_text(value)
+
+
+def _normalized_question_text(question: dict[str, Any]) -> str:
+    return " ".join(str(question.get("question_text", "")).split()).lower()
+
+
+def _build_duplicate_question_ids(questions: list[dict[str, Any]]) -> set[str]:
+    seen: dict[str, str] = {}
+    duplicates: set[str] = set()
+    for index, question in enumerate(questions):
+        text_key = _normalized_question_text(question)
+        if not text_key:
+            continue
+        question_id = _question_id(question, index)
+        if text_key in seen:
+            duplicates.add(question_id)
+            duplicates.add(seen[text_key])
+        else:
+            seen[text_key] = question_id
+    return duplicates
 
 
 def _is_approved_review(review: dict[str, Any]) -> bool:
@@ -679,43 +717,111 @@ async def reviewer_node(state: AgentState) -> AgentState:
 # 질문 점수화 및 품질 요약 노드 점수화 + 품질 판단 - scorer_node
 async def scorer_node(state: AgentState) -> AgentState:
     '''
-    정량 평가 + retry 여부 판단 준비
-    계산:
-    1. 평균점수
-    2. 승인/거절 개수
-    3. 품질 이슈 추출
-    -> reviewer + scorer 결합해서 판단
-       router의 입력값 생성
+    Reviewer 결과와 질문 메타데이터를 기반으로 규칙 기반 점수를 계산한다.
+    기존 LLM scorer는 reviewer와 중복 평가를 수행하며 timeout이 발생할 수 있어,
+    이 노드는 라우터 판단에 필요한 품질 신호만 빠르게 생성한다.
     '''
-    try:
-        result, llm_usages = await _call_structured_output(
-            node_name="scorer",
-            system_prompt=prompts.SCORER_SYSTEM_PROMPT,
-            user_prompt=prompts.SCORER_USER_PROMPT.format(
-                questions=_json(state.get("questions", [])),
-                answers=_json(state.get("answers", [])),
-                follow_ups=_json(state.get("follow_ups", [])),
-                reviews=_json(state.get("reviews", [])),
-            ),
-            response_model=ScorerOutput,
-        )
-        scores = [score.model_dump(mode="json") for score in result.scores]
-        node_warnings: list[dict[str, Any]] = []
-    except Exception as exc:  # noqa: BLE001 - keep graph alive with conservative scores.
-        logger.warning("Scorer node failed; using fallback scores: %s", exc)
-        llm_usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
-        scores = [
-            _fallback_score(_question_id(question, index)).model_dump(mode="json")
-            for index, question in enumerate(state.get("questions", []))
-        ]
-        node_warnings = [
-            {
-                "node": "scorer",
-                "message": "ScorerOutput 생성에 실패해 기본 점수로 대체했습니다.",
-                "error": str(exc),
-            },
-        ]
+    questions = state.get("questions", [])
     reviews = state.get("reviews", [])
+    answers = state.get("answers", [])
+    follow_ups = state.get("follow_ups", [])
+    reviews_by_id = {
+        str(review.get("question_id")): review
+        for review in reviews
+        if review.get("question_id")
+    }
+    answers_by_id = {
+        str(answer.get("question_id")): answer
+        for answer in answers
+        if answer.get("question_id")
+    }
+    follow_ups_by_id = {
+        str(follow_up.get("question_id")): follow_up
+        for follow_up in follow_ups
+        if follow_up.get("question_id")
+    }
+    duplicate_question_ids = _build_duplicate_question_ids(questions)
+
+    scores: list[dict[str, Any]] = []
+    for index, question in enumerate(questions):
+        question_id = _question_id(question, index)
+        review = reviews_by_id.get(question_id, {})
+        answer = answers_by_id.get(question_id, {})
+        follow_up = follow_ups_by_id.get(question_id, {})
+
+        review_status = str(review.get("status") or "rejected")
+        score = REVIEW_SCORE_BASE.get(review_status, 0)
+        quality_flags: list[str] = []
+        reason_parts: list[str] = []
+
+        if review_status == "approved":
+            reason_parts.append("리뷰에서 승인된 질문입니다")
+        elif review_status == "needs_revision":
+            quality_flags.append("REVIEW_NOT_APPROVED")
+            reason_parts.append("리뷰에서 수정 필요로 판단되었습니다")
+        else:
+            quality_flags.append("REVIEW_NOT_APPROVED")
+            reason_parts.append("리뷰에서 반려 또는 미승인 처리되었습니다")
+
+        if _has_items(question.get("document_evidence")):
+            score += 20
+        else:
+            quality_flags.append("EVIDENCE_TOO_WEAK")
+
+        if _has_text(question.get("evaluation_guide")):
+            score += 10
+        else:
+            quality_flags.append("EVALUATION_GUIDE_TOO_WEAK")
+
+        if _is_risk_question(question):
+            score += 10
+        else:
+            quality_flags.append("RISK_VALIDATION_WEAK")
+
+        if _has_items(question.get("competency_tags")):
+            score += 10
+        else:
+            quality_flags.append("LOW_JOB_RELEVANCE")
+
+        if _has_text(follow_up.get("follow_up_question")):
+            score += 10
+        else:
+            quality_flags.append("FOLLOW_UP_TOO_WEAK")
+            score -= 10
+
+        answer_confidence = str(answer.get("answer_confidence") or "").lower()
+        if answer_confidence in {"high", "높음"}:
+            score += 5
+        elif answer_confidence in {"medium", "보통"}:
+            score += 3
+        elif answer:
+            quality_flags.append("ANSWER_CONFIDENCE_LOW")
+
+        if question_id in duplicate_question_ids:
+            score -= 15
+            quality_flags.append("DUPLICATE_RISK")
+
+        if _has_text(review.get("reject_reason")):
+            score -= 15
+
+        score = _clamp_score(score)
+        if score < LOW_SCORE_THRESHOLD:
+            quality_flags.append("LOW_SCORE")
+
+        unique_flags = sorted(set(quality_flags))
+        if unique_flags:
+            reason_parts.append(f"보완 신호: {', '.join(unique_flags)}")
+        else:
+            reason_parts.append("문서 근거, 직무 태그, 리스크 검증, 꼬리질문 연결성이 모두 충족되었습니다")
+
+        scores.append(
+            ScoreResult(
+                question_id=question_id,
+                score=score,
+                score_reason="; ".join(reason_parts),
+                quality_flags=unique_flags,
+            ).model_dump(mode="json")
+        )
     approved_count = sum(1 for review in reviews if _is_approved_review(review))
     rejected_count = sum(1 for review in reviews if review.get("status") == "rejected")
     avg_score = (
@@ -790,10 +896,8 @@ async def scorer_node(state: AgentState) -> AgentState:
             "question_rewrite_question_ids": question_rewrite_question_ids,
             "scored_question_count": len(scores),
         },
-        "llm_usages": llm_usages,
+        "llm_usages": [],
     }
-    if node_warnings:
-        update["node_warnings"] = node_warnings
     return update
 
 """

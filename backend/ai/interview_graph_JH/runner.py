@@ -8,6 +8,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from ai.graph_usage import collect_llm_usage_update
 from ai.interview_graph.runner import build_node_execution_log, save_llm_call_logs
 from ai.interview_graph_JH.schemas import DocumentAnalysisOutput, QuestionGenerationResponse
 from ai.interview_graph_JH.nodes import (
@@ -196,10 +197,15 @@ async def run_interview_question_graph(
                     await on_node_complete(node_name)
                 if isinstance(node_update, dict):
                     final_state.update(node_update)
-                    llm_usages = list(node_update.get("llm_usages") or [])
-                    if llm_usages:
-                        collected_llm_usages.extend(llm_usages[saved_usage_count:])
-                        saved_usage_count = len(llm_usages)
+                    llm_usages, saved_usage_count, has_llm_usages = (
+                        collect_llm_usage_update(
+                            node_update,
+                            saved_usage_count,
+                            cumulative=True,
+                        )
+                    )
+                    if has_llm_usages:
+                        collected_llm_usages.extend(llm_usages)
                     else:
                         collected_llm_usages.append(
                             build_node_execution_log(
