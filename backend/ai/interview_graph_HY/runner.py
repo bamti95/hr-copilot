@@ -6,8 +6,11 @@
 
 from collections.abc import Awaitable, Callable
 
+from ai.graph_usage import collect_llm_usage_update as _collect_llm_usage_update
 from ai.interview_graph.schemas import QuestionGenerationResponse
 from schemas.session_generation import CandidateInterviewPrepInput
+
+_ = _collect_llm_usage_update
 
 
 async def run_interview_question_graph(

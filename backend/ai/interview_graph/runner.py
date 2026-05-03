@@ -7,6 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from ai.graph_usage import collect_llm_usage_update
 from ai.interview_graph.nodes import (
     analyzer_node,
     build_state_node,
@@ -215,6 +216,7 @@ async def run_interview_question_graph(
     on_node_complete: Callable[[str], Awaitable[None]] | None = None,
 ) -> QuestionGenerationResponse:
     collected_llm_usages: list[dict[str, Any]] = []
+    saved_usage_count = 0
     try:
         app = _build_graph()
         initial_state: AgentState = {
@@ -256,12 +258,13 @@ async def run_interview_question_graph(
             for node_name, node_update in update.items():
                 if on_node_complete is not None:
                     await on_node_complete(node_name)
-                llm_usages = (
-                    node_update.get("llm_usages", [])
-                    if isinstance(node_update, dict)
-                    else []
+                llm_usages, saved_usage_count, has_llm_usages = (
+                    collect_llm_usage_update(
+                        node_update,
+                        saved_usage_count,
+                    )
                 )
-                if llm_usages:
+                if has_llm_usages:
                     collected_llm_usages.extend(llm_usages)
                 else:
                     collected_llm_usages.append(
