@@ -20,7 +20,7 @@ export function NodeTraceTree({
   onSelectLog,
 }: NodeTraceTreeProps) {
   return (
-    <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="flex min-h-[860px] min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="m-0 truncate text-lg font-bold text-slate-950">
@@ -50,7 +50,7 @@ export function NodeTraceTree({
           세션을 선택하면 노드 실행 로그가 표시됩니다.
         </div>
       ) : (
-        <div className="max-h-[520px] overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
+        <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
           <div className="mb-2 px-2 py-1 text-xs font-bold uppercase text-slate-500">
             LangGraph
           </div>

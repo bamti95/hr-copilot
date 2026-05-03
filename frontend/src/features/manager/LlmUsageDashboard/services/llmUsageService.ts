@@ -1,4 +1,5 @@
 import api from "../../../../services/api";
+import { withLangSmithStyleLlmUsages } from "../../../workflowDashboard/services/llmUsageTrace";
 import type {
   LlmUsageCallLog,
   LlmCallLog,
@@ -269,6 +270,6 @@ export async function fetchSessionLlmLogs(
   return {
     sessionId: response.data.sessionId ?? response.data.session_id ?? sessionId,
     traceId: response.data.traceId ?? response.data.trace_id ?? null,
-    items: response.data.items.map(mapWorkflowLog),
+    items: withLangSmithStyleLlmUsages(response.data.items.map(mapWorkflowLog)),
   };
 }

@@ -26,7 +26,7 @@ export function NodeDetailPanel({
   onTabChange,
 }: NodeDetailPanelProps) {
   return (
-    <div className="flex max-h-[760px] min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="flex min-h-[860px] min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="m-0 truncate text-lg font-bold text-slate-950">노드 상세</h2>
@@ -147,7 +147,11 @@ function ReadablePayload({
       ) : null}
 
       {arrayEntries.map(([key, item]) => (
-        <ArraySection key={key} name={key} items={Array.isArray(item) ? item : []} />
+        <ArraySection
+          key={key}
+          name={key}
+          items={Array.isArray(item) ? item : []}
+        />
       ))}
 
       {objectEntries.map(([key, item]) => (
@@ -167,7 +171,7 @@ function ReadablePayload({
           원본 JSON 보기
         </summary>
         <div className="border-t border-slate-200 p-3">
-          <JsonViewer value={value} maxHeightClassName="max-h-[320px]" />
+          <JsonViewer value={value} maxHeightClassName="max-h-[560px]" />
         </div>
       </details>
     </div>
@@ -183,7 +187,8 @@ function ArraySection({ name, items }: { name: string; items: unknown[] }) {
           {items.length.toLocaleString("ko-KR")}개 항목
         </span>
       </div>
-      <div className="max-h-[430px] space-y-3 overflow-y-auto pr-1">
+      {name === "llm_usages" ? <LlmUsageSummary items={items} /> : null}
+      <div className="max-h-[620px] space-y-3 overflow-y-auto pr-1">
         {items.length === 0 ? (
           <EmptyState text="항목이 없습니다." />
         ) : (
@@ -193,6 +198,109 @@ function ArraySection({ name, items }: { name: string; items: unknown[] }) {
         )}
       </div>
     </section>
+  );
+}
+
+function LlmUsageSummary({ items }: { items: unknown[] }) {
+  const usages = items.filter(isRecord);
+  if (usages.length === 0) return null;
+
+  const totals = usages.reduce(
+    (acc, usage) => {
+      acc.inputTokens += toNumber(usage.input_tokens);
+      acc.outputTokens += toNumber(usage.output_tokens);
+      acc.totalTokens += toNumber(usage.total_tokens);
+      acc.elapsedMs += toNumber(usage.elapsed_ms);
+      acc.estimatedCost += toNumber(usage.estimated_cost);
+      if (String(usage.call_status ?? "").toLowerCase() !== "success") {
+        acc.failedCalls += 1;
+      }
+      return acc;
+    },
+    {
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+      elapsedMs: 0,
+      estimatedCost: 0,
+      failedCalls: 0,
+    },
+  );
+
+  return (
+    <div className="mb-3 space-y-3 rounded-lg border border-slate-200 bg-white p-3">
+      <div className="grid gap-2 md:grid-cols-5">
+        <SummaryMetric label="호출" value={`${usages.length.toLocaleString("ko-KR")}회`} />
+        <SummaryMetric label="입력 토큰" value={formatNumber(totals.inputTokens)} />
+        <SummaryMetric label="출력 토큰" value={formatNumber(totals.outputTokens)} />
+        <SummaryMetric label="총 토큰" value={formatNumber(totals.totalTokens)} />
+        <SummaryMetric label="총 시간" value={formatMs(totals.elapsedMs)} />
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[680px] border-separate border-spacing-y-1 text-left text-xs">
+          <thead className="text-slate-500">
+            <tr>
+              <th className="px-2 py-1">#</th>
+              <th className="px-2 py-1">노드</th>
+              <th className="px-2 py-1">모델</th>
+              <th className="px-2 py-1 text-right">입력</th>
+              <th className="px-2 py-1 text-right">출력</th>
+              <th className="px-2 py-1 text-right">총 토큰</th>
+              <th className="px-2 py-1 text-right">시간</th>
+              <th className="px-2 py-1 text-right">비용</th>
+              <th className="px-2 py-1">상태</th>
+            </tr>
+          </thead>
+          <tbody>
+            {usages.map((usage, index) => (
+              <tr key={index} className="bg-slate-50">
+                <td className="rounded-l-lg px-2 py-2 font-semibold text-slate-500">
+                  {index + 1}
+                </td>
+                <td className="px-2 py-2 font-semibold text-slate-900">
+                  {formatScalar(usage.node)}
+                </td>
+                <td className="px-2 py-2 text-slate-600">
+                  {formatScalar(usage.model_name)}
+                </td>
+                <td className="px-2 py-2 text-right">
+                  {formatNumber(toNumber(usage.input_tokens))}
+                </td>
+                <td className="px-2 py-2 text-right">
+                  {formatNumber(toNumber(usage.output_tokens))}
+                </td>
+                <td className="px-2 py-2 text-right font-semibold text-slate-900">
+                  {formatNumber(toNumber(usage.total_tokens))}
+                </td>
+                <td className="px-2 py-2 text-right">
+                  {formatMs(toNumber(usage.elapsed_ms))}
+                </td>
+                <td className="px-2 py-2 text-right">
+                  {formatCost(toNumber(usage.estimated_cost))}
+                </td>
+                <td className="rounded-r-lg px-2 py-2">
+                  <StatusPill status={String(usage.call_status ?? "success")} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {totals.failedCalls > 0 ? (
+        <p className="m-0 text-xs font-semibold text-rose-600">
+          실패 호출 {totals.failedCalls.toLocaleString("ko-KR")}건이 포함되어 있습니다.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function SummaryMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+      <div className="text-[11px] font-bold text-slate-500">{label}</div>
+      <div className="mt-1 truncate text-sm font-bold text-slate-950">{value}</div>
+    </div>
   );
 }
 
@@ -251,7 +359,7 @@ function ReadableObject({ value }: { value: Record<string, unknown> }) {
         <div key={key} className="rounded-lg bg-slate-50 p-3">
           <div className="mb-2 text-xs font-bold text-slate-500">{labelize(key)}</div>
           {Array.isArray(item) ? (
-            <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
+            <div className="max-h-[560px] space-y-2 overflow-y-auto pr-1">
               {item.map((child, index) => (
                 <ReadableCard
                   key={index}
@@ -395,6 +503,11 @@ function formatScalar(value: unknown): string {
   if (typeof value === "number") return value.toLocaleString("ko-KR");
   if (typeof value === "string") return value;
   return JSON.stringify(value, null, 2);
+}
+
+function toNumber(value: unknown): number {
+  const numberValue = Number(value ?? 0);
+  return Number.isFinite(numberValue) ? numberValue : 0;
 }
 
 function labelize(value: string): string {

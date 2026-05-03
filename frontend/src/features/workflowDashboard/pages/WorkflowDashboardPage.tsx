@@ -71,7 +71,7 @@ export default function WorkflowDashboardPage() {
           void reload();
         }}
       />
-      <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr_1.35fr]">
+      <section className="grid min-h-[860px] gap-4 xl:grid-cols-[1.15fr_0.85fr_1.45fr]">
         <SessionListPanel
           sessions={summary.bySession}
           recentCalls={summary.recentCalls}

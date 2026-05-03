@@ -55,7 +55,7 @@ export function SessionListPanel({
   }, [filter, recentCalls, search, sessions, sort]);
 
   return (
-    <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="flex min-h-[860px] min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3">
         <h2 className="m-0 text-lg font-bold text-slate-950">지원자 세션 목록</h2>
         <p className="m-0 mt-1 text-xs text-slate-500">LangSmith 실행 목록 역할</p>
