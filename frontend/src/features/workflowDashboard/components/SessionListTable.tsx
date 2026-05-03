@@ -31,7 +31,7 @@ export function SessionListTable({
   }
 
   return (
-    <div className="max-h-[520px] overflow-auto">
+    <div className="min-h-0 flex-1 overflow-auto">
       <table className="w-full min-w-[720px] border-separate border-spacing-y-2 text-left text-xs">
         <thead className="sticky top-0 bg-white text-slate-500">
           <tr>
