@@ -1,4 +1,5 @@
 import type { PagedListResponse } from "../../../../common/types/pagination";
+import type { InterviewSessionGraphPipeline } from "../../InterviewSession/types";
 
 export type CandidateApplyStatus =
   | "APPLIED"
@@ -56,12 +57,15 @@ export interface PromptProfileOption {
   systemPromptPreview: string;
 }
 
+export type AnalysisSessionGraphPipeline = InterviewSessionGraphPipeline;
+
 export interface AnalysisSessionCreateRequest {
   candidateIds: number[];
   targetJob: string;
   difficultyLevel?: DifficultyLevel | null;
   promptProfileId: number;
   promptProfileSnapshot?: Record<string, unknown> | null;
+  graphPipeline: AnalysisSessionGraphPipeline;
 }
 
 export interface AnalysisSessionCreateItem {
@@ -174,4 +178,27 @@ export interface CandidateDocumentUploadResponse {
 export interface CandidateDocumentReplaceRequest {
   documentType: CandidateDocumentType;
   file: File;
+}
+
+export interface CandidateSampleFolder {
+  folderName: string;
+  candidateCount: number;
+}
+
+export interface CandidateBulkImportRequest {
+  folderName: string;
+}
+
+export interface CandidateBulkImportError {
+  candidateKey: string;
+  reason: string;
+}
+
+export interface CandidateBulkImportResponse {
+  folderName: string;
+  requestedCount: number;
+  createdCount: number;
+  skippedCount: number;
+  documentCount: number;
+  errors: CandidateBulkImportError[];
 }

@@ -11,6 +11,8 @@ import type {
   InterviewSessionPromptProfileOption,
 } from "../types";
 
+import { formatDateTime } from "../../common/formatDateTime"; 
+
 interface InterviewSessionBoardProps {
   data: InterviewSessionListResponse;
   candidateOptions: InterviewSessionCandidateOption[];
@@ -49,10 +51,6 @@ const buttonClassName =
 
 const iconButtonClassName =
   "inline-flex h-9 items-center justify-center gap-2 rounded-xl px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
-
-function formatDateTime(value: string | null) {
-  return value ? value.replace("T", " ").slice(0, 16) : "-";
-}
 
 function renderDifficultyTone(value: string | null) {
   if (value === "SENIOR") {

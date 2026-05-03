@@ -1,8 +1,12 @@
 import asyncio
+import json
 import logging
 import math
+import mimetypes
 import re
-from datetime import datetime, timezone
+import shutil
+from datetime import date, datetime, timezone
+from pathlib import Path
 
 from fastapi import HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
@@ -10,10 +14,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.file_util import (
     build_download_response,
+    build_public_file_path,
+    build_stored_filename,
     delete_file_by_path,
     extract_text_from_file,
+    get_extension,
     resolve_absolute_path,
+    resolve_document_dir,
     save_upload_file_pairs,
+    strip_extension,
 )
 from core.database import AsyncSessionLocal
 from models.candidate import ApplyStatus, Candidate, JobPosition
@@ -22,6 +31,9 @@ from repositories.candidate_repository import CandidateRepository
 from schemas.candidate import (
     ApplyStatusCountRow,
     CandidateCreateRequest,
+    CandidateBulkImportError,
+    CandidateBulkImportRequest,
+    CandidateBulkImportResponse,
     CandidateDeleteResponse,
     CandidateDocumentDeleteResponse,
     CandidateDocumentDetailResponse,
@@ -31,6 +43,8 @@ from schemas.candidate import (
     CandidateListResponse,
     CandidatePagination,
     CandidateResponse,
+    CandidateSampleFolderListResponse,
+    CandidateSampleFolderResponse,
     CandidateStatisticsResponse,
     CandidateStatusPatchRequest,
     CandidateStatusPatchResponse,
@@ -40,6 +54,19 @@ from schemas.candidate import (
 
 logger = logging.getLogger(__name__)
 DOCUMENT_EXTRACTION_CONCURRENCY = 2
+SAMPLE_DATA_ROOT = Path(__file__).resolve().parents[1] / "sample_data"
+_JOB_CODE_TO_POSITION = {
+    "STRATEGY_PLANNING": JobPosition.STRATEGY_PLANNING,
+    "HR": JobPosition.HR,
+    "MARKETING": JobPosition.MARKETING,
+    "AI_DEV_DATA": JobPosition.AI_DEV_DATA,
+    "SALES": JobPosition.SALES,
+}
+_SAMPLE_DOCUMENT_SUFFIX_MAP = {
+    "_bundle.pdf": "RESUME",
+    "_portfolio.pdf": "PORTFOLIO",
+    "_career_description.pdf": "CAREER_DESCRIPTION",
+}
 
 
 def _assert_extra_email_rules(email: str) -> None:
@@ -94,7 +121,279 @@ def _expand_document_types(document_types: list[str], file_count: int) -> list[s
     return normalized_types
 
 
+def _iter_sample_candidate_groups(folder_path: Path) -> list[tuple[str, dict[str, Path]]]:
+    grouped: dict[str, dict[str, Path]] = {}
+    for file_path in folder_path.rglob("*"):
+        if not file_path.is_file():
+            continue
+
+        for suffix in ("_meta.json", "_source.json", "_bundle.pdf", "_portfolio.pdf", "_career_description.pdf"):
+            if file_path.name.endswith(suffix):
+                candidate_key = file_path.name[: -len(suffix)]
+                grouped.setdefault(candidate_key, {})[suffix] = file_path
+                break
+
+    return sorted(grouped.items(), key=lambda item: item[0])
+
+
+def _resolve_sample_folder(folder_name: str) -> Path:
+    folder_path = (SAMPLE_DATA_ROOT / folder_name).resolve()
+    sample_root = SAMPLE_DATA_ROOT.resolve()
+    if sample_root not in folder_path.parents:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid sample folder path.",
+        )
+    if not folder_path.exists() or not folder_path.is_dir():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Sample folder not found.",
+        )
+    return folder_path
+
+
+def _load_json_file(file_path: Path) -> dict:
+    with file_path.open("r", encoding="utf-8") as file:
+        return json.load(file)
+
+
+def _build_birth_date(source_payload: dict) -> date | None:
+    birth_year = ((source_payload.get("candidate_profile") or {}).get("birth_year"))
+    if not birth_year:
+        return None
+    try:
+        return datetime(int(birth_year), 1, 1, tzinfo=timezone.utc).date()
+    except (TypeError, ValueError):
+        return None
+
+
+def _document_type_for_sample_file(file_path: Path) -> str | None:
+    lower_name = file_path.name.lower()
+    for suffix, document_type in _SAMPLE_DOCUMENT_SUFFIX_MAP.items():
+        if lower_name.endswith(suffix):
+            return document_type
+    return None
+
+
+def _copy_sample_document(
+    *,
+    candidate_id: int,
+    source_path: Path,
+    document_type: str,
+) -> tuple[Document, int]:
+    target_dir = resolve_document_dir(candidate_id, document_type)
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    original_file_name = source_path.name
+    stored_file_name = build_stored_filename(original_file_name)
+    target_path = target_dir / stored_file_name
+    shutil.copy2(source_path, target_path)
+
+    file_size = target_path.stat().st_size
+    mime_type = mimetypes.guess_type(original_file_name)[0]
+
+    document = Document(
+        document_type=document_type,
+        title=strip_extension(original_file_name) or stored_file_name,
+        original_file_name=original_file_name,
+        stored_file_name=stored_file_name,
+        file_path=build_public_file_path(target_path),
+        file_ext=get_extension(original_file_name) or None,
+        mime_type=mime_type,
+        file_size=file_size,
+        candidate_id=candidate_id,
+        extracted_text=None,
+        extract_status="PENDING",
+    )
+    return document, file_size
+
+
 class CandidateService:
+    @staticmethod
+    async def list_sample_folders() -> CandidateSampleFolderListResponse:
+        if not SAMPLE_DATA_ROOT.exists():
+            return CandidateSampleFolderListResponse(folders=[])
+
+        folders: list[CandidateSampleFolderResponse] = []
+        for folder_path in sorted(
+            [path for path in SAMPLE_DATA_ROOT.iterdir() if path.is_dir()],
+            key=lambda path: path.name,
+        ):
+            candidate_count = sum(
+                1
+                for _, files in _iter_sample_candidate_groups(folder_path)
+                if "_meta.json" in files and "_source.json" in files
+            )
+            if candidate_count == 0:
+                continue
+            folders.append(
+                CandidateSampleFolderResponse(
+                    folder_name=folder_path.name,
+                    candidate_count=candidate_count,
+                )
+            )
+
+        return CandidateSampleFolderListResponse(folders=folders)
+
+    @staticmethod
+    async def bulk_import_candidates(
+        db: AsyncSession,
+        request: CandidateBulkImportRequest,
+        actor_id: int | None,
+    ) -> CandidateBulkImportResponse:
+        folder_path = _resolve_sample_folder(request.folder_name)
+        candidate_groups = _iter_sample_candidate_groups(folder_path)
+        repo = CandidateRepository(db)
+
+        created_count = 0
+        skipped_count = 0
+        document_count = 0
+        document_ids: list[int] = []
+        errors: list[CandidateBulkImportError] = []
+
+        for candidate_key, files in candidate_groups:
+            meta_path = files.get("_meta.json")
+            source_path = files.get("_source.json")
+            if meta_path is None or source_path is None:
+                skipped_count += 1
+                errors.append(
+                    CandidateBulkImportError(
+                        candidate_key=candidate_key,
+                        reason="Required meta/source files are missing.",
+                    )
+                )
+                continue
+
+            try:
+                meta_payload = _load_json_file(meta_path)
+                source_payload = _load_json_file(source_path)
+                profile = source_payload.get("candidate_profile") or {}
+
+                email = str(profile.get("email", "")).strip()
+                phone = str(profile.get("phone", "")).strip()
+                name = str(profile.get("name", "")).strip()
+                job_code = str(meta_payload.get("job_code", "")).strip().upper()
+
+                if not email or not phone or not name or job_code not in _JOB_CODE_TO_POSITION:
+                    skipped_count += 1
+                    errors.append(
+                        CandidateBulkImportError(
+                            candidate_key=candidate_key,
+                            reason="Sample candidate metadata is incomplete.",
+                        )
+                    )
+                    continue
+
+                _assert_extra_email_rules(email)
+                _assert_phone_format(phone)
+
+                if await repo.find_active_by_email(email):
+                    skipped_count += 1
+                    errors.append(
+                        CandidateBulkImportError(
+                            candidate_key=candidate_key,
+                            reason="Duplicate email. Candidate skipped.",
+                        )
+                    )
+                    continue
+
+                phone_digits = _phone_digits(phone)
+                if await repo.find_active_by_phone_digits(phone_digits):
+                    skipped_count += 1
+                    errors.append(
+                        CandidateBulkImportError(
+                            candidate_key=candidate_key,
+                            reason="Duplicate phone number. Candidate skipped.",
+                        )
+                    )
+                    continue
+
+                candidate = Candidate(
+                    name=name,
+                    email=email,
+                    phone=phone,
+                    job_position=_JOB_CODE_TO_POSITION[job_code].value,
+                    birth_date=_build_birth_date(source_payload),
+                    apply_status=ApplyStatus.APPLIED.value,
+                    created_by=actor_id,
+                )
+                await repo.add(candidate)
+                await repo.flush()
+
+                created_documents: list[Document] = []
+                copied_file_paths: list[Path] = []
+                try:
+                    for file_path in files.values():
+                        document_type = _document_type_for_sample_file(file_path)
+                        if document_type is None:
+                            continue
+                        document, _ = _copy_sample_document(
+                            candidate_id=candidate.id,
+                            source_path=file_path,
+                            document_type=document_type,
+                        )
+                        document.created_by = actor_id
+                        created_documents.append(document)
+                        copied_file_paths.append(resolve_absolute_path(document.file_path))
+                        await repo.add(document)
+
+                    await repo.flush()
+                    await db.commit()
+                except Exception:
+                    await db.rollback()
+                    for copied_file_path in copied_file_paths:
+                        try:
+                            copied_file_path.unlink(missing_ok=True)
+                        except OSError:
+                            pass
+                    skipped_count += 1
+                    errors.append(
+                        CandidateBulkImportError(
+                            candidate_key=candidate_key,
+                            reason="Failed while copying sample documents.",
+                        )
+                    )
+                    continue
+
+                await repo.refresh(candidate)
+                for document in created_documents:
+                    await repo.refresh(document)
+                    document_ids.append(document.id)
+
+                created_count += 1
+                document_count += len(created_documents)
+            except HTTPException as exc:
+                await db.rollback()
+                skipped_count += 1
+                errors.append(
+                    CandidateBulkImportError(
+                        candidate_key=candidate_key,
+                        reason=str(exc.detail),
+                    )
+                )
+            except Exception:
+                await db.rollback()
+                logger.exception("Sample bulk import failed for candidate_key=%s", candidate_key)
+                skipped_count += 1
+                errors.append(
+                    CandidateBulkImportError(
+                        candidate_key=candidate_key,
+                        reason="Unexpected error occurred during import.",
+                    )
+                )
+
+        if document_ids:
+            await CandidateService.run_document_extraction(document_ids)
+
+        return CandidateBulkImportResponse(
+            folder_name=request.folder_name,
+            requested_count=len(candidate_groups),
+            created_count=created_count,
+            skipped_count=skipped_count,
+            document_count=document_count,
+            errors=errors,
+        )
+
     @staticmethod
     async def run_document_extraction(document_ids: list[int]) -> None:
         if not document_ids:

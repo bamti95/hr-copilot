@@ -13,7 +13,6 @@ export const managerNavItems = [
   { label: "지원자 관리", path: "/manager/candidates", icon: "◌" },
   { label: "프롬프트 프로필 관리", path: "/manager/prompt-profiles", icon: "◇" },
   { label: "면접 세션 관리", path: "/manager/interview-sessions", icon: "△" },
-  { label: "운영 로그", path: "/manager/ops-logs", icon: "▤" },
 ];
 
 export const dashboardMetrics: DashboardMetric[] = [
@@ -45,12 +44,6 @@ export const documentList: DocumentResponse[] = [
   { id: 203, title: "Ronald Richards CoverLetter.pdf", documentType: "COVER_LETTER", candidateName: "Ronald Richards", extractStatus: "FAILED", uploadedAt: "2026-04-15 17:20" },
   { id: 204, title: "Marvin McKinney Resume.pdf", documentType: "RESUME", candidateName: "Marvin McKinney", extractStatus: "COMPLETED", uploadedAt: "2026-04-15 15:44" },
   { id: 205, title: "Jerome Bell Resume.pdf", documentType: "RESUME", candidateName: "Jerome Bell", extractStatus: "PENDING", uploadedAt: "2026-04-15 14:31" },
-];
-
-export const promptProfileList: PromptProfileResponse[] = [
-  { id: 301, profileKey: "frontend_senior_v2", persona: "Senior Frontend Interviewer", outputSchema: "question, rationale, scoreGuide", status: "ACTIVE" },
-  { id: 302, profileKey: "backend_platform_v1", persona: "Platform Tech Lead", outputSchema: "question, followUp, expectation", status: "ACTIVE" },
-  { id: 303, profileKey: "pm_behavioral_v1", persona: "Hiring Manager", outputSchema: "question, competency, answerSignal", status: "REVIEW" },
 ];
 
 export const interviewQuestionList: InterviewQuestionResponse[] = [

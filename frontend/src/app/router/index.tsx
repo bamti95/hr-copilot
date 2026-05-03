@@ -15,8 +15,8 @@ import DocumentPage from "../../features/manager/Document";
 import InterviewQuestionPage from "../../features/manager/InterviewQuestion";
 import InterviewSessionPage from "../../features/manager/InterviewSession";
 import InterviewSessionDetailPage from "../../features/manager/InterviewSession/pages/InterviewSessionDetailPage";
+import LlmUsageDashboardPage from "../../features/manager/LlmUsageDashboard";
 import ManagerPage from "../../features/manager/Manager";
-import OpsLogPage from "../../features/manager/OpsLog";
 import PromptProfilePage from "../../features/manager/PromptProfile";
 
 const router = createBrowserRouter([
@@ -53,7 +53,7 @@ const router = createBrowserRouter([
             element: <InterviewSessionRouteDetailPage />,
           },
           { path: "interview-questions", element: <InterviewQuestionPage /> },
-          { path: "ops-logs", element: <OpsLogPage /> },
+          { path: "llm-usage", element: <LlmUsageDashboardPage /> },
         ],
       },
     ],

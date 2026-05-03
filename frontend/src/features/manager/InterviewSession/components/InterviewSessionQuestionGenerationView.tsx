@@ -3,10 +3,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronDown,
-  FileSearch,
   LoaderCircle,
   RefreshCw,
-  RotateCcw,
   Sparkles,
 } from "lucide-react";
 import { getErrorMessage } from "../../../../utils/getErrorMessage";
@@ -25,6 +23,11 @@ import type {
 interface InterviewSessionQuestionGenerationViewProps {
   sessionId: number;
   compact?: boolean;
+  selectable?: boolean;
+  selectedQuestionIds?: string[];
+  refreshKey?: number;
+  onBusyChange?: (isBusy: boolean) => void;
+  onSelectedQuestionIdsChange?: (questionIds: string[]) => void;
 }
 
 const RUNNING_STATUSES = new Set<InterviewQuestionGenerationStatus>([
@@ -154,11 +157,46 @@ function truncateText(value: string, maxLength = 320) {
   return `${text.slice(0, maxLength - 1).trim()}…`;
 }
 
-function QuestionCard({ question, index }: { question: InterviewGeneratedQuestion; index: number }) {
+interface QuestionCardProps {
+  question: InterviewGeneratedQuestion;
+  index: number;
+  selectable?: boolean;
+  isSelected?: boolean;
+  selectionDisabled?: boolean;
+  onToggleSelection?: (questionId: string) => void;
+}
+
+function QuestionCard({
+  question,
+  index,
+  selectable = false,
+  isSelected = false,
+  selectionDisabled = false,
+  onToggleSelection,
+}: QuestionCardProps) {
+  const checkboxId = `question-select-${question.id}`;
+
   return (
-    <article className="rounded-2xl border border-[var(--line)] bg-white/85 p-5">
+    <article className="min-w-0 rounded-2xl border border-[var(--line)] bg-white/85 p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
+          {selectable ? (
+            <label
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 transition hover:border-slate-400"
+              htmlFor={checkboxId}
+              title="재생성할 질문 선택"
+            >
+              <input
+                id={checkboxId}
+                type="checkbox"
+                className="h-4 w-4 accent-[var(--primary)]"
+                checked={isSelected}
+                disabled={selectionDisabled}
+                onChange={() => onToggleSelection?.(question.id)}
+                aria-label={`Q${index + 1} 재생성 대상 선택`}
+              />
+            </label>
+          ) : null}
           <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
             Q{index + 1}
           </span>
@@ -178,7 +216,7 @@ function QuestionCard({ question, index }: { question: InterviewGeneratedQuestio
         </div>
       </div>
 
-      <h3 className="mt-4 text-lg font-bold leading-7 text-[var(--text)]">
+      <h3 className="mt-4 break-words text-base font-bold leading-7 text-[var(--text)] [overflow-wrap:anywhere] sm:text-lg">
         {question.questionText}
       </h3>
 
@@ -187,7 +225,7 @@ function QuestionCard({ question, index }: { question: InterviewGeneratedQuestio
           <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
             예상 답변
           </div>
-          <p className="mt-2 text-sm leading-6 text-[var(--text)]">
+          <p className="mt-2 break-words text-sm leading-6 text-[var(--text)] [overflow-wrap:anywhere]">
             {question.predictedAnswer ? truncateText(question.predictedAnswer) : "-"}
           </p>
         </div>
@@ -195,7 +233,7 @@ function QuestionCard({ question, index }: { question: InterviewGeneratedQuestio
           <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
             꼬리 질문
           </div>
-          <p className="mt-2 text-sm leading-6 text-[var(--text)]">
+          <p className="mt-2 break-words text-sm leading-6 text-[var(--text)] [overflow-wrap:anywhere]">
             {question.followUpQuestion || "-"}
           </p>
         </div>
@@ -225,7 +263,7 @@ function QuestionCard({ question, index }: { question: InterviewGeneratedQuestio
           근거와 평가 가이드
           <ChevronDown className="h-4 w-4 text-[var(--muted)]" />
         </summary>
-        <div className="mt-4 grid gap-3 text-sm leading-6 text-[var(--text)]">
+        <div className="mt-4 grid gap-3 break-words text-sm leading-6 text-[var(--text)] [overflow-wrap:anywhere]">
           <div>
             <div className="font-bold">질문 생성 근거</div>
             <p className="mt-1 text-[var(--muted)]">{question.generationBasis || "-"}</p>
@@ -255,35 +293,6 @@ function QuestionCard({ question, index }: { question: InterviewGeneratedQuestio
         </div>
       </details>
 
-      <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--line)] pt-4">
-        <button
-          type="button"
-          className="inline-flex h-9 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] px-3 text-xs font-bold text-[var(--text)] opacity-60"
-          disabled
-          title="후처리 API 연결 후 활성화됩니다."
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-          질문 재생성
-        </button>
-        <button
-          type="button"
-          className="inline-flex h-9 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] px-3 text-xs font-bold text-[var(--text)] opacity-60"
-          disabled
-          title="후처리 API 연결 후 활성화됩니다."
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          꼬리질문 재생성
-        </button>
-        <button
-          type="button"
-          className="inline-flex h-9 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] px-3 text-xs font-bold text-[var(--text)] opacity-60"
-          disabled
-          title="후처리 API 연결 후 활성화됩니다."
-        >
-          <FileSearch className="h-3.5 w-3.5" />
-          근거 보강
-        </button>
-      </div>
     </article>
   );
 }
@@ -291,6 +300,11 @@ function QuestionCard({ question, index }: { question: InterviewGeneratedQuestio
 export function InterviewSessionQuestionGenerationView({
   sessionId,
   compact = false,
+  selectable = false,
+  selectedQuestionIds = [],
+  refreshKey = 0,
+  onBusyChange,
+  onSelectedQuestionIdsChange,
 }: InterviewSessionQuestionGenerationViewProps) {
   const [data, setData] = useState<InterviewQuestionGenerationStatusResponse | null>(
     null,
@@ -327,6 +341,17 @@ export function InterviewSessionQuestionGenerationView({
         const response = await fetchInterviewQuestionGenerationStatus(sessionId);
         setData(response);
       } catch (error) {
+        // 401: refresh token 갱신까지 실패한 인증 만료 상태.
+        // data를 null로 리셋해 isRunning=false로 만들어 폴링 인터벌이 즉시
+        // 정리되도록 한다(useEffect cleanup이 동작). axios 인터셉터가 이미
+        // auth:unauthorized 이벤트를 발생시켜 전역 로그아웃 처리를 진행하므로,
+        // 여기서는 화면 안내와 폴링 중단만 담당한다.
+        const status = (error as { response?: { status?: number } })?.response?.status;
+        if (status === 401) {
+          setData(null);
+          setErrorMessage("로그인이 만료되었습니다. 다시 로그인해 주세요.");
+          return;
+        }
         setErrorMessage(
           getErrorMessage(error, "질문 생성 결과를 불러오지 못했습니다."),
         );
@@ -340,7 +365,7 @@ export function InterviewSessionQuestionGenerationView({
 
   useEffect(() => {
     void loadStatus();
-  }, [loadStatus]);
+  }, [loadStatus, refreshKey]);
 
   useEffect(() => {
     if (!isRunning) {
@@ -357,6 +382,7 @@ export function InterviewSessionQuestionGenerationView({
       setIsTriggering(true);
       setErrorMessage("");
       await triggerInterviewQuestionGeneration(sessionId, { triggerType: "MANUAL" });
+      onSelectedQuestionIdsChange?.([]);
       await loadStatus({ quiet: true });
     } catch (error) {
       setErrorMessage(
@@ -365,6 +391,22 @@ export function InterviewSessionQuestionGenerationView({
     } finally {
       setIsTriggering(false);
     }
+  };
+
+  useEffect(() => {
+    onBusyChange?.(isLoading || isRefreshing || isTriggering || isRunning);
+  }, [isLoading, isRefreshing, isTriggering, isRunning, onBusyChange]);
+
+  const handleToggleQuestionSelection = (questionId: string) => {
+    if (!onSelectedQuestionIdsChange) {
+      return;
+    }
+
+    onSelectedQuestionIdsChange(
+      selectedQuestionIds.includes(questionId)
+        ? selectedQuestionIds.filter((id) => id !== questionId)
+        : [...selectedQuestionIds, questionId],
+    );
   };
 
   const statusSummary = useMemo(() => {
@@ -389,7 +431,13 @@ export function InterviewSessionQuestionGenerationView({
   );
 
   return (
-    <section className="rounded-[32px] border border-white/70 bg-[var(--panel)] p-7 shadow-[var(--shadow)]">
+    <section
+      className={
+        compact
+          ? "min-w-0 border-b border-[var(--line)] bg-white/45 px-4 py-5 sm:px-7"
+          : "min-w-0 rounded-[32px] border border-white/70 bg-[var(--panel)] p-5 shadow-[var(--shadow)] sm:p-7"
+      }
+    >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -406,10 +454,10 @@ export function InterviewSessionQuestionGenerationView({
               </span>
             ) : null}
           </div>
-          <h2 className="mt-3 text-2xl font-bold text-[var(--text)]">
+          <h2 className="mt-3 text-xl font-bold text-[var(--text)] sm:text-2xl">
             생성된 면접 질문
           </h2>
-          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+          <p className="mt-2 break-words text-sm leading-6 text-[var(--muted)] [overflow-wrap:anywhere]">
             LangGraph 멀티 에이전트가 만든 질문, 예상 답변, 꼬리 질문, 근거와 점수를 확인합니다.
           </p>
         </div>
@@ -441,9 +489,11 @@ export function InterviewSessionQuestionGenerationView({
       </div>
 
       {isRunning ? (
-        <div className="mt-5 inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+        <div className="mt-5 inline-flex max-w-full items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
           <LoaderCircle className="h-4 w-4 animate-spin" />
-          <span>{getGenerationStatusMessage(data.status)}</span>
+          <span className="break-words [overflow-wrap:anywhere]">
+            {getGenerationStatusMessage(data.status)}
+          </span>
           {isRefreshing ? <span>· 상태 확인 중</span> : null}
         </div>
       ) : null}
@@ -451,7 +501,7 @@ export function InterviewSessionQuestionGenerationView({
       {errorMessage ? (
         <div className="mt-5 flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          {errorMessage}
+          <span className="break-words [overflow-wrap:anywhere]">{errorMessage}</span>
         </div>
       ) : null}
 
@@ -491,7 +541,7 @@ export function InterviewSessionQuestionGenerationView({
               <p className="text-sm font-semibold text-slate-900">
                 면접 질문 생성 작업
               </p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 break-words text-xs text-slate-500 [overflow-wrap:anywhere]">
                 요청 {formatDateTime(data.requestedAt)} / 완료{" "}
                 {formatDateTime(data.completedAt)}
               </p>
@@ -506,12 +556,12 @@ export function InterviewSessionQuestionGenerationView({
           </div>
 
           {isRunning ? (
-            <div className="mt-4 inline-flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+            <div className="mt-4 inline-flex max-w-full items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
               <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
               <span>생성 처리 중입니다. 완료되면 질문 목록이 자동으로 갱신됩니다.</span>
             </div>
           ) : (
-            <p className="mt-4 text-xs font-medium text-slate-500">
+            <p className="mt-4 break-words text-xs font-medium text-slate-500 [overflow-wrap:anywhere]">
               {getGenerationStatusMessage(data.status)}
             </p>
           )}
@@ -525,7 +575,7 @@ export function InterviewSessionQuestionGenerationView({
               <p className="text-sm font-semibold text-slate-900">
                 LangGraph 노드 진행 상태
               </p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 break-words text-xs text-slate-500 [overflow-wrap:anywhere]">
                 생성 작업이 각 에이전트 노드를 통과한 상태입니다.
               </p>
             </div>
@@ -552,7 +602,7 @@ export function InterviewSessionQuestionGenerationView({
                     {getNodeStatusLabel(step.status)}
                   </span>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs opacity-80">
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 break-words text-xs opacity-80 [overflow-wrap:anywhere]">
                   <span>시작 {formatDateTime(step.startedAt)}</span>
                   <span>완료 {formatDateTime(step.completedAt)}</span>
                   {step.attempt > 1 ? <span>{step.attempt}회 실행</span> : null}
@@ -651,7 +701,15 @@ export function InterviewSessionQuestionGenerationView({
       {!isLoading && data && data.questions.length > 0 ? (
         <div className={`mt-6 grid gap-4 ${compact ? "" : "xl:grid-cols-2"}`}>
           {data.questions.map((question, index) => (
-            <QuestionCard key={question.id} question={question} index={index} />
+            <QuestionCard
+              key={question.id}
+              question={question}
+              index={index}
+              selectable={selectable}
+              isSelected={selectedQuestionIds.includes(question.id)}
+              selectionDisabled={isRunning || isTriggering}
+              onToggleSelection={handleToggleQuestionSelection}
+            />
           ))}
         </div>
       ) : null}
@@ -659,7 +717,7 @@ export function InterviewSessionQuestionGenerationView({
       {!compact ? (
         <div className="mt-5 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
-          질문별 재생성, 꼬리질문 재생성, 근거 보강 버튼은 후처리 API가 연결되면 활성화됩니다.
+          질문을 체크한 뒤 하단의 질문 재생성 버튼으로 선택 항목을 다시 생성할 수 있습니다.
         </div>
       ) : null}
     </section>

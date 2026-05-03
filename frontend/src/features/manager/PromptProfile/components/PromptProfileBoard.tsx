@@ -1,5 +1,6 @@
 import { Pagination } from "../../../../common/components/Pagination";
 import type { PromptProfileListResponse, PromptProfileResponse } from "../types";
+import { formatDateTime } from "../../common/formatDateTime";
 
 interface PromptProfileBoardProps {
   data: PromptProfileListResponse;
@@ -21,10 +22,6 @@ const inputClassName =
 
 const buttonClassName =
   "inline-flex h-10 items-center justify-center rounded-xl border px-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
-
-function formatDateTime(value: string) {
-  return value.replace("T", " ").slice(0, 16);
-}
 
 function truncate(text: string, max: number) {
   const t = text.replace(/\s+/g, " ").trim();

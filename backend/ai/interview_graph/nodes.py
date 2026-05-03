@@ -1,10 +1,13 @@
-import asyncio
 import json
 import logging
 from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
+from ai.interview_graph.llm_usage import (
+    StructuredOutputCallError,
+    call_structured_output_with_usage,
+)
 from ai.interview_graph import prompts
 from ai.interview_graph.schemas import (
     DocumentAnalysisOutput,
@@ -19,11 +22,8 @@ from ai.interview_graph.schemas import (
     ReviewResult,
     ReviewerOutput,
     ScoreResult,
-    ScorerOutput,
 )
 from ai.interview_graph.state import AgentState
-from ai.llm_client import client, get_openai_model
-from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -52,48 +52,34 @@ QUESTION_REWRITE_FLAGS = {
     "재작성_권장",
 }
 RISK_CATEGORIES = {"RISK", "리스크"}
+LOW_SCORE_THRESHOLD = 80
+PARTIAL_RETRY_MAX_LOW_SCORE_COUNT = 2
+REVIEW_SCORE_BASE = {
+    "approved": 35,
+    "needs_revision": 20,
+    "rejected": 0,
+}
 
 # LLM 응답을 Pydantic 모델로 강제 파싱 + 검증 + 재시도 하는 래퍼
 async def _call_structured_output(
     *,
+    node_name: str,
     system_prompt: str,
     user_prompt: str,
     response_model: type[T],
-) -> T:
+) -> tuple[T, list[dict[str, Any]]]:
     '''
     system_prompt, user_prompt -> LLM 입력
     response_model -> 출력 스키마 (Pydantic)
     text_format=response_model이
     LLM -> JSON -> Pydantic 객체 자동 변환
     '''
-    last_error: Exception | None = None
-    for _ in range(2):
-        try:
-            response = await asyncio.wait_for(
-                client.responses.parse(
-                    model=get_openai_model(),
-                    input=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    text_format=response_model,
-                ),
-                timeout=settings.OPENAI_TIMEOUT_SECONDS,
-            )
-            parsed = response.output_parsed
-            if parsed is None:
-                raise ValueError("Structured output was empty.")
-            return parsed
-        except Exception as exc:  # noqa: BLE001 - preserve original SDK/validation error.
-            last_error = exc
-            logger.warning(
-                "Structured output call failed for %s: %s",
-                response_model.__name__,
-                exc,
-            )
-    raise RuntimeError(
-        f"Structured output call failed for {response_model.__name__}"
-    ) from last_error
+    return await call_structured_output_with_usage(
+        node_name=node_name,
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        response_model=response_model,
+    )
 
 
 def _json(value: Any) -> str:
@@ -128,21 +114,17 @@ def _compact_predicted_answer(answer: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _merge_document_text(payload: dict[str, Any]) -> tuple[str, bool]:
-    candidate = payload.get("candidate", {})
-    session = payload.get("session", {})
-    documents = payload.get("candidate_documents", [])
-
+def _merge_document_text(state: AgentState) -> tuple[str, bool]:
+    documents = state.get("documents", [])
     sections = [
         "[Session]",
-        f"target_job: {session.get('target_job')}",
-        f"difficulty_level: {session.get('difficulty_level')}",
+        f"session_id: {state.get('session_id')}",
+        f"target_job: {state.get('target_job')}",
+        f"difficulty_level: {state.get('difficulty_level')}",
         "",
         "[Candidate]",
-        f"candidate_id: {candidate.get('candidate_id')}",
-        f"name: {candidate.get('name')}",
-        f"job_position: {candidate.get('job_position')}",
-        f"apply_status: {candidate.get('apply_status')}",
+        f"candidate_id: {state.get('candidate_id')}",
+        f"name: {state.get('candidate_name')}",
     ]
 
     has_extracted_text = False
@@ -173,6 +155,26 @@ def _merge_document_text(payload: dict[str, Any]) -> tuple[str, bool]:
     return "\n".join(sections), has_extracted_text
 
 
+def _build_recruitment_context(state: AgentState) -> dict[str, Any]:
+    prompt_profile = state.get("prompt_profile") or {}
+    return {
+        "prompt_profile_id": prompt_profile.get("id"),
+        "profile_key": prompt_profile.get("profile_key"),
+        "target_job": prompt_profile.get("target_job"),
+        "system_prompt": prompt_profile.get("system_prompt"),
+        "output_schema": prompt_profile.get("output_schema"),
+        "has_prompt_profile": bool(prompt_profile),
+        "has_extracted_text": _has_extracted_text(state),
+    }
+
+
+def _has_extracted_text(state: AgentState) -> bool:
+    return any(
+        bool((document.get("extracted_text") or "").strip())
+        for document in state.get("documents", [])
+    )
+
+
 def _question_id(question: dict[str, Any], index: int) -> str:
     value = str(question.get("id") or "").strip()
     return value or f"q_{index + 1:03d}"
@@ -180,6 +182,96 @@ def _question_id(question: dict[str, Any], index: int) -> str:
 
 def _find_by_question_id(items: list[dict[str, Any]], question_id: str) -> dict[str, Any]:
     return next((item for item in items if item.get("question_id") == question_id), {})
+
+
+def _replace_questions_by_id(
+    questions: list[dict[str, Any]],
+    replacements: list[dict[str, Any]],
+    target_question_ids: list[str],
+) -> list[dict[str, Any]]:
+    if not questions or not replacements or not target_question_ids:
+        return replacements or questions
+
+    replacement_by_id = {
+        question_id: {**replacement, "id": question_id}
+        for question_id, replacement in zip(
+            target_question_ids,
+            replacements,
+            strict=False,
+        )
+    }
+
+    merged = [
+        replacement_by_id.get(str(question.get("id")), question)
+        for question in questions
+    ]
+    replaced_ids = {str(question.get("id")) for question in questions}
+    merged.extend(
+        replacement
+        for question_id, replacement in replacement_by_id.items()
+        if question_id not in replaced_ids
+    )
+    return merged
+
+
+def _count_values(values: list[str]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for value in values:
+        if not value:
+            continue
+        counts[value] = counts.get(value, 0) + 1
+    return counts
+
+
+def _dominant_flags(scores: list[dict[str, Any]], limit: int = 5) -> list[str]:
+    counts = _count_values(
+        [
+            str(flag)
+            for score in scores
+            for flag in score.get("quality_flags", [])
+        ]
+    )
+    return [
+        flag
+        for flag, _ in sorted(
+            counts.items(),
+            key=lambda item: (-item[1], item[0]),
+        )[:limit]
+    ]
+
+
+def _clamp_score(value: int) -> int:
+    return max(0, min(100, value))
+
+
+def _has_text(value: Any) -> bool:
+    return bool(str(value or "").strip())
+
+
+def _has_items(value: Any) -> bool:
+    if isinstance(value, list):
+        return any(_has_text(item) for item in value)
+    return _has_text(value)
+
+
+def _normalized_question_text(question: dict[str, Any]) -> str:
+    return " ".join(str(question.get("question_text", "")).split()).lower()
+
+
+def _build_duplicate_question_ids(questions: list[dict[str, Any]]) -> set[str]:
+    seen: dict[str, str] = {}
+    duplicates: set[str] = set()
+    for index, question in enumerate(questions):
+        text_key = _normalized_question_text(question)
+        if not text_key:
+            continue
+        question_id = _question_id(question, index)
+        if text_key in seen:
+            duplicates.add(question_id)
+            duplicates.add(seen[text_key])
+        else:
+            seen[text_key] = question_id
+    return duplicates
 
 
 def _is_approved_review(review: dict[str, Any]) -> bool:
@@ -348,24 +440,11 @@ async def build_state_node(state: AgentState) -> AgentState:
     프롬프트 프로필 (채용 기준) 세팅
     재시도(retry) 상태 초기화
     '''
-    payload = state.get("source_payload", {})
-    candidate_text, has_extracted_text = _merge_document_text(payload)
-    prompt_profile = payload.get("prompt_profile") or {}
-
-    recruitment_criteria = {
-        "prompt_profile_id": prompt_profile.get("id"),
-        "profile_key": prompt_profile.get("profile_key"),
-        "target_job": prompt_profile.get("target_job"),
-        "system_prompt": prompt_profile.get("system_prompt"),
-        "output_schema": prompt_profile.get("output_schema"),
-        "has_prompt_profile": bool(prompt_profile),
-        "has_extracted_text": has_extracted_text,
-    }
+    candidate_context, _ = _merge_document_text(state)
 
     return {
         **state,
-        "candidate_text": candidate_text,
-        "recruitment_criteria": recruitment_criteria,
+        "candidate_context": candidate_context,
         "retry_count": state.get("retry_count", 0),
         "max_retry_count": state.get("max_retry_count", 3),
     }
@@ -380,45 +459,52 @@ async def analyzer_node(state: AgentState) -> AgentState:
     3. 리스크 포인트
     생성
     '''
-    result = await _call_structured_output(
+    result, llm_usages = await _call_structured_output(
+        node_name="analyzer",
         system_prompt=prompts.ANALYZER_SYSTEM_PROMPT,
         user_prompt=prompts.ANALYZER_USER_PROMPT.format(
-            candidate_text=state.get("candidate_text", ""),
-            recruitment_criteria=_json(state.get("recruitment_criteria", {})),
+            candidate_text=state.get("candidate_context", ""),
+            recruitment_criteria=_json(_build_recruitment_context(state)),
         ),
         response_model=DocumentAnalysisOutput,
     )
-    return {**state, "document_analysis": result.model_dump(mode="json")}
+    return {
+        **state,
+        "document_analysis": result.model_dump(mode="json"),
+        "llm_usages": llm_usages,
+    }
 
 # 면접 질문 생성 노드 - questioner_node
 async def questioner_node(state: AgentState) -> AgentState:
     '''
     면접 질문 생성 엔진
-    1. 신규 질문 생성
-    2. 기존 질문 유지 / 추가 / 재생성
-    문서 분석 결과를 기반으로 질문을 생성하며,
-    재생성(regenerate) 및 추가 생성(more) 요청을 처리
+    문서 분석 결과를 기반으로 신규 질문을 생성한다.
+    retry_feedback이 있으면 이전 질문/평가 결과를 참고해 다시 생성한다.
     '''
-    payload = state.get("source_payload", {})
-    session = payload.get("session", {})
     existing_questions = state.get("questions", [])
+    target_question_ids = state.get("target_question_ids", [])
     human_action = state.get("human_action")
-    regen_ids = set(state.get("regen_question_ids") or [])
-
-    profile_prompt = (state.get("recruitment_criteria") or {}).get("system_prompt")
+    question_count_instruction = "- 질문은 정확히 8개 생성하세요."
+    if human_action == "regenerate_question" and target_question_ids:
+        question_count_instruction = (
+            f"- 재생성 대상 질문 ID 개수에 맞춰 질문은 정확히 {len(target_question_ids)}개 생성하세요."
+        )
+    profile_prompt = (state.get("prompt_profile") or {}).get("system_prompt")
     system_prompt = prompts.QUESTIONER_SYSTEM_PROMPT
     if profile_prompt:
         system_prompt = f"{profile_prompt}\n\n{system_prompt}"
 
-    result = await _call_structured_output(
+    result, llm_usages = await _call_structured_output(
+        node_name="questioner",
         system_prompt=system_prompt,
         user_prompt=prompts.QUESTIONER_USER_PROMPT.format(
-            target_job=session.get("target_job"),
-            difficulty_level=session.get("difficulty_level"),
+            question_count_instruction=question_count_instruction,
+            target_job=state.get("target_job"),
+            difficulty_level=state.get("difficulty_level"),
             human_action=human_action,
             additional_instruction=state.get("additional_instruction"),
-            regen_question_ids=list(regen_ids),
-            candidate_text=state.get("candidate_text", ""),
+            regen_question_ids=target_question_ids,
+            candidate_text=state.get("candidate_context", ""),
             document_analysis=_json(state.get("document_analysis", {})),
             existing_questions=_json(
                 {
@@ -434,48 +520,26 @@ async def questioner_node(state: AgentState) -> AgentState:
         question.model_dump(mode="json")
         for question in result.questions
     ]
-    if human_action == "more_questions":
-        questions = existing_questions + new_questions
-    elif human_action == "regenerate_question" and regen_ids:
-        replacements = {
-            question["id"]: question
-            for question in new_questions
-            if question.get("id") in regen_ids
-        }
-        replacement_queue = [
-            question
-            for question in new_questions
-            if question.get("id") not in replacements
-        ]
-        used_replacement_ids: set[str] = set()
-        questions = [
-            (
-                replacements[question.get("id")]
-                if question.get("id") in replacements
-                else replacement_queue.pop(0)
-                if question.get("id") in regen_ids and replacement_queue
-                else question
-            )
-            for question in existing_questions
-        ]
-        used_replacement_ids.update(replacements)
-        missing_replacements = [
-            question
-            for question in replacement_queue
-            if question.get("id") not in used_replacement_ids
-        ]
-        questions.extend(missing_replacements)
-    else:
-        questions = new_questions
 
     normalized_questions = []
-    for index, question in enumerate(questions):
+    for index, question in enumerate(new_questions):
         normalized_questions.append({**question, "id": _question_id(question, index)})
+
+    if human_action == "regenerate_question" and target_question_ids and existing_questions:
+        questions = _replace_questions_by_id(
+            existing_questions,
+            normalized_questions,
+            target_question_ids,
+        )
+    else:
+        questions = normalized_questions
 
     return {
         **state,
-        "questions": normalized_questions,
-        "candidate_question_count": len(normalized_questions),
+        "questions": questions,
+        "target_question_ids": [],
+        "human_action": None,
+        "llm_usages": llm_usages,
     }
 
 
@@ -486,10 +550,7 @@ async def selector_lite_node(state: AgentState) -> AgentState:
     """
     selected = _select_question_candidates(state.get("questions", []), limit=5)
     return {
-        **state,
         "questions": selected,
-        "selected_questions": selected,
-        "router_decision": "selector_lite",
     }
 
 # 예상 답변 생성 노드 - predictor_node
@@ -503,11 +564,12 @@ async def predictor_node(state: AgentState) -> AgentState:
     - 검증
     '''
     try:
-        result = await _call_structured_output(
+        result, llm_usages = await _call_structured_output(
+            node_name="predictor",
             system_prompt=prompts.PREDICTOR_SYSTEM_PROMPT,
             user_prompt=prompts.PREDICTOR_USER_PROMPT.format(
                 candidate_text=_clip_text(
-                    state.get("candidate_text", ""),
+                    state.get("candidate_context", ""),
                     PREDICTOR_DOCUMENT_CHARS,
                 ),
                 document_analysis=_json(state.get("document_analysis", {})),
@@ -517,6 +579,7 @@ async def predictor_node(state: AgentState) -> AgentState:
         )
     except Exception as exc:  # noqa: BLE001 - keep graph alive with conservative answers.
         logger.warning("Predictor node failed; using fallback answers: %s", exc)
+        llm_usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
         fallback_answers = [
             _compact_predicted_answer(
                 _fallback_answer(_question_id(question, index)).model_dump(mode="json")
@@ -525,6 +588,7 @@ async def predictor_node(state: AgentState) -> AgentState:
         ]
         return {
             "answers": fallback_answers,
+            "llm_usages": llm_usages,
             "node_warnings": [
                 {
                     "node": "predictor",
@@ -539,6 +603,7 @@ async def predictor_node(state: AgentState) -> AgentState:
             _compact_predicted_answer(answer.model_dump(mode="json"))
             for answer in result.answers
         ],
+        "llm_usages": llm_usages,
     }
 
 # 꼬리 질문 생성 노드 - driller_node
@@ -555,7 +620,8 @@ async def driller_node(state: AgentState) -> AgentState:
     2. 꼬리 질문 타입(역할검증, 경험검증등)
     '''
     try:
-        result = await _call_structured_output(
+        result, llm_usages = await _call_structured_output(
+            node_name="driller",
             system_prompt=prompts.DRILLER_SYSTEM_PROMPT,
             user_prompt=prompts.DRILLER_USER_PROMPT.format(
                 questions=_json(state.get("questions", [])),
@@ -571,12 +637,14 @@ async def driller_node(state: AgentState) -> AgentState:
         )
     except Exception as exc:  # noqa: BLE001 - keep graph alive with conservative follow-ups.
         logger.warning("Driller node failed; using fallback follow-ups: %s", exc)
+        llm_usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
         fallback_follow_ups = [
             _fallback_follow_up(_question_id(question, index)).model_dump(mode="json")
             for index, question in enumerate(state.get("questions", []))
         ]
         return {
             "follow_ups": fallback_follow_ups,
+            "llm_usages": llm_usages,
             "node_warnings": [
                 {
                     "node": "driller",
@@ -591,6 +659,7 @@ async def driller_node(state: AgentState) -> AgentState:
             follow_up.model_dump(mode="json")
             for follow_up in result.follow_ups
         ],
+        "llm_usages": llm_usages,
     }
 
 # 질문 품질 검토 - reviewer_node
@@ -608,14 +677,13 @@ async def reviewer_node(state: AgentState) -> AgentState:
     - reason
     - 수정 권장사항
     '''
-    payload = state.get("source_payload", {})
-    session = payload.get("session", {})
     try:
-        result = await _call_structured_output(
+        result, llm_usages = await _call_structured_output(
+            node_name="reviewer",
             system_prompt=prompts.REVIEWER_SYSTEM_PROMPT,
             user_prompt=prompts.REVIEWER_USER_PROMPT.format(
-                target_job=session.get("target_job"),
-                recruitment_criteria=_json(state.get("recruitment_criteria", {})),
+                target_job=state.get("target_job"),
+                recruitment_criteria=_json(_build_recruitment_context(state)),
                 questions=_json(state.get("questions", [])),
                 answers=_json(state.get("answers", [])),
                 follow_ups=_json(state.get("follow_ups", [])),
@@ -624,12 +692,14 @@ async def reviewer_node(state: AgentState) -> AgentState:
         )
     except Exception as exc:  # noqa: BLE001 - keep graph alive with conservative reviews.
         logger.warning("Reviewer node failed; using fallback reviews: %s", exc)
+        llm_usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
         fallback_reviews = [
             _fallback_review(_question_id(question, index)).model_dump(mode="json")
             for index, question in enumerate(state.get("questions", []))
         ]
         return {
             "reviews": fallback_reviews,
+            "llm_usages": llm_usages,
             "node_warnings": [
                 {
                     "node": "reviewer",
@@ -641,46 +711,117 @@ async def reviewer_node(state: AgentState) -> AgentState:
 
     return {
         "reviews": [review.model_dump(mode="json") for review in result.reviews],
+        "llm_usages": llm_usages,
     }
 
 # 질문 점수화 및 품질 요약 노드 점수화 + 품질 판단 - scorer_node
 async def scorer_node(state: AgentState) -> AgentState:
     '''
-    정량 평가 + retry 여부 판단 준비
-    계산:
-    1. 평균점수
-    2. 승인/거절 개수
-    3. 품질 이슈 추출
-    -> reviewer + scorer 결합해서 판단
-       router의 입력값 생성
+    Reviewer 결과와 질문 메타데이터를 기반으로 규칙 기반 점수를 계산한다.
+    기존 LLM scorer는 reviewer와 중복 평가를 수행하며 timeout이 발생할 수 있어,
+    이 노드는 라우터 판단에 필요한 품질 신호만 빠르게 생성한다.
     '''
-    try:
-        result = await _call_structured_output(
-            system_prompt=prompts.SCORER_SYSTEM_PROMPT,
-            user_prompt=prompts.SCORER_USER_PROMPT.format(
-                questions=_json(state.get("questions", [])),
-                answers=_json(state.get("answers", [])),
-                follow_ups=_json(state.get("follow_ups", [])),
-                reviews=_json(state.get("reviews", [])),
-            ),
-            response_model=ScorerOutput,
-        )
-        scores = [score.model_dump(mode="json") for score in result.scores]
-        node_warnings: list[dict[str, Any]] = []
-    except Exception as exc:  # noqa: BLE001 - keep graph alive with conservative scores.
-        logger.warning("Scorer node failed; using fallback scores: %s", exc)
-        scores = [
-            _fallback_score(_question_id(question, index)).model_dump(mode="json")
-            for index, question in enumerate(state.get("questions", []))
-        ]
-        node_warnings = [
-            {
-                "node": "scorer",
-                "message": "ScorerOutput 생성에 실패해 기본 점수로 대체했습니다.",
-                "error": str(exc),
-            },
-        ]
+    questions = state.get("questions", [])
     reviews = state.get("reviews", [])
+    answers = state.get("answers", [])
+    follow_ups = state.get("follow_ups", [])
+    reviews_by_id = {
+        str(review.get("question_id")): review
+        for review in reviews
+        if review.get("question_id")
+    }
+    answers_by_id = {
+        str(answer.get("question_id")): answer
+        for answer in answers
+        if answer.get("question_id")
+    }
+    follow_ups_by_id = {
+        str(follow_up.get("question_id")): follow_up
+        for follow_up in follow_ups
+        if follow_up.get("question_id")
+    }
+    duplicate_question_ids = _build_duplicate_question_ids(questions)
+
+    scores: list[dict[str, Any]] = []
+    for index, question in enumerate(questions):
+        question_id = _question_id(question, index)
+        review = reviews_by_id.get(question_id, {})
+        answer = answers_by_id.get(question_id, {})
+        follow_up = follow_ups_by_id.get(question_id, {})
+
+        review_status = str(review.get("status") or "rejected")
+        score = REVIEW_SCORE_BASE.get(review_status, 0)
+        quality_flags: list[str] = []
+        reason_parts: list[str] = []
+
+        if review_status == "approved":
+            reason_parts.append("리뷰에서 승인된 질문입니다")
+        elif review_status == "needs_revision":
+            quality_flags.append("REVIEW_NOT_APPROVED")
+            reason_parts.append("리뷰에서 수정 필요로 판단되었습니다")
+        else:
+            quality_flags.append("REVIEW_NOT_APPROVED")
+            reason_parts.append("리뷰에서 반려 또는 미승인 처리되었습니다")
+
+        if _has_items(question.get("document_evidence")):
+            score += 20
+        else:
+            quality_flags.append("EVIDENCE_TOO_WEAK")
+
+        if _has_text(question.get("evaluation_guide")):
+            score += 10
+        else:
+            quality_flags.append("EVALUATION_GUIDE_TOO_WEAK")
+
+        if _is_risk_question(question):
+            score += 10
+        else:
+            quality_flags.append("RISK_VALIDATION_WEAK")
+
+        if _has_items(question.get("competency_tags")):
+            score += 10
+        else:
+            quality_flags.append("LOW_JOB_RELEVANCE")
+
+        if _has_text(follow_up.get("follow_up_question")):
+            score += 10
+        else:
+            quality_flags.append("FOLLOW_UP_TOO_WEAK")
+            score -= 10
+
+        answer_confidence = str(answer.get("answer_confidence") or "").lower()
+        if answer_confidence in {"high", "높음"}:
+            score += 5
+        elif answer_confidence in {"medium", "보통"}:
+            score += 3
+        elif answer:
+            quality_flags.append("ANSWER_CONFIDENCE_LOW")
+
+        if question_id in duplicate_question_ids:
+            score -= 15
+            quality_flags.append("DUPLICATE_RISK")
+
+        if _has_text(review.get("reject_reason")):
+            score -= 15
+
+        score = _clamp_score(score)
+        if score < LOW_SCORE_THRESHOLD:
+            quality_flags.append("LOW_SCORE")
+
+        unique_flags = sorted(set(quality_flags))
+        if unique_flags:
+            reason_parts.append(f"보완 신호: {', '.join(unique_flags)}")
+        else:
+            reason_parts.append("문서 근거, 직무 태그, 리스크 검증, 꼬리질문 연결성이 모두 충족되었습니다")
+
+        scores.append(
+            ScoreResult(
+                question_id=question_id,
+                score=score,
+                score_reason="; ".join(reason_parts),
+                quality_flags=unique_flags,
+            ).model_dump(mode="json")
+        )
     approved_count = sum(1 for review in reviews if _is_approved_review(review))
     rejected_count = sum(1 for review in reviews if review.get("status") == "rejected")
     avg_score = (
@@ -702,6 +843,36 @@ async def scorer_node(state: AgentState) -> AgentState:
     if any(flag in QUESTION_REWRITE_FLAGS for flag in quality_issue_set):
         quality_issue_set.add("QUESTION_REWRITE_NEEDED")
     quality_issues = sorted(quality_issue_set)
+    score_values = [int(score.get("score", 0)) for score in scores]
+    low_score_question_ids = [
+        str(score.get("question_id"))
+        for score in scores
+        if int(score.get("score", 0)) < LOW_SCORE_THRESHOLD
+    ]
+    rejected_question_ids = [
+        str(review.get("question_id"))
+        for review in reviews
+        if review.get("status") == "rejected"
+    ]
+    needs_revision_question_ids = [
+        str(review.get("question_id"))
+        for review in reviews
+        if review.get("status") == "needs_revision"
+    ]
+    follow_up_issue_question_ids = [
+        str(score.get("question_id"))
+        for score in scores
+        if any(flag in FOLLOW_UP_WEAK_FLAGS for flag in score.get("quality_flags", []))
+    ]
+    question_rewrite_question_ids = [
+        str(score.get("question_id"))
+        for score in scores
+        if int(score.get("score", 0)) < LOW_SCORE_THRESHOLD
+        or any(flag in QUESTION_REWRITE_FLAGS for flag in score.get("quality_flags", []))
+    ]
+    review_status_counts = _count_values(
+        [str(review.get("status") or "unknown") for review in reviews]
+    )
 
     update: dict[str, Any] = {
         "scores": scores,
@@ -710,10 +881,23 @@ async def scorer_node(state: AgentState) -> AgentState:
             "rejected_count": rejected_count,
             "avg_score": round(avg_score, 2),
             "quality_issues": quality_issues,
+            "low_score_question_ids": low_score_question_ids,
+            "low_score_count": len(low_score_question_ids),
+            "score_distribution": {
+                "min": min(score_values) if score_values else 0,
+                "max": max(score_values) if score_values else 0,
+                "avg": round(avg_score, 2),
+            },
+            "dominant_quality_flags": _dominant_flags(scores),
+            "review_status_counts": review_status_counts,
+            "rejected_question_ids": rejected_question_ids,
+            "needs_revision_question_ids": needs_revision_question_ids,
+            "follow_up_issue_question_ids": follow_up_issue_question_ids,
+            "question_rewrite_question_ids": question_rewrite_question_ids,
+            "scored_question_count": len(scores),
         },
+        "llm_usages": [],
     }
-    if node_warnings:
-        update["node_warnings"] = node_warnings
     return update
 
 """
@@ -723,10 +907,32 @@ retry_count를 증가시키고,
 questioner 재실행을 위한 피드백을 생성한다.
 """
 async def increment_retry_for_questioner_node(state: AgentState) -> AgentState:
+    summary = state.get("review_summary", {})
+    low_score_question_ids = [
+        str(question_id)
+        for question_id in summary.get("low_score_question_ids", [])
+        if question_id
+    ]
+    target_question_ids = (
+        low_score_question_ids
+        if 0 < len(low_score_question_ids) <= PARTIAL_RETRY_MAX_LOW_SCORE_COUNT
+        else []
+    )
+    additional_instruction = state.get("additional_instruction")
+    human_action = state.get("human_action")
+    if target_question_ids:
+        human_action = "regenerate_question"
+        additional_instruction = (
+            "점수가 낮은 대상 질문만 개선해 새 질문으로 재생성하세요. "
+            "통과한 기존 질문과 중복되지 않게 하고, 지적된 quality_flags와 review 사유를 우선 보완하세요."
+        )
+
     return {
-        **state,
         "retry_count": state.get("retry_count", 0) + 1,
-        "router_decision": "questioner",
+        "questioner_retry_count": state.get("questioner_retry_count", 0) + 1,
+        "target_question_ids": target_question_ids,
+        "human_action": human_action,
+        "additional_instruction": additional_instruction,
         "retry_feedback": _build_retry_feedback(state),
     }
 
@@ -738,9 +944,8 @@ driller 재실행을 위한 피드백을 생성한다.
 """
 async def increment_retry_for_driller_node(state: AgentState) -> AgentState:
     return {
-        **state,
         "retry_count": state.get("retry_count", 0) + 1,
-        "router_decision": "driller",
+        "driller_retry_count": state.get("driller_retry_count", 0) + 1,
         "retry_feedback": _build_retry_feedback(state),
     }
 
@@ -767,8 +972,7 @@ async def selector_node(state: AgentState) -> AgentState:
     )
 
     return {
-        "selected_questions": selected,
-        "router_decision": state.get("router_decision") or "selector",
+        "questions": selected,
     }
 
 # 최종 응답 생성
@@ -792,10 +996,7 @@ async def final_formatter_node(state: AgentState) -> AgentState:
     - completed
     - partial_completed
     '''
-    payload = state.get("source_payload", {})
-    session = payload.get("session", {})
-    candidate = payload.get("candidate", {})
-    selected_questions = state.get("selected_questions", [])
+    selected_questions = state.get("questions", [])
     answers = state.get("answers", [])
     follow_ups = state.get("follow_ups", [])
     reviews = state.get("reviews", [])
@@ -845,10 +1046,7 @@ async def final_formatter_node(state: AgentState) -> AgentState:
             "job_fit": "분석 결과가 없어 직무 적합성을 판단하지 못했습니다.",
         }
     )
-    has_extracted_text = (state.get("recruitment_criteria") or {}).get(
-        "has_extracted_text",
-        False,
-    )
+    has_extracted_text = _has_extracted_text(state)
     approved_count = sum(1 for item in items if item.review.status == "approved")
     is_partial = (
         not has_extracted_text
@@ -859,21 +1057,20 @@ async def final_formatter_node(state: AgentState) -> AgentState:
     )
 
     response = QuestionGenerationResponse(
-        session_id=session.get("session_id"),
-        candidate_id=candidate.get("candidate_id"),
-        target_job=session.get("target_job"),
-        difficulty_level=session.get("difficulty_level"),
+        session_id=state.get("session_id"),
+        candidate_id=state.get("candidate_id"),
+        target_job=state.get("target_job"),
+        difficulty_level=state.get("difficulty_level"),
         status="partial_completed" if is_partial else "completed",
         analysis_summary=analysis,
         questions=items,
         generation_metadata={
-            "total_candidate_questions": state.get(
-                "candidate_question_count",
-                len(state.get("questions", [])),
-            ),
+            "total_candidate_questions": len(state.get("questions", [])),
             "selected_question_count": len(items),
             "retry_count": state.get("retry_count", 0),
-            "router_decision": state.get("router_decision", "selector"),
+            "questioner_retry_count": state.get("questioner_retry_count", 0),
+            "driller_retry_count": state.get("driller_retry_count", 0),
+            "router_decision": "selector",
             "is_all_approved": bool(items) and approved_count == len(items),
             "review_summary": state.get("review_summary", {}),
             "node_warnings": state.get("node_warnings", []),

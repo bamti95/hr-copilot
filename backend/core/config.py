@@ -1,9 +1,13 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
 
-load_dotenv()
+BASE_DIR = Path(__file__).resolve().parents[1]
+DEFAULT_OPENAI_MODEL = "gpt-5-mini"
+
+load_dotenv(BASE_DIR / ".env")
 
 def _parse_bool(value: str | None, default: bool = False) -> bool:
     if value is None:
@@ -33,8 +37,8 @@ class Settings:
     )
 
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
-    OPENAI_TIMEOUT_SECONDS: float = float(os.getenv("OPENAI_TIMEOUT_SECONDS", 180))
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", DEFAULT_OPENAI_MODEL).strip() or DEFAULT_OPENAI_MODEL
+    OPENAI_TIMEOUT_SECONDS: float = float(os.getenv("OPENAI_TIMEOUT_SECONDS", 360))
     QUESTION_GENERATION_JOB_TIMEOUT_SECONDS: float = float(
         os.getenv("QUESTION_GENERATION_JOB_TIMEOUT_SECONDS", 900)
     )
@@ -42,7 +46,25 @@ class Settings:
         os.getenv("QUESTION_GENERATION_STALE_SECONDS", 1800)
     )
     UPLOAD_PATH: str = os.getenv("UPLOAD_PATH")
+    
+    # ==============================
+    # LANGSMITH 추가
+    # ==============================
+    LANGCHAIN_TRACING_V2: bool = _parse_bool(
+        os.getenv("LANGCHAIN_TRACING_V2"), True
+    )
+    
+    # API 키 (LangSmith 설정 페이지에서 발급)
+    LANGCHAIN_API_KEY: str = os.getenv("LANGCHAIN_API_KEY", "")
 
+    # 프로젝트 이름 (LangSmith 대시보드에서 구분할 이름)
+    LANGCHAIN_PROJECT: str = os.getenv("LANGCHAIN_PROJECT", "HR-Copilot")
+    
+    # (선택) 엔드포인트
+    LANGCHAIN_ENDPOINT: str = os.getenv(
+        "LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com"
+    )
+    
     @property
     def DATABASE_URL(self) -> str:
         user = quote_plus(self.DB_USER)

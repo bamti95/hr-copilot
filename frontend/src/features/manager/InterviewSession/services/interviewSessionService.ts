@@ -268,12 +268,21 @@ export async function fetchInterviewSessionDetail(
   };
 }
 
+function interviewSessionCreatePath(
+  graphPipeline: InterviewSessionCreateRequest["graphPipeline"],
+): string {
+  const p = graphPipeline ?? "default";
+  if (p === "default") {
+    return "/interview-sessions";
+  }
+  return `/interview-sessions/pipeline/${p}`;
+}
+
 export async function createInterviewSession(
   requestBody: InterviewSessionCreateRequest,
 ): Promise<InterviewSessionResponse> {
-  const response = await api.post<ApiEnvelope<SessionApiResponse>>(
-    "/interview-sessions",
-    {
+  const path = interviewSessionCreatePath(requestBody.graphPipeline);
+  const response = await api.post<ApiEnvelope<SessionApiResponse>>(path, {
       candidate_id: requestBody.candidateId,
       target_job: requestBody.targetJob,
       difficulty_level: requestBody.difficultyLevel ?? null,
@@ -305,8 +314,11 @@ export async function triggerInterviewQuestionGeneration(
   sessionId: number,
   requestBody?: InterviewQuestionGenerationTriggerRequest,
 ): Promise<void> {
+  const targetQuestionIds = requestBody?.targetQuestionIds ?? [];
+
   await api.post(`/interview-sessions/${sessionId}/generate-questions`, {
     trigger_type: requestBody?.triggerType?.trim() || "MANUAL",
+    target_question_ids: targetQuestionIds,
   }, {
     skipGlobalLoading: true,
   });

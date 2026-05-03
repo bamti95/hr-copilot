@@ -85,6 +85,29 @@ export function ManagerSidebar({ isOpen, onClose }: ManagerSidebarProps) {
                   </NavLink>
                 );
               })}
+              <NavLink
+                to="/manager/llm-usage"
+                className={[
+                  "group flex items-center justify-between rounded-2xl border px-4 py-3.5 text-sm font-semibold transition-all duration-200",
+                  location.pathname === "/manager/llm-usage"
+                    ? "border-[#4f7fff66] bg-linear-to-r from-[#2f4fa8]/60 to-[#2a3f75]/60 text-white shadow-[0_10px_30px_rgba(47,79,168,0.24)]"
+                    : "border-white/8 bg-white/4 text-white/82 hover:border-white/16 hover:bg-white/8 hover:text-white",
+                ].join(" ")}
+                onClick={() => {
+                  if (window.innerWidth < 1024) {
+                    onClose();
+                  }
+                }}
+              >
+                <span>AI 운영 현황</span>
+                <ChevronRight
+                  className={`h-4 w-4 transition-transform ${
+                    location.pathname === "/manager/llm-usage"
+                      ? "translate-x-0 text-white/90"
+                      : "text-white/30 group-hover:translate-x-0.5 group-hover:text-white/60"
+                  }`}
+                />
+              </NavLink>
             </nav>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { Pagination } from "../../../../common/components/Pagination";
+import { formatDateTime } from "../../common/formatDateTime"
 import { StatusPill } from "../../../../common/components/StatusPill";
 import type { ManagerListResponse, ManagerResponse } from "../types";
 
@@ -24,10 +25,6 @@ const inputClassName =
 
 const buttonClassName =
   "inline-flex h-10 items-center justify-center rounded-xl border px-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
-
-function formatDateTime(value: string | null) {
-  return value ? value.replace("T", " ").slice(0, 16) : "-";
-}
 
 function getNextStatus(status: string) {
   return status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
@@ -122,7 +119,7 @@ export function ManagerBoard({
         <table className="w-full border-collapse">
           <thead className="bg-white/60">
             <tr>
-              {["ID", "로그인 ID", "이름", "권한", "이메일", "상태", "최근 로그인", "액션"].map(
+              {["ID", "로그인 ID", "이름", "권한", "이메일", "상태", "최근 로그인", "생성일", "액션"].map(
                 (label) => (
                   <th
                     key={label}
@@ -153,6 +150,9 @@ export function ManagerBoard({
                   </td>
                   <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
                     {formatDateTime(row.lastLoginAt)}
+                  </td>
+                  <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
+                    {formatDateTime(row.createdAt)}
                   </td>
                   <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
                     <div className="flex flex-wrap gap-2">
@@ -194,7 +194,7 @@ export function ManagerBoard({
             {data.items.length === 0 ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="px-3 py-10 text-center text-sm text-[var(--muted)]"
                 >
                   조회된 관리자가 없습니다.

@@ -190,7 +190,15 @@ export function useCandidateDetail({
           }
 
           setDetail(refreshedDetail);
-        } catch {
+        } catch (error) {
+          // 401: 인증 만료. axios 인터셉터의 refresh도 실패한 경우 무한 폴링을
+          // 막기 위해 인터벌을 즉시 정리한다.
+          const status = (error as { response?: { status?: number } })?.response?.status;
+          if (status === 401) {
+            active = false;
+            window.clearInterval(intervalId);
+            return;
+          }
           // Polling failure should not break the current editing flow.
         } finally {
           if (active) {

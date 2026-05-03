@@ -33,6 +33,7 @@ class SessionGenerationPayloadAssembler:
     async def build_candidate_interview_prep_input(
         self,
         session_id: int,
+        manager_id: int | None = None,
     ) -> CandidateInterviewPrepInput:
         session = await self._get_session_or_raise(session_id)
         candidate = await self._get_candidate_or_raise(session.candidate_id)
@@ -42,6 +43,7 @@ class SessionGenerationPayloadAssembler:
         payload = CandidateInterviewPrepInput(
             session=SessionGenerationMeta(
                 session_id=session.id,
+                manager_id=manager_id,
                 candidate_id=session.candidate_id,
                 target_job=session.target_job,
                 difficulty_level=session.difficulty_level,

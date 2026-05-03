@@ -5,7 +5,11 @@ import {
   isMatchingPromptProfile,
 } from "../../common/candidateJobPosition";
 import { fetchPromptProfileList } from "../../PromptProfile/services/promptProfileService";
-import type { DifficultyLevel, PromptProfileOption } from "../types";
+import type {
+  AnalysisSessionGraphPipeline,
+  DifficultyLevel,
+  PromptProfileOption,
+} from "../types";
 
 interface CandidateAnalysisSessionCreateModalProps {
   open: boolean;
@@ -17,8 +21,9 @@ interface CandidateAnalysisSessionCreateModalProps {
   onClose: () => void;
   onConfirm: (payload: {
     difficultyLevel: DifficultyLevel | null;
-    promptProfileId: number | null;
+    promptProfileId: number;
     promptProfileSnapshot: Record<string, unknown> | null;
+    graphPipeline: AnalysisSessionGraphPipeline;
   }) => void;
   onOpenCreatePromptProfile: (presetTargetJob: string) => void;
 }
@@ -182,15 +187,16 @@ export function CandidateAnalysisSessionCreateModal({
     return null;
   }
 
-  const handleConfirm = () => {
-    if (selectedPromptProfileId === null) {
+  const submitWithPipeline = (graphPipeline: AnalysisSessionGraphPipeline) => {
+    const profileId = selectedPromptProfileId;
+    if (profileId === null) {
       setValidationError("프롬프트 프로필을 선택해 주세요.");
       return;
     }
 
     onConfirm({
       difficultyLevel: difficultyLevel || null,
-      promptProfileId: selectedPromptProfileId,
+      promptProfileId: profileId,
       promptProfileSnapshot: selectedPromptProfile
         ? {
             id: selectedPromptProfile.id,
@@ -199,6 +205,7 @@ export function CandidateAnalysisSessionCreateModal({
             systemPromptPreview: selectedPromptProfile.systemPromptPreview,
           }
         : null,
+      graphPipeline,
     });
   };
 
@@ -337,23 +344,52 @@ export function CandidateAnalysisSessionCreateModal({
           </div>
         ) : null}
 
-        <div className="mt-6 flex flex-col gap-3 border-t border-[var(--line)] pt-5 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            className={`${buttonClassName} border-[var(--line)] bg-[var(--panel-strong)] text-[var(--text)] hover:bg-white/80`}
-            onClick={onClose}
-            disabled={isSubmitting}
-          >
-            취소
-          </button>
-          <button
-            type="button"
-            className={`${buttonClassName} border-transparent bg-[var(--primary)] text-white hover:opacity-90`}
-            onClick={handleConfirm}
-            disabled={isSubmitting || selectedCount === 0 || selectedPromptProfileId === null}
-          >
-            {isSubmitting ? "생성 중..." : "세션 생성"}
-          </button>
+        <div className="mt-6 flex flex-col gap-3 border-t border-[var(--line)] pt-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+            <button
+              type="button"
+              className={`${buttonClassName} border-[var(--line)] bg-[var(--panel-strong)] text-[var(--text)] hover:bg-white/80`}
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              className={`${buttonClassName} border-transparent bg-[var(--primary)] text-white hover:opacity-90`}
+              onClick={() => submitWithPipeline("default")}
+              disabled={isSubmitting || selectedCount === 0 || selectedPromptProfileId === null}
+            >
+              {isSubmitting ? "생성 중..." : "세션 생성"}
+            </button>
+          </div>
+          <div className="text-xs text-[var(--muted)]">실험용 질문 생성 그래프</div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+            <button
+              type="button"
+              className={`${buttonClassName} border-violet-300 bg-violet-50 text-violet-900 hover:bg-violet-100`}
+              onClick={() => submitWithPipeline("jh")}
+              disabled={isSubmitting || selectedCount === 0 || selectedPromptProfileId === null}
+            >
+              JH
+            </button>
+            <button
+              type="button"
+              className={`${buttonClassName} border-sky-300 bg-sky-50 text-sky-900 hover:bg-sky-100`}
+              onClick={() => submitWithPipeline("hy")}
+              disabled={isSubmitting || selectedCount === 0 || selectedPromptProfileId === null}
+            >
+              HY
+            </button>
+            <button
+              type="button"
+              className={`${buttonClassName} border-amber-300 bg-amber-50 text-amber-950 hover:bg-amber-100`}
+              onClick={() => submitWithPipeline("jy")}
+              disabled={isSubmitting || selectedCount === 0 || selectedPromptProfileId === null}
+            >
+              JY
+            </button>
+          </div>
         </div>
       </div>
     </div>

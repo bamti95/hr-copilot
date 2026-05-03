@@ -98,6 +98,34 @@ class CandidateDocumentUploadResponse(BaseModel):
     documents: list[CandidateDocumentResponse]
 
 
+class CandidateSampleFolderResponse(BaseModel):
+    folder_name: str
+    candidate_count: int
+
+
+class CandidateSampleFolderListResponse(BaseModel):
+    folders: list[CandidateSampleFolderResponse]
+
+
+class CandidateBulkImportRequest(BaseModel):
+    folder_name: str = Field(..., min_length=1, max_length=255)
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+
+class CandidateBulkImportError(BaseModel):
+    candidate_key: str
+    reason: str
+
+
+class CandidateBulkImportResponse(BaseModel):
+    folder_name: str
+    requested_count: int
+    created_count: int
+    skipped_count: int
+    document_count: int
+    errors: list[CandidateBulkImportError] = Field(default_factory=list)
+
+
 class CandidateDocumentDeleteResponse(BaseModel):
     id: int
     deleted_at: datetime
