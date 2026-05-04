@@ -8,7 +8,7 @@ from ai.interview_graph.llm_usage import (
     StructuredOutputCallError,
     call_structured_output_with_usage,
 )
-from ai.interview_graph.schemas import (
+from ai.interview_graph_JY.schemas import (
     DocumentAnalysisOutput,
     DrillerOutput,
     FollowUpQuestion,

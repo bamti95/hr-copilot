@@ -10,7 +10,7 @@ from typing import Any
 
 from ai.graph_usage import collect_llm_usage_update
 from ai.interview_graph.runner import build_node_execution_log, save_llm_call_logs
-from ai.interview_graph.schemas import DocumentAnalysisOutput, QuestionGenerationResponse
+from ai.interview_graph_JY.schemas import DocumentAnalysisOutput, QuestionGenerationResponse
 from ai.interview_graph_JY.nodes import (
     analyzer_node,
     build_state_node,
