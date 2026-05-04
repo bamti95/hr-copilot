@@ -1,4 +1,4 @@
-"""JH 면접 질문 그래프의 핵심 노드 모음.
+"""면접 질문 그래프의 핵심 노드 모음.
 
 이 파일은 그래프 안에서 실제로 데이터를 가공하는 로직을 담고 있다.
 흐름은 아래와 같다.
@@ -17,7 +17,7 @@ import json
 import logging
 from typing import Any
 
-from ai.interview_graph.llm_usage import (
+from ai.interview_graph_JH.llm_usage import (
     StructuredOutputCallError,
     call_structured_output_with_usage,
 )
@@ -207,14 +207,14 @@ def _format_questions(items: list[QuestionSet], *, include_answer: bool = False)
 
 def _question_id(question: QuestionSet, index: int) -> str:
     """질문 id가 비어 있으면 안전한 fallback id를 만든다."""
-    return str(question.get("id") or f"jh-q-{index + 1}")
+    return str(question.get("id") or f"q-{index + 1}")
 
 
 def _allocate_question_id(used_ids: set[str], counter: list[int]) -> str:
     """새 질문을 append할 때 기존 질문과 겹치지 않는 id를 발급한다."""
     while True:
         counter[0] += 1
-        candidate = f"jh-q-{counter[0]}"
+        candidate = f"q-{counter[0]}"
         if candidate not in used_ids:
             used_ids.add(candidate)
             return candidate
@@ -229,9 +229,9 @@ def _ensure_question_ids(questions: list[QuestionSet]) -> None:
         if not question_id:
             continue
         used_ids.add(question_id)
-        if question_id.startswith("jh-q-"):
+        if question_id.startswith("q-"):
             try:
-                max_seen = max(max_seen, int(question_id.removeprefix("jh-q-")))
+                max_seen = max(max_seen, int(question_id.removeprefix("q-")))
             except ValueError:
                 continue
 
@@ -421,7 +421,7 @@ async def questioner_node(state: AgentState) -> dict[str, Any]:
     new_warnings: list[dict[str, Any]] = []
     try:
         parsed, usages = await call_structured_output_with_usage(
-            node_name="jh_questioner",
+            node_name="questioner",
             system_prompt=prompts.QUESTIONER_SYSTEM_PROMPT,
             user_prompt=user_prompt,
             response_model=QuestionerOutput,
@@ -429,7 +429,7 @@ async def questioner_node(state: AgentState) -> dict[str, Any]:
         new_usages.extend(usages)
     except StructuredOutputCallError as exc:
         new_usages.extend(exc.usages)
-        new_warnings.append({"node": "jh_questioner", "message": str(exc)})
+        new_warnings.append({"node": "questioner", "message": str(exc)})
         update["questions"] = questions
         update["llm_usages"] = list(state.get("llm_usages") or []) + new_usages
         update["node_warnings"] = list(state.get("node_warnings") or []) + new_warnings
@@ -441,9 +441,9 @@ async def questioner_node(state: AgentState) -> dict[str, Any]:
     used_ids: set[str] = set(by_id.keys())
     max_seen = 0
     for existing_id in used_ids:
-        if existing_id.startswith("jh-q-"):
+        if existing_id.startswith("q-"):
             try:
-                max_seen = max(max_seen, int(existing_id.removeprefix("jh-q-")))
+                max_seen = max(max_seen, int(existing_id.removeprefix("q-")))
             except ValueError:
                 continue
     id_counter = [max_seen]
@@ -470,7 +470,7 @@ async def questioner_node(state: AgentState) -> dict[str, Any]:
         if not question_id or question_id not in by_id:
             new_warnings.append(
                 {
-                    "node": "jh_questioner",
+                    "node": "questioner",
                     "message": f"재작성 응답을 기존 질문 id와 매칭하지 못했습니다. (llm_id={llm_id or '없음'})",
                 }
             )
@@ -532,7 +532,7 @@ async def predictor_node(state: AgentState) -> dict[str, Any]:
     new_warnings: list[dict[str, Any]] = []
     try:
         parsed, usages = await call_structured_output_with_usage(
-            node_name="jh_predictor",
+            node_name="predictor",
             system_prompt=prompts.PREDICTOR_SYSTEM_PROMPT,
             user_prompt=user_prompt,
             response_model=PredictorOutput,
@@ -540,7 +540,7 @@ async def predictor_node(state: AgentState) -> dict[str, Any]:
         new_usages.extend(usages)
     except StructuredOutputCallError as exc:
         new_usages.extend(exc.usages)
-        new_warnings.append({"node": "jh_predictor", "message": str(exc)})
+        new_warnings.append({"node": "predictor", "message": str(exc)})
         return {
             "llm_usages": list(state.get("llm_usages") or []) + new_usages,
             "node_warnings": list(state.get("node_warnings") or []) + new_warnings,
@@ -589,7 +589,7 @@ async def driller_node(state: AgentState) -> dict[str, Any]:
     new_warnings: list[dict[str, Any]] = []
     try:
         parsed, usages = await call_structured_output_with_usage(
-            node_name="jh_driller",
+            node_name="driller",
             system_prompt=prompts.DRILLER_SYSTEM_PROMPT,
             user_prompt=user_prompt,
             response_model=DrillerOutput,
@@ -597,7 +597,7 @@ async def driller_node(state: AgentState) -> dict[str, Any]:
         new_usages.extend(usages)
     except StructuredOutputCallError as exc:
         new_usages.extend(exc.usages)
-        new_warnings.append({"node": "jh_driller", "message": str(exc)})
+        new_warnings.append({"node": "driller", "message": str(exc)})
         return {
             "llm_usages": list(state.get("llm_usages") or []) + new_usages,
             "node_warnings": list(state.get("node_warnings") or []) + new_warnings,
@@ -690,7 +690,7 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
     new_warnings: list[dict[str, Any]] = []
     try:
         parsed, usages = await call_structured_output_with_usage(
-            node_name="jh_reviewer",
+            node_name="reviewer",
             system_prompt=prompts.REVIEWER_SYSTEM_PROMPT,
             user_prompt=user_prompt,
             response_model=ReviewerOutput,
@@ -698,7 +698,7 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
         new_usages.extend(usages)
     except StructuredOutputCallError as exc:
         new_usages.extend(exc.usages)
-        new_warnings.append({"node": "jh_reviewer", "message": str(exc)})
+        new_warnings.append({"node": "reviewer", "message": str(exc)})
         for item in targets:
             item["status"] = "needs_revision"
             item["review_status"] = "needs_revision"
@@ -806,7 +806,7 @@ def _analysis_summary(state: AgentState) -> DocumentAnalysisOutput:
         risks=risk_tags[:8],
         document_evidence=[],
         job_fit=(
-            "JH 그래프는 별도 Analyzer 노드 없이 질문 생성 근거와 Reviewer 결과를 바탕으로 직무 적합성 신호를 정리합니다."
+            "그래프는 별도 Analyzer 노드 없이 질문 생성 근거와 Reviewer 결과를 바탕으로 직무 적합성 신호를 정리합니다."
         ),
         questionable_points=[
             item.get("generation_basis", "")
@@ -927,7 +927,7 @@ def build_response(state: AgentState) -> QuestionGenerationResponse:
         analysis_summary=_analysis_summary(state),
         questions=items,
         generation_metadata={
-            "pipeline": "jh",
+            "pipeline": "interview_graph",
             "generation_mode": generation_mode,
             "total_candidate_questions": len(state.get("questions", [])),
             "selected_question_count": len(items),

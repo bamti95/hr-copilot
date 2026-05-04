@@ -1,4 +1,4 @@
-"""JH 그래프 전용 Pydantic 스키마.
+"""그래프 전용 Pydantic 스키마.
 
 핵심 원칙:
 1. 내부 코드값은 하나로 통일한다.
@@ -64,7 +64,7 @@ DRILL_TYPE_MAP = {
 
 
 class GraphBaseModel(BaseModel):
-    """JH 그래프용 공통 BaseModel."""
+    """그래프 공통 BaseModel."""
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -378,7 +378,7 @@ class InterviewQuestionItem(GraphBaseModel):
 
 
 class QuestionGenerationResponse(GraphBaseModel):
-    """JH 그래프 최종 응답."""
+    """그래프 최종 응답."""
 
     session_id: int
     candidate_id: int

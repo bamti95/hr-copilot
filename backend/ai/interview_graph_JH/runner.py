@@ -1,29 +1,87 @@
-"""JH 그래프 실행 진입점.
+"""그래프 실행 진입점.
 
-이 파일은 서비스 레이어가 JH 그래프를 호출할 때 사용하는 공개 함수와
+이 파일은 서비스 레이어가 그래프를 호출할 때 사용하는 공개 함수와
 초기 state 구성 로직을 담고 있다.
 """
 
 import logging
 from collections.abc import Awaitable, Callable
+from decimal import Decimal
 from typing import Any
 
 from ai.graph_usage import collect_llm_usage_update
-from ai.interview_graph.runner import build_node_execution_log, save_llm_call_logs
-from ai.interview_graph_JH.schemas import DocumentAnalysisOutput, QuestionGenerationResponse
+from ai.interview_graph.runner import build_node_execution_log
 from ai.interview_graph_JH.nodes import (
     build_response,
     driller_node,
-    prepare_context_node,
     predictor_node,
+    prepare_context_node,
     questioner_node,
     review_router,
     reviewer_node,
 )
+from ai.interview_graph_JH.schemas import DocumentAnalysisOutput, QuestionGenerationResponse
 from ai.interview_graph_JH.state import AgentState, QuestionSet
+from core.database import AsyncSessionLocal
+from models.llm_call_log import LlmCallLog
 from schemas.session_generation import CandidateInterviewPrepInput
 
 logger = logging.getLogger(__name__)
+
+
+async def save_llm_call_logs(
+    *,
+    payload: CandidateInterviewPrepInput,
+    usages: list[dict[str, Any]],
+) -> None:
+    if not usages:
+        return
+
+    prompt_profile_id = payload.prompt_profile.id if payload.prompt_profile else None
+    async with AsyncSessionLocal() as db:
+        try:
+            for usage in usages:
+                elapsed_ms = usage.get("elapsed_ms")
+                estimated_cost = Decimal(str(usage.get("estimated_cost", 0) or 0))
+                db.add(
+                    LlmCallLog(
+                        manager_id=payload.session.manager_id,
+                        candidate_id=payload.candidate.candidate_id,
+                        document_id=None,
+                        prompt_profile_id=prompt_profile_id,
+                        interview_sessions_id=payload.session.session_id,
+                        model_name=usage.get("model_name") or "unknown",
+                        node_name=usage.get("node"),
+                        response_json=usage.get("response_json"),
+                        input_tokens=usage.get("input_tokens", 0),
+                        output_tokens=usage.get("output_tokens", 0),
+                        total_tokens=usage.get("total_tokens", 0),
+                        estimated_cost=estimated_cost,
+                        currency="USD",
+                        elapsed_ms=elapsed_ms,
+                        cost_amount=estimated_cost,
+                        call_status=usage.get("call_status", "success"),
+                        error_message=usage.get("error_message"),
+                        call_time=elapsed_ms or 0,
+                        request_json=usage.get("request_json"),
+                        output_json=usage.get("output_json"),
+                        run_id=usage.get("run_id"),
+                        parent_run_id=usage.get("parent_run_id"),
+                        trace_id=usage.get("trace_id"),
+                        run_type=usage.get("run_type"),
+                        execution_order=usage.get("execution_order"),
+                        started_at=usage.get("started_at"),
+                        ended_at=usage.get("ended_at"),
+                    )
+                )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            logger.exception(
+                "Failed to save JH LLM call logs session_id=%s candidate_id=%s",
+                payload.session.session_id,
+                payload.candidate.candidate_id,
+            )
 
 
 def _build_graph() -> Any:
@@ -60,7 +118,7 @@ def _normalize_existing_question(
     index: int,
     target_question_ids: set[str],
 ) -> QuestionSet:
-    """DB/서비스에서 넘어온 기존 질문을 그래프 내부 QuestionSet으로 맞춘다."""
+    """DB/서비스에 들어온 기존 질문을 그래프 내부 QuestionSet으로 맞춘다."""
     question_id = str(raw.get("id") or f"existing-{index + 1}")
     is_regeneration_target = question_id in target_question_ids
     requested_fields = [str(item) for item in raw.get("requested_revision_fields") or []]
@@ -165,12 +223,12 @@ def _failed_response(
         difficulty_level=payload.session.difficulty_level,
         status="failed",
         analysis_summary=DocumentAnalysisOutput(
-            job_fit="JH 면접 질문 그래프 실행 중 오류가 발생했습니다.",
+            job_fit="면접 질문 그래프 실행 중 오류가 발생했습니다.",
             risks=[str(error)],
         ),
         questions=[],
         generation_metadata={
-            "pipeline": "jh",
+            "pipeline": "interview_graph",
             "total_candidate_questions": 0,
             "selected_question_count": 0,
             "retry_count": 0,
@@ -184,7 +242,7 @@ async def run_interview_question_graph(
     payload: CandidateInterviewPrepInput,
     on_node_complete: Callable[[str], Awaitable[None]] | None = None,
 ) -> QuestionGenerationResponse:
-    """JH 그래프를 실행하고 최종 응답 객체를 반환한다."""
+    """그래프를 실행하고 최종 응답 객체를 반환한다."""
     collected_llm_usages: list[dict[str, Any]] = []
     saved_usage_count = 0
     try:
