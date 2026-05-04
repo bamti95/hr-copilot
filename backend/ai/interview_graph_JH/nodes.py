@@ -127,15 +127,79 @@ def _normalize_document_evidence(value: Any) -> list[str]:
     return normalized
 
 
-def _normalize_predicted_answer(value: str) -> str:
+def _conservative_predicted_answer(evidence: list[str]) -> str:
+    if not evidence:
+        return "문서 기준으로는 관련 경험을 중심으로 답할 가능성이 있다."
+    anchor = evidence[0]
+    if len(anchor) > 60:
+        anchor = f"{anchor[:57].rstrip()}..."
+    return f"문서 기준으로는 {anchor} 경험을 중심으로 답할 가능성이 있다."
+
+
+def _normalize_predicted_answer(
+    value: str,
+    *,
+    issue_types: list[str] | None = None,
+    evidence: list[str] | None = None,
+) -> str:
     text = " ".join(str(value or "").split()).strip()
     if not text:
         return ""
+    issue_set = set(issue_types or [])
+    evidence = list(evidence or [])
+    if "doc_evidence_missing" in issue_set:
+        return _conservative_predicted_answer(evidence)
     if len(text) > MAX_PREDICTED_ANSWER_CHARS:
         text = f"{text[: MAX_PREDICTED_ANSWER_CHARS - 1].rstrip()}..."
+    if "over_specific_predicted_answer" in issue_set or "weak_evidence" in issue_set:
+        if len(text) > 110 or "핵심 원인" in text or "직접 작성" in text or "성과를" in text:
+            return _conservative_predicted_answer(evidence)
     if "가능성이" in text or "것 같습니다" in text or "추정" in text:
         return text
     return f"{text} 라고 답할 가능성이 높습니다."
+
+
+def _pick_follow_up_focus(question: QuestionSet) -> str:
+    guidance = " ".join(
+        str(part or "")
+        for part in [
+            question.get("retry_guidance"),
+            question.get("review_reason"),
+            question.get("follow_up_question"),
+        ]
+    )
+    if "기간" in guidance:
+        return "period"
+    if "수치" in guidance or "%" in guidance or "정량" in guidance:
+        return "metric"
+    if "행동" in guidance or "직접" in guidance:
+        return "action"
+    if "결과" in guidance or "성과" in guidance:
+        return "result"
+    return "action"
+
+
+def _normalize_follow_up_question(value: str, question: QuestionSet) -> str:
+    text = " ".join(str(value or "").split()).strip()
+    if not text:
+        return ""
+    text = text.replace("보여주실 수 있나요?", "말씀해 주세요.")
+    while "(" in text and ")" in text and text.index("(") < text.index(")"):
+        start = text.index("(")
+        end = text.index(")") + 1
+        text = f"{text[:start].rstrip()} {text[end:].lstrip()}".strip()
+    issue_set = set(str(item) for item in question.get("review_issue_types") or [])
+    if "too_long_for_interview" in issue_set or "followup_not_specific" in issue_set:
+        focus = _pick_follow_up_focus(question)
+        if focus == "period":
+            text = "그 경험이 실제로 진행된 기간을 구체적으로 말씀해 주세요."
+        elif focus == "metric":
+            text = "그 경험과 연결된 핵심 수치 하나만 구체적으로 말씀해 주세요."
+        elif focus == "result":
+            text = "그 경험 이후 실제로 달라진 결과 한 가지만 구체적으로 말씀해 주세요."
+        else:
+            text = "그 경험에서 본인이 직접 한 행동 한 가지만 구체적으로 말씀해 주세요."
+    return _clip_follow_up_text(text)
 
 
 def _normalize_evaluation_guide(value: str) -> str:
@@ -192,9 +256,17 @@ def _canonical_retry_guidance(
         parts.append(
             "predicted_answer는 문서에 직접 있는 사실만 바탕으로 더 짧고 약한 추정형 표현으로 수정하세요."
         )
-    if "follow_up_question" in field_set and "weak_evidence" in issue_set:
+    if "predicted_answer" in field_set and "doc_evidence_missing" in issue_set:
+        parts.append(
+            "predicted_answer는 문서에서 직접 확인되는 경험 수준까지만 언급하고, 산출물·성과는 추론하지 마세요."
+        )
+    if "follow_up_question" in field_set and {"weak_evidence", "followup_not_specific"} & issue_set:
         parts.append(
             "follow_up_question은 수치, 기간, 실제 행동, 결과 중 가장 부족한 한 가지를 구체적으로 확인하도록 수정하세요."
+        )
+    if "follow_up_question" in field_set and "too_long_for_interview" in issue_set:
+        parts.append(
+            "follow_up_question은 예시를 나열하지 말고 한 가지 확인 포인트만 남긴 짧은 질문으로 수정하세요."
         )
     if "question_text" in field_set and "weak_evidence" in issue_set:
         parts.append(
@@ -234,6 +306,8 @@ def _infer_requested_revision_fields(
     issue_map = {
         "job_relevance_issue": ["question_text", "generation_basis"],
         "weak_evidence": ["generation_basis", "document_evidence"],
+        "doc_evidence_missing": ["generation_basis", "document_evidence", "predicted_answer"],
+        "followup_not_specific": ["follow_up_question"],
         "duplicate_question": ["question_text"],
         "too_generic": ["question_text"],
         "fairness_risk": ["question_text", "evaluation_guide"],
@@ -415,6 +489,23 @@ def _default_regen_targets(question: QuestionSet) -> list[str]:
         if str(item).strip()
     ]
     return requested or ["question_text", "evaluation_guide"]
+
+
+def _normalize_review_issue_types(
+    issue_types: list[str],
+    requested_fields: list[str],
+) -> list[str]:
+    normalized: list[str] = []
+    field_set = set(requested_fields)
+    for issue_type in issue_types:
+        if issue_type == "weak_evidence":
+            if field_set <= {"follow_up_question"}:
+                issue_type = "followup_not_specific"
+            elif {"document_evidence", "generation_basis", "predicted_answer"} & field_set:
+                issue_type = "doc_evidence_missing"
+        if issue_type not in normalized:
+            normalized.append(issue_type)
+    return normalized
 
 
 def _should_refresh_predicted_answer(question: QuestionSet) -> bool:
@@ -760,7 +851,9 @@ async def predictor_node(state: AgentState) -> dict[str, Any]:
         if target is None:
             continue
         target["predicted_answer"] = _normalize_predicted_answer(
-            model.get("predicted_answer") or ""
+            model.get("predicted_answer") or "",
+            issue_types=[str(item) for item in target.get("review_issue_types") or []],
+            evidence=_normalize_document_evidence(target.get("document_evidence") or []),
         )
         target["predicted_answer_basis"] = model.get("predicted_answer_basis") or ""
         target["answer_confidence"] = model.get("answer_confidence") or ""
@@ -819,8 +912,9 @@ async def driller_node(state: AgentState) -> dict[str, Any]:
         target = by_id.get(str(model.get("question_id")))
         if target is None:
             continue
-        target["follow_up_question"] = _clip_follow_up_text(
-            model.get("follow_up_question") or ""
+        target["follow_up_question"] = _normalize_follow_up_question(
+            model.get("follow_up_question") or "",
+            target,
         )
         target["follow_up_basis"] = model.get("follow_up_basis") or ""
         target["drill_type"] = model.get("drill_type") or ""
@@ -869,7 +963,13 @@ def _fallback_review(question_id: str) -> ReviewResult:
 
 def _overall_status_from_score(overall_score: float, issue_types: list[str]) -> str:
     """루브릭 평균과 치명 이슈를 함께 보고 최종 상태를 정한다."""
-    critical_issue_types = {"fairness_risk", "job_relevance_issue", "weak_evidence"}
+    critical_issue_types = {
+        "fairness_risk",
+        "job_relevance_issue",
+        "weak_evidence",
+        "doc_evidence_missing",
+        "followup_not_specific",
+    }
     if overall_score >= 4.2 and not (critical_issue_types & set(issue_types)):
         return "approved"
     if overall_score >= 3.0:
@@ -951,7 +1051,15 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
             EVALUATION_GUIDE_KEYS,
         )
         overall_score = model.get("overall_score") or round((question_avg + guide_avg) / 2, 2)
-        issue_types = [str(item) for item in model.get("issue_types") or []]
+        raw_requested_fields = [str(item) for item in model.get("requested_revision_fields") or []]
+        inferred_fields = _infer_requested_revision_fields(
+            [str(item) for item in model.get("issue_types") or []],
+            raw_requested_fields,
+        )
+        issue_types = _normalize_review_issue_types(
+            [str(item) for item in model.get("issue_types") or []],
+            inferred_fields,
+        )
         status = str(model.get("status") or _overall_status_from_score(overall_score, issue_types))
 
         target["review_status"] = status
@@ -959,10 +1067,7 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
         target["reject_reason"] = model.get("reject_reason") or ""
         target["recommended_revision"] = model.get("recommended_revision") or ""
         target["review_issue_types"] = issue_types
-        target["requested_revision_fields"] = _infer_requested_revision_fields(
-            issue_types,
-            [str(item) for item in model.get("requested_revision_fields") or []],
-        )
+        target["requested_revision_fields"] = inferred_fields
         target["retry_guidance"] = _canonical_retry_guidance(
             issue_types,
             target["requested_revision_fields"],

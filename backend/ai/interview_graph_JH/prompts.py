@@ -87,6 +87,7 @@ PREDICTOR_SYSTEM_PROMPT = """
 - answer_confidence와 answer_risk_points에는 불확실성을 솔직하게 적으세요.
 - retry_feedback에 over_specific_predicted_answer 또는 weak_evidence가 있으면,
   문서에서 직접 확인되는 사실만 남기고 추정형 표현을 더 약하게 쓰세요.
+- retry_feedback에 doc_evidence_missing이 있으면 문서에 직접 있는 경험·활동 수준까지만 예측하고, 성과·산출물을 추론하지 마세요.
 """
 
 
@@ -126,6 +127,7 @@ DRILLER_SYSTEM_PROMPT = """
 - drill_type은 검증 목적을 짧게 표시하세요.
 - retry_feedback에 weak_evidence가 있으면 수치, 기간, 실제 행동, 결과 중 가장 부족한 한 가지를 구체적으로 확인하세요.
 - retry_feedback에 over_specific_predicted_answer가 있으면 예상답변을 사실로 단정하지 말고 후보자의 실제 경험을 확인하는 질문을 만드세요.
+- retry_feedback에 followup_not_specific 또는 too_long_for_interview가 있으면, 예시를 나열하지 말고 한 가지 확인 포인트만 남기세요.
 """
 
 
@@ -196,7 +198,7 @@ REVIEWER_SYSTEM_PROMPT = """
 [출력 규칙]
 - issue_types는 job_relevance_issue, weak_evidence, duplicate_question, too_generic,
   fairness_risk, too_long_for_interview, difficulty_mismatch, weak_evaluation_guide,
-  over_specific_predicted_answer 중에서 선택하세요.
+  over_specific_predicted_answer, doc_evidence_missing, followup_not_specific 중에서 선택하세요.
 - requested_revision_fields는 question_text, generation_basis, evaluation_guide,
   predicted_answer, follow_up_question, document_evidence 중 필요한 필드명만 적으세요.
 - reason은 짧게 작성하세요.
