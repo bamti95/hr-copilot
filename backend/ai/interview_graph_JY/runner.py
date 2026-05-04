@@ -144,6 +144,15 @@ async def run_interview_question_graph(
 ) -> QuestionGenerationResponse:
     collected_llm_usages: list[dict[str, Any]] = []
     saved_usage_count = 0
+    llm_logs_saved = False
+
+    async def persist_llm_logs_once() -> None:
+        nonlocal llm_logs_saved
+        if llm_logs_saved:
+            return
+        await save_llm_call_logs(payload=payload, usages=collected_llm_usages)
+        llm_logs_saved = True
+
     try:
         app = _build_graph()
         initial_state = _initial_state(payload)
@@ -169,10 +178,10 @@ async def run_interview_question_graph(
                 if node_name == "final_formatter":
                     final_response = node_update.get("final_response")
 
-        await save_llm_call_logs(payload=payload, usages=collected_llm_usages)
+        await persist_llm_logs_once()
         if final_response is None:
             raise RuntimeError("JY graph finished without final_response.")
         return QuestionGenerationResponse.model_validate(final_response)
     except Exception as exc:  # noqa: BLE001
-        await save_llm_call_logs(payload=payload, usages=collected_llm_usages)
+        await persist_llm_logs_once()
         return _failed_response(payload, exc)
