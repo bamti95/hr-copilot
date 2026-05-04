@@ -47,6 +47,8 @@ DEFAULT_QUESTION_COUNT = 5
 MORE_QUESTION_COUNT = 3
 ADD_QUESTION_COUNT = 2
 MAX_QUESTION_TEXT_CHARS = 180
+MAX_FOLLOW_UP_CHARS = 160
+MAX_PREDICTED_ANSWER_CHARS = 170
 QUESTION_QUALITY_KEYS = [
     "job_relevance",
     "document_grounding",
@@ -85,6 +87,130 @@ def _clip_question_text(value: str) -> str:
         return text
     clipped = text[: MAX_QUESTION_TEXT_CHARS - 1].rstrip()
     return f"{clipped}..."
+
+
+def _clip_follow_up_text(value: str) -> str:
+    text = " ".join(str(value or "").split())
+    if len(text) <= MAX_FOLLOW_UP_CHARS:
+        return text
+    clipped = text[: MAX_FOLLOW_UP_CHARS - 1].rstrip()
+    return f"{clipped}..."
+
+
+def _normalize_document_evidence(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            parsed = [text]
+        else:
+            if not isinstance(parsed, list):
+                parsed = [parsed]
+    elif isinstance(value, list):
+        parsed = value
+    else:
+        parsed = [value]
+
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for item in parsed:
+        text = " ".join(str(item or "").split()).strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        normalized.append(text)
+    return normalized
+
+
+def _normalize_predicted_answer(value: str) -> str:
+    text = " ".join(str(value or "").split()).strip()
+    if not text:
+        return ""
+    if len(text) > MAX_PREDICTED_ANSWER_CHARS:
+        text = f"{text[: MAX_PREDICTED_ANSWER_CHARS - 1].rstrip()}..."
+    if "가능성이" in text or "것 같습니다" in text or "추정" in text:
+        return text
+    return f"{text} 라고 답할 가능성이 높습니다."
+
+
+def _normalize_evaluation_guide(value: str) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return "상: 실제 사례와 본인 역할, 결과를 구체적으로 설명함\n중: 사례는 있으나 역할 또는 결과 설명이 일부 모호함\n하: 일반론만 말하고 실제 사례나 결과가 없음"
+
+    lines = [line.strip(" -\t") for line in text.splitlines() if line.strip()]
+    labeled = {"상": "", "중": "", "하": ""}
+    for line in lines:
+        for key in labeled:
+            if line.startswith(f"{key}:"):
+                labeled[key] = line.split(":", 1)[1].strip()
+
+    if all(labeled.values()):
+        return "\n".join(f"{key}: {value}" for key, value in labeled.items())
+
+    parts = [segment.strip() for segment in text.replace("\n", " ").split(".") if segment.strip()]
+    fallback = parts[:3]
+    while len(fallback) < 3:
+        fallback.append("핵심 근거와 구체성이 더 필요함")
+    return "\n".join(
+        [
+            f"상: {fallback[0]}",
+            f"중: {fallback[1]}",
+            f"하: {fallback[2]}",
+        ]
+    )
+
+
+def _build_retry_guidance(question: QuestionSet) -> str:
+    guidance = " ".join(
+        part.strip()
+        for part in [
+            str(question.get("review_reason") or "").strip(),
+            str(question.get("recommended_revision") or "").strip(),
+            str(question.get("retry_guidance") or "").strip(),
+        ]
+        if part and str(part).strip()
+    ).strip()
+    return guidance[:280]
+
+
+def _infer_requested_revision_fields(
+    issue_types: list[str],
+    existing_fields: list[str],
+) -> list[str]:
+    if existing_fields:
+        return existing_fields
+
+    field_order = [
+        "question_text",
+        "generation_basis",
+        "evaluation_guide",
+        "predicted_answer",
+        "follow_up_question",
+        "document_evidence",
+    ]
+    mapped: list[str] = []
+    issue_map = {
+        "job_relevance_issue": ["question_text", "generation_basis"],
+        "weak_evidence": ["generation_basis", "document_evidence"],
+        "duplicate_question": ["question_text"],
+        "too_generic": ["question_text"],
+        "fairness_risk": ["question_text", "evaluation_guide"],
+        "too_long_for_interview": ["question_text", "follow_up_question", "evaluation_guide"],
+        "difficulty_mismatch": ["question_text", "evaluation_guide"],
+        "weak_evaluation_guide": ["evaluation_guide"],
+        "over_specific_predicted_answer": ["predicted_answer", "follow_up_question"],
+    }
+    for issue_type in issue_types:
+        for field_name in issue_map.get(issue_type, []):
+            if field_name not in mapped:
+                mapped.append(field_name)
+    return sorted(mapped, key=field_order.index) if mapped else ["question_text", "evaluation_guide"]
 
 
 def _recruitment_criteria(state: AgentState) -> str:
@@ -179,7 +305,7 @@ def _format_questions(items: list[QuestionSet], *, include_answer: bool = False)
             "category": item.get("category"),
             "question_text": item.get("question_text"),
             "generation_basis": item.get("generation_basis"),
-            "document_evidence": item.get("document_evidence", []),
+            "document_evidence": _normalize_document_evidence(item.get("document_evidence", [])),
             "evaluation_guide": item.get("evaluation_guide"),
             "risk_tags": item.get("risk_tags", []),
             "competency_tags": item.get("competency_tags", []),
@@ -188,6 +314,7 @@ def _format_questions(items: list[QuestionSet], *, include_answer: bool = False)
             "requested_revision_fields": item.get("requested_revision_fields", []),
             "review_issue_types": item.get("review_issue_types", []),
             "regen_targets": item.get("regen_targets", []),
+            "retry_guidance": item.get("retry_guidance", ""),
         }
         if include_answer:
             data.update(
@@ -325,10 +452,17 @@ def _task_instruction(mode: str, targets: list[QuestionSet]) -> str:
         )
 
     target_block = _format_questions(targets, include_answer=True)
+    revision_rules = (
+        "수정 시 review_issue_types, requested_revision_fields, retry_guidance를 우선 반영하라. "
+        "predicted_answer는 사실 단정형이 아니라 짧은 추정형으로 유지하고, "
+        "follow_up_question은 가장 중요한 검증 포인트 1개만 묻는 1문장으로 작성하라. "
+        "evaluation_guide는 반드시 상/중/하 3줄 체크형으로 작성하라."
+    )
     return (
         "지정된 질문만 수정하고, 나머지 질문은 유지하라. "
         "requested_revision_fields 또는 regen_targets가 있으면 해당 필드만 우선 수정하고, "
-        "일관성을 위해 꼭 필요하지 않다면 나머지 필드는 건드리지 마라.\n"
+        "일관성을 위해 꼭 필요하지 않다면 나머지 필드는 건드리지 마라. "
+        f"{revision_rules}\n"
         f"{target_block}"
     )
 
@@ -353,12 +487,16 @@ def _build_question_entry(
         "generation_basis": model.get("generation_basis")
         or (existing or {}).get("generation_basis")
         or "",
-        "document_evidence": model.get("document_evidence")
-        or list((existing or {}).get("document_evidence") or []),
+        "document_evidence": _normalize_document_evidence(
+            model.get("document_evidence")
+            or list((existing or {}).get("document_evidence") or [])
+        ),
         "question_text": question_text or (existing or {}).get("question_text") or "",
-        "evaluation_guide": model.get("evaluation_guide")
-        or (existing or {}).get("evaluation_guide")
-        or "",
+        "evaluation_guide": _normalize_evaluation_guide(
+            model.get("evaluation_guide")
+            or (existing or {}).get("evaluation_guide")
+            or ""
+        ),
         "predicted_answer": "",
         "predicted_answer_basis": "",
         "answer_confidence": "",
@@ -384,6 +522,7 @@ def _build_question_entry(
         "status": "pending",
         "regen_targets": list(requested_fields or []),
         "generation_mode": generation_mode,
+        "retry_guidance": str((existing or {}).get("retry_guidance") or ""),
     }
     return entry
 
@@ -552,7 +691,9 @@ async def predictor_node(state: AgentState) -> dict[str, Any]:
         target = by_id.get(str(model.get("question_id")))
         if target is None:
             continue
-        target["predicted_answer"] = model.get("predicted_answer") or ""
+        target["predicted_answer"] = _normalize_predicted_answer(
+            model.get("predicted_answer") or ""
+        )
         target["predicted_answer_basis"] = model.get("predicted_answer_basis") or ""
         target["answer_confidence"] = model.get("answer_confidence") or ""
         target["answer_risk_points"] = list(model.get("answer_risk_points") or [])
@@ -609,7 +750,9 @@ async def driller_node(state: AgentState) -> dict[str, Any]:
         target = by_id.get(str(model.get("question_id")))
         if target is None:
             continue
-        target["follow_up_question"] = model.get("follow_up_question") or ""
+        target["follow_up_question"] = _clip_follow_up_text(
+            model.get("follow_up_question") or ""
+        )
         target["follow_up_basis"] = model.get("follow_up_basis") or ""
         target["drill_type"] = model.get("drill_type") or ""
 
@@ -746,10 +889,12 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
         target["review_reason"] = model.get("reason") or ""
         target["reject_reason"] = model.get("reject_reason") or ""
         target["recommended_revision"] = model.get("recommended_revision") or ""
+        target["retry_guidance"] = model.get("retry_guidance") or ""
         target["review_issue_types"] = issue_types
-        target["requested_revision_fields"] = [
-            str(item) for item in model.get("requested_revision_fields") or []
-        ]
+        target["requested_revision_fields"] = _infer_requested_revision_fields(
+            issue_types,
+            [str(item) for item in model.get("requested_revision_fields") or []],
+        )
         target["question_quality_scores"] = question_scores
         target["evaluation_guide_scores"] = guide_scores
         target["question_quality_average"] = float(question_avg)
@@ -760,11 +905,14 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
 
         if status == "needs_revision" and not target["requested_revision_fields"]:
             target["requested_revision_fields"] = ["question_text", "evaluation_guide"]
+        if not target["retry_guidance"]:
+            target["retry_guidance"] = _build_retry_guidance(target)
         if status != "approved":
             target["regen_targets"] = list(target.get("requested_revision_fields") or [])
         else:
             target["regen_targets"] = []
             target["requested_revision_fields"] = []
+            target["retry_guidance"] = ""
 
     update: dict[str, Any] = {
         "questions": questions,
@@ -841,8 +989,12 @@ def build_response(state: AgentState) -> QuestionGenerationResponse:
                 "category": question.get("category") or "OTHER",
                 "question_text": question.get("question_text") or "",
                 "generation_basis": question.get("generation_basis") or "",
-                "document_evidence": question.get("document_evidence") or [],
-                "evaluation_guide": question.get("evaluation_guide") or "",
+                "document_evidence": _normalize_document_evidence(
+                    question.get("document_evidence") or []
+                ),
+                "evaluation_guide": _normalize_evaluation_guide(
+                    question.get("evaluation_guide") or ""
+                ),
                 "risk_tags": question.get("risk_tags") or [],
                 "competency_tags": question.get("competency_tags") or [],
             }
@@ -850,8 +1002,10 @@ def build_response(state: AgentState) -> QuestionGenerationResponse:
         answer = PredictedAnswer.model_validate(
             {
                 "question_id": question_id,
-                "predicted_answer": question.get("predicted_answer")
-                or _fallback_answer(question_id).predicted_answer,
+                "predicted_answer": _normalize_predicted_answer(
+                    question.get("predicted_answer")
+                    or _fallback_answer(question_id).predicted_answer
+                ),
                 "predicted_answer_basis": question.get("predicted_answer_basis")
                 or _fallback_answer(question_id).predicted_answer_basis,
                 "answer_confidence": question.get("answer_confidence")
@@ -863,8 +1017,10 @@ def build_response(state: AgentState) -> QuestionGenerationResponse:
         follow_up = FollowUpQuestion.model_validate(
             {
                 "question_id": question_id,
-                "follow_up_question": question.get("follow_up_question")
-                or _fallback_follow_up(question_id).follow_up_question,
+                "follow_up_question": _clip_follow_up_text(
+                    question.get("follow_up_question")
+                    or _fallback_follow_up(question_id).follow_up_question
+                ),
                 "follow_up_basis": question.get("follow_up_basis")
                 or _fallback_follow_up(question_id).follow_up_basis,
                 "drill_type": question.get("drill_type")

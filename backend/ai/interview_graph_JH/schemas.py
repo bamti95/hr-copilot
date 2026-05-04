@@ -6,6 +6,7 @@
 3. 최종 응답에는 각 노드가 만든 핵심 메타데이터를 최대한 보존한다.
 """
 
+import json
 from typing import Any, Literal
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -117,6 +118,26 @@ class QuestionCandidate(GraphBaseModel):
     def normalize_category(cls, value: Any) -> str:
         normalized = QUESTION_CATEGORY_MAP.get(str(value), str(value))
         return normalized
+
+    @field_validator("document_evidence", mode="before")
+    @classmethod
+    def normalize_document_evidence(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            text = value.strip()
+            if not text:
+                return []
+            try:
+                parsed = json.loads(text)
+            except json.JSONDecodeError:
+                return [text]
+            if isinstance(parsed, list):
+                return [str(item).strip() for item in parsed if str(item).strip()]
+            return [str(parsed).strip()]
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+        return [str(value).strip()]
 
 
 class QuestionerOutput(GraphBaseModel):
@@ -271,6 +292,10 @@ class ReviewResult(GraphBaseModel):
         default="",
         validation_alias=AliasChoices("recommended_revision", "revision_suggestion"),
     )
+    retry_guidance: str = Field(
+        default="",
+        validation_alias=AliasChoices("retry_guidance", "next_try_guidance"),
+    )
     issue_types: list[str] = Field(
         default_factory=list,
         validation_alias=AliasChoices("issue_types", "review_issue_types"),
@@ -288,7 +313,7 @@ class ReviewResult(GraphBaseModel):
         validation_alias=AliasChoices("overall_score", "average_score"),
     )
 
-    @field_validator("reject_reason", "recommended_revision", mode="before")
+    @field_validator("reject_reason", "recommended_revision", "retry_guidance", mode="before")
     @classmethod
     def stringify_optional_list(cls, value: Any) -> str:
         if value is None:

@@ -4,6 +4,7 @@
 초기 state 구성 로직을 담고 있다.
 """
 
+import json
 import logging
 from collections.abc import Awaitable, Callable
 from decimal import Decimal
@@ -27,6 +28,27 @@ from models.llm_call_log import LlmCallLog
 from schemas.session_generation import CandidateInterviewPrepInput
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_document_evidence(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            parsed = [text]
+        else:
+            if not isinstance(parsed, list):
+                parsed = [parsed]
+    elif isinstance(value, list):
+        parsed = value
+    else:
+        parsed = [value]
+    return [str(item).strip() for item in parsed if str(item).strip()]
 
 
 async def save_llm_call_logs(
@@ -129,7 +151,7 @@ def _normalize_existing_question(
         "generation_basis": str(
             raw.get("generation_basis") or raw.get("question_rationale") or ""
         ),
-        "document_evidence": list(raw.get("document_evidence") or []),
+        "document_evidence": _normalize_document_evidence(raw.get("document_evidence")),
         "evaluation_guide": str(raw.get("evaluation_guide") or ""),
         "predicted_answer": str(raw.get("predicted_answer") or raw.get("expected_answer") or ""),
         "predicted_answer_basis": str(raw.get("predicted_answer_basis") or ""),

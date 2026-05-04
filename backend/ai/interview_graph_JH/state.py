@@ -105,6 +105,7 @@ class QuestionSet(TypedDict, total=False):
     status: QuestionStatus
     regen_targets: list[str]
     generation_mode: str
+    retry_guidance: str
 
 
 class AgentState(TypedDict, total=False):
