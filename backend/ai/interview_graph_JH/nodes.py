@@ -421,14 +421,22 @@ def _should_refresh_predicted_answer(question: QuestionSet) -> bool:
     targets = set(_default_regen_targets(question))
     if not question.get("predicted_answer"):
         return True
-    return "predicted_answer" in targets
+    return bool(
+        {
+            "question_text",
+            "generation_basis",
+            "document_evidence",
+            "predicted_answer",
+        }
+        & targets
+    )
 
 
 def _should_refresh_follow_up(question: QuestionSet) -> bool:
     targets = set(_default_regen_targets(question))
     if not question.get("follow_up_question"):
         return True
-    return "follow_up_question" in targets
+    return bool({"question_text", "predicted_answer", "follow_up_question"} & targets)
 
 
 def _calculate_average(scores: dict[str, int], expected_keys: list[str]) -> float:
