@@ -179,6 +179,42 @@ def _build_retry_guidance(question: QuestionSet) -> str:
     return guidance[:280]
 
 
+def _canonical_retry_guidance(
+    issue_types: list[str],
+    requested_fields: list[str],
+    question: QuestionSet,
+) -> str:
+    issue_set = set(issue_types)
+    field_set = set(requested_fields)
+    parts: list[str] = []
+
+    if "predicted_answer" in field_set or "over_specific_predicted_answer" in issue_set:
+        parts.append(
+            "predicted_answer는 문서에 직접 있는 사실만 바탕으로 더 짧고 약한 추정형 표현으로 수정하세요."
+        )
+    if "follow_up_question" in field_set and "weak_evidence" in issue_set:
+        parts.append(
+            "follow_up_question은 수치, 기간, 실제 행동, 결과 중 가장 부족한 한 가지를 구체적으로 확인하도록 수정하세요."
+        )
+    if "question_text" in field_set and "weak_evidence" in issue_set:
+        parts.append(
+            "question_text는 문서에 직접 근거가 있는 검증 포인트만 남기고, 문서에 없는 기술스택이나 성과는 새로 요구하지 마세요."
+        )
+    if "evaluation_guide" in field_set or "weak_evaluation_guide" in issue_set:
+        parts.append(
+            "evaluation_guide는 상/중/하 3줄 체크형을 유지하고, 무엇을 들으면 점수를 줄지 짧게 적으세요."
+        )
+    if not parts and "weak_evidence" in issue_set:
+        parts.append(
+            "문서에서 확인 가능한 근거만 바탕으로, 실제 행동과 결과를 더 직접 검증하는 방향으로 수정하세요."
+        )
+
+    guidance = " ".join(parts).strip()
+    if "Slack" in guidance and "Slack" not in str(question.get("question_text") or ""):
+        guidance = guidance.replace("Slack", "협업 도구")
+    return guidance[:280]
+
+
 def _infer_requested_revision_fields(
     issue_types: list[str],
     existing_fields: list[str],
@@ -379,6 +415,20 @@ def _default_regen_targets(question: QuestionSet) -> list[str]:
         if str(item).strip()
     ]
     return requested or ["question_text", "evaluation_guide"]
+
+
+def _should_refresh_predicted_answer(question: QuestionSet) -> bool:
+    targets = set(_default_regen_targets(question))
+    if not question.get("predicted_answer"):
+        return True
+    return "predicted_answer" in targets
+
+
+def _should_refresh_follow_up(question: QuestionSet) -> bool:
+    targets = set(_default_regen_targets(question))
+    if not question.get("follow_up_question"):
+        return True
+    return "follow_up_question" in targets
 
 
 def _calculate_average(scores: dict[str, int], expected_keys: list[str]) -> float:
@@ -634,6 +684,15 @@ async def questioner_node(state: AgentState) -> dict[str, Any]:
                 patched["document_evidence"] = list(existing.get("document_evidence") or [])
             if "category" not in patch_fields:
                 patched["category"] = existing.get("category", patched["category"])
+            if "predicted_answer" not in patch_fields:
+                patched["predicted_answer"] = existing.get("predicted_answer", "")
+                patched["predicted_answer_basis"] = existing.get("predicted_answer_basis", "")
+                patched["answer_confidence"] = existing.get("answer_confidence", "")
+                patched["answer_risk_points"] = list(existing.get("answer_risk_points") or [])
+            if "follow_up_question" not in patch_fields:
+                patched["follow_up_question"] = existing.get("follow_up_question", "")
+                patched["follow_up_basis"] = existing.get("follow_up_basis", "")
+                patched["drill_type"] = existing.get("drill_type", "")
         else:
             patched["regen_targets"] = []
             patched["requested_revision_fields"] = []
@@ -655,7 +714,7 @@ async def predictor_node(state: AgentState) -> dict[str, Any]:
         item
         for item in questions
         if item.get("status") in {"pending", "human_rejected", "needs_revision"}
-        and not item.get("predicted_answer")
+        and _should_refresh_predicted_answer(item)
     ]
     if not targets:
         return {}
@@ -666,6 +725,7 @@ async def predictor_node(state: AgentState) -> dict[str, Any]:
         difficulty_guidance=_difficulty_guidance(state),
         candidate_context=_clip(state.get("candidate_context") or "", PREDICTOR_DOCUMENT_CHARS),
         questions=_format_questions(targets),
+        retry_feedback=_format_questions(targets, include_answer=True),
     )
     new_usages: list[dict[str, Any]] = []
     new_warnings: list[dict[str, Any]] = []
@@ -714,7 +774,7 @@ async def driller_node(state: AgentState) -> dict[str, Any]:
         for item in questions
         if item.get("status") in {"pending", "human_rejected", "needs_revision"}
         and item.get("predicted_answer")
-        and not item.get("follow_up_question")
+        and _should_refresh_follow_up(item)
     ]
     if not targets:
         return {}
@@ -725,6 +785,7 @@ async def driller_node(state: AgentState) -> dict[str, Any]:
         difficulty_guidance=_difficulty_guidance(state),
         recruitment_criteria=_recruitment_criteria(state),
         questions=_format_questions(targets, include_answer=True),
+        retry_feedback=_format_questions(targets, include_answer=True),
     )
     new_usages: list[dict[str, Any]] = []
     new_warnings: list[dict[str, Any]] = []
@@ -889,11 +950,15 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
         target["review_reason"] = model.get("reason") or ""
         target["reject_reason"] = model.get("reject_reason") or ""
         target["recommended_revision"] = model.get("recommended_revision") or ""
-        target["retry_guidance"] = model.get("retry_guidance") or ""
         target["review_issue_types"] = issue_types
         target["requested_revision_fields"] = _infer_requested_revision_fields(
             issue_types,
             [str(item) for item in model.get("requested_revision_fields") or []],
+        )
+        target["retry_guidance"] = _canonical_retry_guidance(
+            issue_types,
+            target["requested_revision_fields"],
+            target,
         )
         target["question_quality_scores"] = question_scores
         target["evaluation_guide_scores"] = guide_scores
@@ -905,8 +970,6 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
 
         if status == "needs_revision" and not target["requested_revision_fields"]:
             target["requested_revision_fields"] = ["question_text", "evaluation_guide"]
-        if not target["retry_guidance"]:
-            target["retry_guidance"] = _build_retry_guidance(target)
         if status != "approved":
             target["regen_targets"] = list(target.get("requested_revision_fields") or [])
         else:

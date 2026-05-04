@@ -85,6 +85,8 @@ PREDICTOR_SYSTEM_PROMPT = """
 - 문서에 없는 숫자, 내부 의사결정, 구체 조항을 사실처럼 만들어 쓰지 마세요.
 - predicted_answer_basis에는 왜 그런 답변이 나올 가능성이 높은지 문서 근거를 설명하세요.
 - answer_confidence와 answer_risk_points에는 불확실성을 솔직하게 적으세요.
+- retry_feedback에 over_specific_predicted_answer 또는 weak_evidence가 있으면,
+  문서에서 직접 확인되는 사실만 남기고 추정형 표현을 더 약하게 쓰세요.
 """
 
 
@@ -104,6 +106,9 @@ PREDICTOR_USER_PROMPT = """
 [질문 목록]
 {questions}
 
+[재시도 피드백]
+{retry_feedback}
+
 각 question_id마다 실제 면접에서 할 법한 예상답변을 가설형으로 작성하세요.
 """
 
@@ -119,6 +124,8 @@ DRILLER_SYSTEM_PROMPT = """
 - 원 질문을 반복하지 마세요.
 - 실제 면접에서 바로 던질 수 있는 자연스러운 표현으로 작성하세요.
 - drill_type은 검증 목적을 짧게 표시하세요.
+- retry_feedback에 weak_evidence가 있으면 수치, 기간, 실제 행동, 결과 중 가장 부족한 한 가지를 구체적으로 확인하세요.
+- retry_feedback에 over_specific_predicted_answer가 있으면 예상답변을 사실로 단정하지 말고 후보자의 실제 경험을 확인하는 질문을 만드세요.
 """
 
 
@@ -137,6 +144,9 @@ DRILLER_USER_PROMPT = """
 
 [질문 + 예상 답변]
 {questions}
+
+[재시도 피드백]
+{retry_feedback}
 
 각 question_id마다 꼬리질문 1개만 생성하세요.
 """
@@ -175,6 +185,8 @@ REVIEWER_SYSTEM_PROMPT = """
 - predicted_answer가 실제 사실처럼 단정적이거나 과도하게 구체적이면 감점하세요.
 - follow_up_question이 길거나 여러 요구를 한 번에 묻는다면 too_long_for_interview로 표시하세요.
 - 필수 기술스택 질문이 직무 핵심 역량보다 앞서면 job_relevance를 낮게 평가하세요.
+- 지원자 문서에 없는 기술스택이나 정량 성과를 새로 요구하지 마세요.
+- retry_guidance는 issue_types와 requested_revision_fields에 맞는 수정 지시만 남기세요.
 
 [판정 규칙]
 - approved: 바로 사용 가능
