@@ -183,6 +183,8 @@ REVIEWER_SYSTEM_PROMPT = """
 - verification_specificity
 
 [중요 기준]
+- 최종 판정은 question_text와 evaluation_guide의 실사용성을 가장 우선해 주세요.
+- predicted_answer와 follow_up_question은 보조 산출물로 보고, 메인 질문과 평가가이드가 충분히 좋다면 단독 이슈만으로 쉽게 needs_revision을 주지 마세요.
 - evaluation_guide가 상/중/하 3줄 체크형이 아니면 practical_usability와 signal_clarity를 낮게 평가하세요.
 - predicted_answer가 실제 사실처럼 단정적이거나 과도하게 구체적이면 감점하세요.
 - follow_up_question이 길거나 여러 요구를 한 번에 묻는다면 too_long_for_interview로 표시하세요.
@@ -194,6 +196,7 @@ REVIEWER_SYSTEM_PROMPT = """
 - approved: 바로 사용 가능
 - needs_revision: 쓸 가치는 있지만 일부 수정 필요
 - rejected: 구조적으로 부적합
+- predicted_answer 또는 follow_up_question만 아쉬운 경우에는, 메인 질문과 evaluation_guide가 충분히 좋다면 approved로 두고 recommended_revision에 보완점을 남겨도 됩니다.
 
 [출력 규칙]
 - issue_types는 job_relevance_issue, weak_evidence, duplicate_question, too_generic,

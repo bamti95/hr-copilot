@@ -961,20 +961,55 @@ def _fallback_review(question_id: str) -> ReviewResult:
     )
 
 
-def _overall_status_from_score(overall_score: float, issue_types: list[str]) -> str:
-    """루브릭 평균과 치명 이슈를 함께 보고 최종 상태를 정한다."""
-    critical_issue_types = {
+def _overall_status_from_score(
+    question_avg: float,
+    guide_avg: float,
+    overall_score: float,
+    issue_types: list[str],
+) -> str:
+    """메인 질문/가이드 품질을 우선 보고, 보조 산출물 이슈는 완만하게 반영한다."""
+    issue_set = set(issue_types)
+    hard_issue_types = {
         "fairness_risk",
         "job_relevance_issue",
-        "weak_evidence",
-        "doc_evidence_missing",
-        "followup_not_specific",
     }
-    if overall_score >= 4.2 and not (critical_issue_types & set(issue_types)):
+    if hard_issue_types & issue_set:
+        if overall_score >= 3.2:
+            return "needs_revision"
+        return "rejected"
+
+    if (
+        overall_score >= 4.0
+        and question_avg >= 4.0
+        and guide_avg >= 3.8
+    ):
         return "approved"
-    if overall_score >= 3.0:
+    if overall_score >= 3.1:
         return "needs_revision"
     return "rejected"
+
+
+def _normalize_reviewer_status(
+    raw_status: str,
+    question_avg: float,
+    guide_avg: float,
+    overall_score: float,
+    issue_types: list[str],
+) -> str:
+    """Reviewer 판정이 과도하게 엄격할 때 메인 품질 기준으로 한 번 더 보정한다."""
+    normalized = _overall_status_from_score(
+        question_avg,
+        guide_avg,
+        overall_score,
+        issue_types,
+    )
+    if raw_status == "rejected" and normalized != "rejected":
+        return normalized
+    if raw_status == "needs_revision" and normalized == "approved":
+        return "approved"
+    if raw_status in {"approved", "needs_revision", "rejected"}:
+        return raw_status
+    return normalized
 
 
 async def reviewer_node(state: AgentState) -> dict[str, Any]:
@@ -1050,7 +1085,10 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
             guide_scores,
             EVALUATION_GUIDE_KEYS,
         )
-        overall_score = model.get("overall_score") or round((question_avg + guide_avg) / 2, 2)
+        overall_score = model.get("overall_score") or round(
+            (question_avg * 0.6) + (guide_avg * 0.4),
+            2,
+        )
         raw_requested_fields = [str(item) for item in model.get("requested_revision_fields") or []]
         inferred_fields = _infer_requested_revision_fields(
             [str(item) for item in model.get("issue_types") or []],
@@ -1060,7 +1098,14 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
             [str(item) for item in model.get("issue_types") or []],
             inferred_fields,
         )
-        status = str(model.get("status") or _overall_status_from_score(overall_score, issue_types))
+        raw_status = str(model.get("status") or "")
+        status = _normalize_reviewer_status(
+            raw_status,
+            float(question_avg),
+            float(guide_avg),
+            float(overall_score),
+            issue_types,
+        )
 
         target["review_status"] = status
         target["review_reason"] = model.get("reason") or ""
