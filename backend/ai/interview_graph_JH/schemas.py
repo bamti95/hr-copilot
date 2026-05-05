@@ -1,434 +1,236 @@
-"""그래프 전용 Pydantic 스키마.
+"""Pydantic contracts used by the JH interview-question graph.
 
-핵심 원칙:
-1. 내부 코드값은 하나로 통일한다.
-2. LLM이 한글/영문 값을 섞어 반환해도 validator에서 정규화한다.
-3. 최종 응답에는 각 노드가 만든 핵심 메타데이터를 최대한 보존한다.
+The service layer persists several fields from these models, so the existing
+public names are intentionally preserved while the reviewer semantics are
+changed from "reject/pass gate" to "evaluate/rank/select".
 """
 
-import json
-from typing import Any, Literal
+from __future__ import annotations
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
+import statistics
+from typing import Annotated, Any, Literal
 
-QUESTION_CATEGORY_MAP = {
-    "TECH": "TECH",
-    "기술": "TECH",
-    "JOB_SKILL": "JOB_SKILL",
-    "직무_역량": "JOB_SKILL",
-    "EXPERIENCE": "EXPERIENCE",
-    "경험": "EXPERIENCE",
-    "RISK": "RISK",
-    "리스크": "RISK",
-    "CULTURE_FIT": "CULTURE_FIT",
-    "조직_적합성": "CULTURE_FIT",
-    "MOTIVATION": "MOTIVATION",
-    "지원_동기": "MOTIVATION",
-    "LEADERSHIP": "LEADERSHIP",
-    "리더십": "LEADERSHIP",
-    "COMMUNICATION": "COMMUNICATION",
-    "커뮤니케이션": "COMMUNICATION",
-    "OTHER": "OTHER",
-    "기타": "OTHER",
-}
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-ANSWER_CONFIDENCE_MAP = {
-    "low": "low",
-    "낮음": "low",
-    "medium": "medium",
-    "보통": "medium",
-    "high": "high",
-    "높음": "high",
-}
 
-DRILL_TYPE_MAP = {
-    "EVIDENCE_CHECK": "EVIDENCE_CHECK",
-    "ROLE_VERIFICATION": "EVIDENCE_CHECK",
-    "역할_검증": "EVIDENCE_CHECK",
-    "DEPTH_CHECK": "DEPTH_CHECK",
-    "OWNERSHIP_CHECK": "OWNERSHIP_CHECK",
-    "METRIC_CHECK": "METRIC_CHECK",
-    "METRIC_VERIFICATION": "METRIC_CHECK",
-    "성과_검증": "METRIC_CHECK",
-    "DECISION_CHECK": "DECISION_CHECK",
-    "DECISION_REASONING": "DECISION_CHECK",
-    "의사결정_검증": "DECISION_CHECK",
-    "FAILURE_RECOVERY": "FAILURE_RECOVERY",
-    "실패_복구_검증": "FAILURE_RECOVERY",
-    "COLLABORATION": "COLLABORATION",
-    "협업_갈등_검증": "COLLABORATION",
-    "RISK_RESPONSE": "RISK_RESPONSE",
-    "리스크_대응_검증": "RISK_RESPONSE",
-    "OTHER": "OTHER",
-    "기타": "OTHER",
+ReviewStatus = Literal["approved", "needs_revision", "rejected"]
+ResponseStatus = Literal["completed", "partial_completed", "failed"]
+
+
+QUESTION_QUALITY_FIELDS = (
+    "job_relevance",
+    "document_grounding",
+    "competency_signal",
+    "specificity",
+    "clarity",
+)
+
+EVALUATION_GUIDE_FIELDS = (
+    "scoring_clarity",
+    "evidence_alignment",
+    "answer_discriminability",
+    "risk_awareness",
+    "interviewer_usability",
+)
+
+HARD_REVIEW_ISSUES = {
+    "unsupported_assumption",
+    "off_topic",
+    "fairness_risk",
+    "personal_sensitive",
+    "no_document_anchor",
 }
 
 
 class GraphBaseModel(BaseModel):
-    """그래프 공통 BaseModel."""
-
     model_config = ConfigDict(populate_by_name=True)
 
 
-class DocumentEvidence(GraphBaseModel):
-    """문서 근거 한 건."""
-
-    document_id: int | None = None
-    document_type: str | None = None
-    title: str | None = None
-    quote: str
-    reason: str
-
-
-class DocumentAnalysisOutput(GraphBaseModel):
-    """최종 응답에 담기는 간단한 문서 분석 요약."""
-
-    strengths: list[str] = Field(default_factory=list)
-    weaknesses: list[str] = Field(default_factory=list)
-    risks: list[str] = Field(default_factory=list)
-    document_evidence: list[DocumentEvidence] = Field(default_factory=list)
-    job_fit: str
-    questionable_points: list[str] = Field(default_factory=list)
-
-
 class QuestionCandidate(GraphBaseModel):
-    """Questioner가 생성하는 질문 후보."""
-
-    id: str
-    category: Literal[
-        "TECH",
-        "JOB_SKILL",
-        "EXPERIENCE",
-        "RISK",
-        "CULTURE_FIT",
-        "MOTIVATION",
-        "LEADERSHIP",
-        "COMMUNICATION",
-        "OTHER",
-    ]
-    question_text: str
-    generation_basis: str
-    document_evidence: list[str] = Field(default_factory=list)
-    evaluation_guide: str
-    risk_tags: list[str] = Field(default_factory=list)
-    competency_tags: list[str] = Field(default_factory=list)
-
-    @field_validator("category", mode="before")
-    @classmethod
-    def normalize_category(cls, value: Any) -> str:
-        normalized = QUESTION_CATEGORY_MAP.get(str(value), str(value))
-        return normalized
-
-    @field_validator("document_evidence", mode="before")
-    @classmethod
-    def normalize_document_evidence(cls, value: Any) -> list[str]:
-        if value is None:
-            return []
-        if isinstance(value, str):
-            text = value.strip()
-            if not text:
-                return []
-            try:
-                parsed = json.loads(text)
-            except json.JSONDecodeError:
-                return [text]
-            if isinstance(parsed, list):
-                return [str(item).strip() for item in parsed if str(item).strip()]
-            return [str(parsed).strip()]
-        if isinstance(value, list):
-            return [str(item).strip() for item in value if str(item).strip()]
-        return [str(value).strip()]
+    category: str = Field(
+        ...,
+        description="역량/경험/직무적합도 등 면접 질문 카테고리",
+    )
+    generation_basis: str = Field(
+        ...,
+        description="질문을 만든 이유. 이력서/자소서/포트폴리오 근거와 확인하려는 역량을 함께 설명",
+    )
+    document_evidence: str = Field(
+        ...,
+        description="질문이 기대고 있는 지원자 문서의 짧은 근거 문장 또는 요약",
+    )
+    question_text: str = Field(..., description="면접관이 실제로 읽을 질문")
+    evaluation_guide: str = Field(
+        ...,
+        description="좋은 답변/보통 답변/부족한 답변을 가르는 평가 기준",
+    )
 
 
 class QuestionerOutput(GraphBaseModel):
-    """Questioner의 구조화 출력."""
-
-    questions: list[QuestionCandidate]
+    questions: list[QuestionCandidate] = Field(
+        ...,
+        min_length=1,
+        description="생성 또는 재생성된 면접 질문 후보 목록",
+    )
 
 
 class PredictedAnswer(GraphBaseModel):
-    """Predictor가 만든 예상 답변."""
-
-    question_id: str
-    predicted_answer: str
+    question_text: str
+    predicted_answer: str = Field(
+        ...,
+        description="지원자 문서만 근거로 추론한 예상 답변. 문서에 없으면 추정이라고 명시",
+    )
     predicted_answer_basis: str = Field(
-        validation_alias=AliasChoices("predicted_answer_basis", "evidence_basis"),
+        ...,
+        description="예상 답변을 만든 문서 근거 또는 추론 근거",
     )
-    answer_confidence: Literal["low", "medium", "high"] = Field(
-        validation_alias=AliasChoices("answer_confidence", "confidence"),
-    )
-    answer_risk_points: list[str] = Field(
-        default_factory=list,
-        validation_alias=AliasChoices("answer_risk_points", "risk_points"),
-    )
-
-    @field_validator("answer_confidence", mode="before")
-    @classmethod
-    def normalize_confidence(cls, value: Any) -> str:
-        return ANSWER_CONFIDENCE_MAP.get(str(value), str(value))
 
 
 class PredictorOutput(GraphBaseModel):
-    """Predictor의 구조화 출력."""
-
-    answers: list[PredictedAnswer]
+    answers: list[PredictedAnswer] = Field(..., min_length=1)
 
 
 class FollowUpQuestion(GraphBaseModel):
-    """Driller가 생성하는 꼬리질문."""
+    question_text: str
+    follow_up_questions: list[str] = Field(..., min_length=2, max_length=3)
+    follow_up_intents: list[str] = Field(..., min_length=2, max_length=3)
 
-    question_id: str
-    follow_up_question: str
-    follow_up_basis: str = Field(
-        validation_alias=AliasChoices(
-            "follow_up_basis",
-            "probing_target",
-            "expected_signal",
-        ),
-    )
-    drill_type: Literal[
-        "EVIDENCE_CHECK",
-        "DEPTH_CHECK",
-        "OWNERSHIP_CHECK",
-        "METRIC_CHECK",
-        "DECISION_CHECK",
-        "FAILURE_RECOVERY",
-        "COLLABORATION",
-        "RISK_RESPONSE",
-        "OTHER",
-    ] = Field(validation_alias=AliasChoices("drill_type", "follow_up_type"))
-
-    @field_validator("drill_type", mode="before")
-    @classmethod
-    def normalize_drill_type(cls, value: Any) -> str:
-        return DRILL_TYPE_MAP.get(str(value), str(value))
+    @model_validator(mode="after")
+    def align_intents(self) -> "FollowUpQuestion":
+        if len(self.follow_up_intents) != len(self.follow_up_questions):
+            self.follow_up_intents = self.follow_up_intents[: len(self.follow_up_questions)]
+            while len(self.follow_up_intents) < len(self.follow_up_questions):
+                self.follow_up_intents.append("답변의 구체성과 근거 확인")
+        return self
 
 
 class DrillerOutput(GraphBaseModel):
-    """Driller의 구조화 출력."""
-
-    follow_ups: list[FollowUpQuestion]
+    follow_ups: list[FollowUpQuestion] = Field(..., min_length=1)
 
 
 class QuestionQualityRubric(GraphBaseModel):
-    """질문 품질 루브릭(고정 키). OpenAI strict JSON schema는 자유 dict를 허용하지 않는다."""
-
-    job_relevance: int = Field(ge=1, le=5)
-    document_grounding: int = Field(ge=1, le=5)
-    validation_power: int = Field(ge=1, le=5)
-    specificity: int = Field(ge=1, le=5)
-    distinctiveness: int = Field(ge=1, le=5)
-    interview_usability: int = Field(ge=1, le=5)
-    core_resume_coverage: int = Field(ge=1, le=5)
-
-    @model_validator(mode="before")
-    @classmethod
-    def coerce_from_dict(cls, data: Any) -> Any:
-        if not isinstance(data, dict):
-            return data
-        keys = (
-            "job_relevance",
-            "document_grounding",
-            "validation_power",
-            "specificity",
-            "distinctiveness",
-            "interview_usability",
-            "core_resume_coverage",
-        )
-        out: dict[str, int] = {}
-        for key in keys:
-            raw = data.get(key)
-            try:
-                out[key] = max(1, min(5, int(raw)))
-            except (TypeError, ValueError):
-                out[key] = 3
-        return out
+    job_relevance: int = Field(default=3, ge=1, le=5)
+    document_grounding: int = Field(default=3, ge=1, le=5)
+    competency_signal: int = Field(default=3, ge=1, le=5)
+    specificity: int = Field(default=3, ge=1, le=5)
+    clarity: int = Field(default=3, ge=1, le=5)
 
 
 class EvaluationGuideRubric(GraphBaseModel):
-    """평가 가이드 루브릭(고정 키)."""
-
-    guide_alignment: int = Field(ge=1, le=5)
-    signal_clarity: int = Field(ge=1, le=5)
-    good_bad_answer_separation: int = Field(ge=1, le=5)
-    practical_usability: int = Field(ge=1, le=5)
-    verification_specificity: int = Field(ge=1, le=5)
-
-    @model_validator(mode="before")
-    @classmethod
-    def coerce_from_dict(cls, data: Any) -> Any:
-        if not isinstance(data, dict):
-            return data
-        keys = (
-            "guide_alignment",
-            "signal_clarity",
-            "good_bad_answer_separation",
-            "practical_usability",
-            "verification_specificity",
-        )
-        out: dict[str, int] = {}
-        for key in keys:
-            raw = data.get(key)
-            try:
-                out[key] = max(1, min(5, int(raw)))
-            except (TypeError, ValueError):
-                out[key] = 3
-        return out
+    scoring_clarity: int = Field(default=3, ge=1, le=5)
+    evidence_alignment: int = Field(default=3, ge=1, le=5)
+    answer_discriminability: int = Field(default=3, ge=1, le=5)
+    risk_awareness: int = Field(default=3, ge=1, le=5)
+    interviewer_usability: int = Field(default=3, ge=1, le=5)
 
 
 class ReviewResult(GraphBaseModel):
-    """Reviewer가 한 질문 세트에 대해 남기는 평가 결과."""
-
-    question_id: str
-    status: Literal["approved", "needs_revision", "rejected"] = Field(
-        validation_alias=AliasChoices("status", "decision"),
+    question_id: str = ""
+    status: ReviewStatus
+    reason: str
+    recommended_revision: str = ""
+    reject_reason: str = ""
+    issue_types: list[str] = Field(default_factory=list)
+    requested_revision_fields: list[str] = Field(default_factory=list)
+    question_quality_scores: QuestionQualityRubric = Field(
+        default_factory=QuestionQualityRubric
     )
-    reason: str = Field(validation_alias=AliasChoices("reason", "review_summary"))
-    reject_reason: str = Field(
+    evaluation_guide_scores: EvaluationGuideRubric = Field(
+        default_factory=EvaluationGuideRubric
+    )
+    overall_score: Annotated[float, Field(ge=1, le=5)] = 3
+    selection_reason: str = Field(
         default="",
-        validation_alias=AliasChoices("reject_reason", "issues"),
+        description="상위 5개 선별 관점에서 이 후보가 강하거나 약한 이유",
     )
-    recommended_revision: str = Field(
-        default="",
-        validation_alias=AliasChoices("recommended_revision", "revision_suggestion"),
+    strengths: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    is_selectable: bool = Field(
+        default=True,
+        description="최종 5개 후보로 선택해도 되는지 여부",
     )
-    retry_guidance: str = Field(
-        default="",
-        validation_alias=AliasChoices("retry_guidance", "next_try_guidance"),
-    )
-    issue_types: list[str] = Field(
-        default_factory=list,
-        validation_alias=AliasChoices("issue_types", "review_issue_types"),
-    )
-    requested_revision_fields: list[str] = Field(
-        default_factory=list,
-        validation_alias=AliasChoices("requested_revision_fields", "revision_fields"),
-    )
-    question_quality_scores: QuestionQualityRubric
-    evaluation_guide_scores: EvaluationGuideRubric
-    question_quality_average: float = 0.0
-    evaluation_guide_average: float = 0.0
-    overall_score: float = Field(
-        default=0.0,
-        validation_alias=AliasChoices("overall_score", "average_score"),
-    )
-
-    @field_validator("reject_reason", "recommended_revision", "retry_guidance", mode="before")
-    @classmethod
-    def stringify_optional_list(cls, value: Any) -> str:
-        if value is None:
-            return ""
-        if isinstance(value, list):
-            return "\n".join(str(item) for item in value)
-        return str(value)
 
     @field_validator("issue_types", "requested_revision_fields", mode="before")
     @classmethod
-    def normalize_string_list(cls, value: Any) -> list[str]:
+    def normalize_string_list(cls, value: object) -> list[str]:
         if value is None:
             return []
         if isinstance(value, str):
-            return [value]
+            return [value] if value.strip() else []
         if isinstance(value, list):
-            return [str(item) for item in value if str(item).strip()]
-        return [str(value)]
+            return [str(item).strip() for item in value if str(item).strip()]
+        return []
+
+    @model_validator(mode="after")
+    def normalize_review_fields(self) -> "ReviewResult":
+        if self.status == "approved":
+            self.reject_reason = ""
+            self.requested_revision_fields = []
+            self.recommended_revision = self.recommended_revision or ""
+        if self.status == "rejected" and not self.reject_reason:
+            self.reject_reason = self.reason
+        return self
+
+    @property
+    def question_quality_average(self) -> float:
+        return float(statistics.mean(self.question_quality_scores.model_dump().values()))
+
+    @property
+    def evaluation_guide_average(self) -> float:
+        return float(statistics.mean(self.evaluation_guide_scores.model_dump().values()))
+
+
+class ReviewedQuestion(GraphBaseModel):
+    question_text: str
+    review: ReviewResult
+
 
 class ReviewerOutput(GraphBaseModel):
-    """Reviewer의 구조화 출력."""
-
-    reviews: list[ReviewResult]
+    reviews: list[ReviewedQuestion] = Field(..., min_length=1)
 
 
-class ScoreResult(GraphBaseModel):
-    """루브릭 평균 점수를 따로 다루고 싶을 때 쓰는 보조 스키마."""
-
-    question_id: str
-    score: float = Field(
-        ge=1,
-        le=5,
-        validation_alias=AliasChoices("score", "average_score", "overall_score"),
-    )
-    score_reason: str = Field(
-        validation_alias=AliasChoices("score_reason", "scoring_reason"),
-    )
-    quality_flags: list[str] = Field(
-        default_factory=list,
-        validation_alias=AliasChoices("quality_flags", "recommended_action"),
-    )
-
-    @field_validator("quality_flags", mode="before")
-    @classmethod
-    def normalize_quality_flags(cls, value: Any) -> list[str]:
-        if value is None:
-            return []
-        if isinstance(value, str):
-            return [value]
-        if isinstance(value, list):
-            return [str(item) for item in value]
-        return [str(value)]
-
-
-class ScorerOutput(GraphBaseModel):
-    """별도 점수 리스트가 필요할 때 쓰는 보조 스키마."""
-
-    scores: list[ScoreResult]
+class DocumentAnalysisOutput(GraphBaseModel):
+    job_fit: str = ""
+    risks: list[str] = Field(default_factory=list)
 
 
 class InterviewQuestionItem(GraphBaseModel):
-    """최종 응답에 담기는 질문 1건."""
-
     id: str
     category: str
     question_text: str
     generation_basis: str
-    document_evidence: list[str]
+    document_evidence: list[str] = Field(default_factory=list)
     evaluation_guide: str
 
-    predicted_answer: str
-    predicted_answer_basis: str
-    answer_confidence: str
-    answer_risk_points: list[str] = Field(default_factory=list)
+    predicted_answer: str = ""
+    predicted_answer_basis: str = ""
 
-    follow_up_question: str
-    follow_up_basis: str
-    drill_type: str
+    follow_up_question: str = ""
+    follow_up_basis: str = ""
+    follow_up_questions: list[str] = Field(default_factory=list)
+    follow_up_intents: list[str] = Field(default_factory=list)
 
-    risk_tags: list[str]
-    competency_tags: list[str]
+    risk_tags: list[str] = Field(default_factory=list)
+    competency_tags: list[str] = Field(default_factory=list)
 
     review: ReviewResult
-
-    score: float
-    score_reason: str
+    score: int = 0
+    score_reason: str = ""
 
 
 class QuestionGenerationResponse(GraphBaseModel):
-    """그래프 최종 응답."""
-
     session_id: int
     candidate_id: int
     target_job: str
     difficulty_level: str | None = None
-    status: Literal["completed", "partial_completed", "failed"]
-
-    analysis_summary: DocumentAnalysisOutput
-    questions: list[InterviewQuestionItem]
-    generation_metadata: dict[str, Any]
+    status: ResponseStatus
+    questions: list[InterviewQuestionItem] = Field(default_factory=list)
+    analysis_summary: DocumentAnalysisOutput = Field(default_factory=DocumentAnalysisOutput)
+    generation_metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class QuestionInteractionRequest(GraphBaseModel):
-    """프론트/서비스가 그래프 재호출 시 보내는 요청."""
-
-    session_id: int
-    human_action: Literal[
-        "more",
-        "more_questions",
-        "add_question",
-        "generate_follow_up",
-        "risk_questions",
-        "different_perspective",
-        "regenerate",
-        "regenerate_question",
-    ]
-    target_question_ids: list[str] = Field(default_factory=list)
-    additional_instruction: str | None = None
+    action: Literal["add_question", "regenerate_selected", "regenerate_batch"]
+    selected_question_ids: list[int | str] = Field(default_factory=list)
+    feedback: str | None = None
+    requested_count: int | None = None
