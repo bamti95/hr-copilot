@@ -145,19 +145,28 @@ def _normalize_predicted_answer(
     text = " ".join(str(value or "").split()).strip()
     if not text:
         return ""
+
     issue_set = set(issue_types or [])
     evidence = list(evidence or [])
+    conservative_markers = [
+        "원인", "직접", "성과", "개선", "구축",
+        "도입", "전환율", "리드", "매출", "KPI"
+    ]
+
     if "doc_evidence_missing" in issue_set:
         return _conservative_predicted_answer(evidence)
+
     if len(text) > MAX_PREDICTED_ANSWER_CHARS:
         text = f"{text[: MAX_PREDICTED_ANSWER_CHARS - 1].rstrip()}..."
-    if "over_specific_predicted_answer" in issue_set or "weak_evidence" in issue_set:
-        if len(text) > 110 or "핵심 원인" in text or "직접 작성" in text or "성과를" in text:
-            return _conservative_predicted_answer(evidence)
-    if "가능성이" in text or "것 같습니다" in text or "추정" in text:
-        return text
-    return f"{text} 라고 답할 가능성이 높습니다."
 
+    if {"over_specific_predicted_answer", "weak_evidence"} & issue_set:
+        if len(text) > 95 or any(marker in text for marker in conservative_markers):
+            return _conservative_predicted_answer(evidence)
+
+    if any(marker in text for marker in ["가능성", "것 같습니다", "추정", "보입니다"]):
+        return text
+
+    return f"{text} 라고 답할 가능성이 높습니다."
 
 def _pick_follow_up_focus(question: QuestionSet) -> str:
     issue_set = set(str(item) for item in question.get("review_issue_types") or [])
@@ -170,13 +179,26 @@ def _pick_follow_up_focus(question: QuestionSet) -> str:
             question.get("follow_up_question"),
         ]
     )
+    numeric_source = " ".join(
+        [
+            " ".join(str(item) for item in question.get("document_evidence") or []),
+            str(question.get("generation_basis") or ""),
+        ]
+    )
+    has_numeric_evidence = any(
+        marker in numeric_source
+        for marker in ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "%", "개월", "주", "건", "회"]
+    )
+
     if "doc_evidence_missing" in issue_set:
         if "CRM" in question_text or "KPI" in question_text or "지표" in guidance:
             return "kpi"
         return "action"
     if "기간" in guidance:
-        return "period"
+        return "period" if has_numeric_evidence else "action"
     if "수치" in guidance or "%" in guidance or "정량" in guidance:
+        if not has_numeric_evidence:
+            return "result" if ("성과" in guidance or "결과" in guidance) else "action"
         return "metric"
     if "행동" in guidance or "직접" in guidance:
         return "action"
@@ -184,63 +206,102 @@ def _pick_follow_up_focus(question: QuestionSet) -> str:
         return "result"
     return "action"
 
-
 def _normalize_follow_up_question(value: str, question: QuestionSet) -> str:
     text = " ".join(str(value or "").split()).strip()
     if not text:
         return ""
+
     text = text.replace("보여주실 수 있나요?", "말씀해 주세요.")
     while "(" in text and ")" in text and text.index("(") < text.index(")"):
         start = text.index("(")
         end = text.index(")") + 1
         text = f"{text[:start].rstrip()} {text[end:].lstrip()}".strip()
+
     issue_set = set(str(item) for item in question.get("review_issue_types") or [])
-    if {
-        "too_long_for_interview",
-        "followup_not_specific",
-        "doc_evidence_missing",
-    } & issue_set:
-        focus = _pick_follow_up_focus(question)
+    focus = _pick_follow_up_focus(question)
+    numeric_source = " ".join(
+        [
+            " ".join(str(item) for item in question.get("document_evidence") or []),
+            str(question.get("generation_basis") or ""),
+        ]
+    )
+    has_numeric_evidence = any(
+        marker in numeric_source
+        for marker in ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "%", "개월", "주", "건", "회"]
+    )
+
+    if {"too_long_for_interview", "followup_not_specific", "doc_evidence_missing"} & issue_set:
         if focus == "kpi":
             text = "그 경험에서 가장 중요하게 관리한 KPI 한 가지와 주간 또는 월간 점검 방식만 구체적으로 말씀해 주세요."
-        elif focus == "period":
-            text = "그 경험이 실제로 진행된 기간을 구체적으로 말씀해 주세요."
-        elif focus == "metric":
-            text = "그 경험과 연결된 핵심 수치 하나만 구체적으로 말씀해 주세요."
+        elif focus == "period" and has_numeric_evidence:
+            text = "그 경험이 실제로 진행된 기간만 구체적으로 말씀해 주세요."
+        elif focus == "metric" and has_numeric_evidence:
+            text = "그 경험과 연결된 핵심 수치 한 가지만 구체적으로 말씀해 주세요."
         elif focus == "result":
             text = "그 경험 이후 실제로 달라진 결과 한 가지만 구체적으로 말씀해 주세요."
         else:
             text = "그 경험에서 본인이 직접 한 행동 한 가지만 구체적으로 말씀해 주세요."
-    return _clip_follow_up_text(text)
 
+    if not has_numeric_evidence and any(
+        marker in text
+        for marker in ["몇 %", "몇건", "몇 건", "몇시간", "몇 시간", "몇주", "몇 주", "몇개월", "몇 개월"]
+    ):
+        if "KPI" in text or "지표" in text:
+            text = "그 경험에서 가장 중요하게 본 지표 한 가지와 그 지표를 어떻게 점검했는지만 말씀해 주세요."
+        else:
+            text = "그 경험에서 본인이 직접 한 행동 한 가지와 그 결과만 간단히 말씀해 주세요."
+
+    return _clip_follow_up_text(text)
 
 def _normalize_evaluation_guide(value: str) -> str:
     text = str(value or "").strip()
+    label_top = "상"
+    label_mid = "중"
+    label_low = "하"
+
     if not text:
-        return "상: 실제 사례와 본인 역할, 결과를 구체적으로 설명함\n중: 사례는 있으나 역할 또는 결과 설명이 일부 모호함\n하: 일반론만 말하고 실제 사례나 결과가 없음"
+        return (
+            f"{label_top}: 실제 사례와 본인 행동, 결과를 구체적으로 설명함\n"
+            f"{label_mid}: 사례는 있으나 본인 행동이나 결과 설명이 일부 모호함\n"
+            f"{label_low}: 일반론만 말하고 실제 사례나 결과가 없음"
+        )
 
     lines = [line.strip(" -\t") for line in text.splitlines() if line.strip()]
-    labeled = {"상": "", "중": "", "하": ""}
+    labels = [label_top, label_mid, label_low]
+    labeled: dict[str, str] = {label: "" for label in labels}
+
     for line in lines:
-        for key in labeled:
-            if line.startswith(f"{key}:"):
-                labeled[key] = line.split(":", 1)[1].strip()
+        for label in labels:
+            if line.startswith(f"{label}:"):
+                labeled[label] = line.split(":", 1)[1].strip()
+                break
 
     if all(labeled.values()):
-        return "\n".join(f"{key}: {value}" for key, value in labeled.items())
+        generic_tokens = ["구체적으로 설명", "설명이 부족", "일반론", "모호"]
+        normalized_lines: list[str] = []
+        for label in labels:
+            content = labeled[label]
+            if sum(token in content for token in generic_tokens) >= 2:
+                if label == label_top:
+                    content = "실제 사례와 본인 행동, 결과를 순서대로 구체적으로 설명함"
+                elif label == label_mid:
+                    content = "사례는 있으나 본인 행동이나 결과 설명이 일부 모호함"
+                else:
+                    content = "일반론만 말하고 실제 사례나 결과가 부족함"
+            normalized_lines.append(f"{label}: {content}")
+        return "\n".join(normalized_lines)
 
     parts = [segment.strip() for segment in text.replace("\n", " ").split(".") if segment.strip()]
     fallback = parts[:3]
     while len(fallback) < 3:
-        fallback.append("핵심 근거와 구체성이 더 필요함")
+        fallback.append("실제 사례와 본인 행동, 결과 기준이 더 구체적으로 필요함")
     return "\n".join(
         [
-            f"상: {fallback[0]}",
-            f"중: {fallback[1]}",
-            f"하: {fallback[2]}",
+            f"{label_top}: {fallback[0]}",
+            f"{label_mid}: {fallback[1]}",
+            f"{label_low}: {fallback[2]}",
         ]
     )
-
 
 def _build_retry_guidance(question: QuestionSet) -> str:
     guidance = " ".join(
@@ -599,38 +660,43 @@ def _questioner_mode(state: AgentState, questions: list[QuestionSet]) -> tuple[s
 
 
 def _task_instruction(mode: str, targets: list[QuestionSet]) -> str:
-    """Questioner에게 줄 핵심 작업 지시문을 만든다."""
-    if mode == "initial":
-        return (
-            f"새 면접 질문 {DEFAULT_QUESTION_COUNT}개를 생성하라. "
-            f"모든 question_text는 {MAX_QUESTION_TEXT_CHARS}자 이내로 유지하고 실제 면접에서 바로 읽을 수 있게 작성하라."
-        )
-    if mode == "more":
-        return (
-            f"기존 질문과 중복되지 않는 추가 질문 {MORE_QUESTION_COUNT}개를 생성하라. "
-            f"모든 question_text는 {MAX_QUESTION_TEXT_CHARS}자 이내로 유지하라."
-        )
-    if mode == "add_question":
-        return (
-            f"추가 지시사항을 반영한 질문 {ADD_QUESTION_COUNT}개를 생성하라. "
-            f"모든 question_text는 {MAX_QUESTION_TEXT_CHARS}자 이내로 유지하라."
-        )
+            """Questioner?? ? ?? ?? ???? ???."""
+            if mode == "initial":
+                return (
+                    f"총 면접 질문 {DEFAULT_QUESTION_COUNT}개를 생성하라. "
+                    f"모든 question_text는 {MAX_QUESTION_TEXT_CHARS}자 이내로 유지하고 실제 면접에서 바로 읽을 수 있게 작성하라. "
+                    "질문 5개는 서로 역할이 겹치지 않게 분산하라. "
+                    "가능하면 성과 검증, 실패/학습, 협업/조율, 우선순위/압박 대응, 직무 적합성 중 서로 다른 축을 우선 배치하라. "
+                    "문서에 없는 정량 성과나 도구 활용을 먼저 가정하지 말고, 실제로 했는지 확인하는 질문을 먼저 만들라."
+                )
+            if mode == "more":
+                return (
+                    f"기존 질문과 중복되지 않는 추가 질문 {MORE_QUESTION_COUNT}개를 생성하라. "
+                    f"모든 question_text는 {MAX_QUESTION_TEXT_CHARS}자 이내로 유지하라. "
+                    "기존 질문과 같은 검증 축을 반복하지 말고 비어 있는 핵심 역량을 보완하라."
+                )
+            if mode == "add_question":
+                return (
+                    f"추가 지시사항을 반영한 질문 {ADD_QUESTION_COUNT}개를 생성하라. "
+                    f"모든 question_text는 {MAX_QUESTION_TEXT_CHARS}자 이내로 유지하라. "
+                    "문서에 없는 정량 수치나 도구 사용을 새로 가정하지 말라."
+                )
 
-    target_block = _format_questions(targets, include_answer=True)
-    revision_rules = (
-        "수정 시 review_issue_types, requested_revision_fields, retry_guidance를 우선 반영하라. "
-        "predicted_answer는 사실 단정형이 아니라 짧은 추정형으로 유지하고, "
-        "follow_up_question은 가장 중요한 검증 포인트 1개만 묻는 1문장으로 작성하라. "
-        "evaluation_guide는 반드시 상/중/하 3줄 체크형으로 작성하라."
-    )
-    return (
-        "지정된 질문만 수정하고, 나머지 질문은 유지하라. "
-        "requested_revision_fields 또는 regen_targets가 있으면 해당 필드만 우선 수정하고, "
-        "일관성을 위해 꼭 필요하지 않다면 나머지 필드는 건드리지 마라. "
-        f"{revision_rules}\n"
-        f"{target_block}"
-    )
-
+            target_block = _format_questions(targets, include_answer=True)
+            revision_rules = (
+                "수정 시 review_issue_types, requested_revision_fields, retry_guidance를 우선 반영하라. "
+                "predicted_answer는 사실 단정형이 아니라 짧은 추정형으로 유지하고, "
+                "follow_up_question은 가장 중요한 검증 포인트 1개만 묻는 1문장으로 작성하라. "
+                "evaluation_guide는 반드시 상/중/하 3줄 체크형으로 작성하라. "
+                "문서에 없는 정량 수치, 기간, 비율을 새로 가정하지 말고 실제 행동·역할·결과 확인을 우선하라."
+            )
+            return (
+                "지정한 질문만 수정하고, 나머지 질문은 유지하라. "
+                "requested_revision_fields ?? regen_targets? ??? ?? ??? ?? ????, "
+                "일관성을 위해 꼭 필요하지 않다면 나머지 필드는 건드리지 말라. "
+                f"{revision_rules}\n"
+                f"{target_block}"
+            )
 
 def _build_question_entry(
     model: dict[str, Any],
