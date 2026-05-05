@@ -237,9 +237,15 @@ class QuestionGenerationService:
             str(question.id): question
             for question in existing_questions
         }
-        for target_question_id, item in zip(target_question_ids, result.questions, strict=False):
+        result_items_by_id = {
+            str(item.id): item
+            for item in result.questions
+            if str(item.id).strip()
+        }
+        for target_question_id in target_question_ids:
             entity = questions_by_id.get(target_question_id)
-            if entity is not None:
+            item = result_items_by_id.get(str(target_question_id))
+            if entity is not None and item is not None:
                 self._apply_question_item(entity, item)
 
     async def _replace_stored_questions(

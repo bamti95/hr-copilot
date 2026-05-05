@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 from copy import deepcopy
+from difflib import SequenceMatcher
 from statistics import mean
 from typing import Any
 from uuid import uuid4
@@ -368,6 +369,53 @@ def _question_text_key(text: str | None) -> str:
     return re.sub(r"\s+", " ", (text or "")).strip().lower()
 
 
+def _question_signature_tokens(question: QuestionSet) -> set[str]:
+    source = " ".join(
+        [
+            str(question.get("category") or ""),
+            str(question.get("question_text") or ""),
+            str(question.get("generation_basis") or ""),
+        ]
+    ).lower()
+    normalized = re.sub(r"[^0-9a-zA-Z가-힣\s]", " ", source)
+    tokens = {token for token in normalized.split() if len(token) >= 2}
+    return tokens
+
+
+def _is_near_duplicate_question(candidate: QuestionSet, selected: list[QuestionSet]) -> bool:
+    candidate_key = _question_text_key(candidate.get("question_text"))
+    candidate_tokens = _question_signature_tokens(candidate)
+    if not candidate_tokens:
+        return False
+
+    for existing in selected:
+        existing_key = _question_text_key(existing.get("question_text"))
+        if candidate_key == existing_key:
+            return True
+        if SequenceMatcher(None, candidate_key, existing_key).ratio() >= 0.7:
+            return True
+
+        existing_tokens = _question_signature_tokens(existing)
+        if not existing_tokens:
+            continue
+
+        intersection = len(candidate_tokens & existing_tokens)
+        union = len(candidate_tokens | existing_tokens)
+        if union == 0:
+            continue
+
+        jaccard = intersection / union
+        if jaccard >= 0.6:
+            return True
+        if (
+            candidate.get("category") == existing.get("category")
+            and intersection >= 3
+            and jaccard >= 0.35
+        ):
+            return True
+    return False
+
+
 def _questions_to_evaluate(questions: list[QuestionSet]) -> list[QuestionSet]:
     targets: list[QuestionSet] = []
     for question in questions:
@@ -430,30 +478,30 @@ def _review_to_question(question: QuestionSet, review: ReviewResult) -> Question
 
 def _fallback_review(question: QuestionSet, reason: str) -> ReviewResult:
     return ReviewResult(
-        status="needs_revision",
+        status="rejected",
         reason=reason,
         recommended_revision="질문과 평가가이드가 문서 근거와 직무 역량을 더 명확히 연결하도록 보완하세요.",
         issue_types=["reviewer_fallback"],
         requested_revision_fields=["question_text", "evaluation_guide"],
         question_quality_scores=QuestionQualityRubric(
-            job_relevance=3,
-            document_grounding=3,
-            competency_signal=3,
-            specificity=3,
-            clarity=3,
+            job_relevance=1,
+            document_grounding=1,
+            competency_signal=1,
+            specificity=1,
+            clarity=1,
         ),
         evaluation_guide_scores=EvaluationGuideRubric(
-            scoring_clarity=3,
-            evidence_alignment=3,
-            answer_discriminability=3,
-            risk_awareness=3,
-            interviewer_usability=3,
+            scoring_clarity=1,
+            evidence_alignment=1,
+            answer_discriminability=1,
+            risk_awareness=1,
+            interviewer_usability=1,
         ),
-        overall_score=3.0,
-        selection_reason="리뷰어 응답 매칭 실패로 보수적으로 평가했습니다.",
+        overall_score=1.0,
+        selection_reason="리뷰어 실패 질문은 자동 선별 대상에서 제외했습니다.",
         strengths=[],
         risks=["reviewer_fallback"],
-        is_selectable=True,
+        is_selectable=False,
     )
 
 
@@ -493,6 +541,8 @@ def select_top_questions(questions: list[QuestionSet], requested_count: int) -> 
         category = str(question.get("category") or "")
         if category in seen_categories and len(ranked) >= requested_count + 2:
             continue
+        if _is_near_duplicate_question(question, selected):
+            continue
         selected.append(question)
         seen_categories.add(category)
         if len(selected) >= requested_count:
@@ -502,6 +552,8 @@ def select_top_questions(questions: list[QuestionSet], requested_count: int) -> 
         selected_ids = {question.get("id") for question in selected}
         for question in ranked:
             if question.get("id") in selected_ids:
+                continue
+            if _is_near_duplicate_question(question, selected) and len(ranked) > requested_count:
                 continue
             selected.append(question)
             if len(selected) >= requested_count:
