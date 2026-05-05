@@ -169,7 +169,14 @@ def _normalize_predicted_answer(
     return f"{text} 라고 답할 가능성이 높습니다."
 
 def _pick_follow_up_focus(question: QuestionSet) -> str:
-    issue_set = set(str(item) for item in question.get("review_issue_types") or [])
+    issue_set = set(
+        str(item)
+        for item in (
+            question.get("retry_issue_types")
+            or question.get("review_issue_types")
+            or []
+        )
+    )
     question_text = " ".join(str(question.get("question_text") or "").split())
     guidance = " ".join(
         str(part or "")
@@ -217,7 +224,14 @@ def _normalize_follow_up_question(value: str, question: QuestionSet) -> str:
         end = text.index(")") + 1
         text = f"{text[:start].rstrip()} {text[end:].lstrip()}".strip()
 
-    issue_set = set(str(item) for item in question.get("review_issue_types") or [])
+    issue_set = set(
+        str(item)
+        for item in (
+            question.get("retry_issue_types")
+            or question.get("review_issue_types")
+            or []
+        )
+    )
     focus = _pick_follow_up_focus(question)
     numeric_source = " ".join(
         [
@@ -497,7 +511,12 @@ def _merge_document_text(state: AgentState) -> str:
     return merged[:MAX_DOCUMENT_CHARS]
 
 
-def _format_questions(items: list[QuestionSet], *, include_answer: bool = False) -> str:
+def _format_questions(
+    items: list[QuestionSet],
+    *,
+    include_answer: bool = False,
+    include_retry_feedback: bool = True,
+) -> str:
     """질문 리스트를 프롬프트 주입용 JSON 텍스트로 바꾼다."""
     if not items:
         return "(없음)"
@@ -513,12 +532,21 @@ def _format_questions(items: list[QuestionSet], *, include_answer: bool = False)
             "risk_tags": item.get("risk_tags", []),
             "competency_tags": item.get("competency_tags", []),
             "status": item.get("status"),
-            "reject_reason": item.get("reject_reason") or item.get("recommended_revision"),
-            "requested_revision_fields": item.get("requested_revision_fields", []),
-            "review_issue_types": item.get("review_issue_types", []),
-            "regen_targets": item.get("regen_targets", []),
-            "retry_guidance": item.get("retry_guidance", ""),
         }
+        if include_retry_feedback:
+            data.update(
+                {
+                    "reject_reason": item.get("reject_reason")
+                    or item.get("recommended_revision"),
+                    "review_issue_types": item.get("review_issue_types", []),
+                    "requested_revision_fields": item.get("requested_revision_fields", []),
+                    "retry_issue_types": item.get("retry_issue_types", []),
+                    "retry_requested_fields": item.get("retry_requested_fields", []),
+                    "retry_unchanged_fields": item.get("retry_unchanged_fields", []),
+                    "regen_targets": item.get("regen_targets", []),
+                    "retry_guidance": item.get("retry_guidance", ""),
+                }
+            )
         if include_answer:
             data.update(
                 {
@@ -573,6 +601,13 @@ def _ensure_question_ids(questions: list[QuestionSet]) -> None:
 
 def _default_regen_targets(question: QuestionSet) -> list[str]:
     """부분 수정 대상 필드가 비어 있으면 기본 수정 필드를 정한다."""
+    requested = [
+        str(item)
+        for item in question.get("retry_requested_fields") or []
+        if str(item).strip()
+    ]
+    if requested:
+        return requested
     requested = [str(item) for item in question.get("regen_targets") or [] if str(item).strip()]
     if requested:
         return requested
@@ -597,6 +632,39 @@ def _normalize_review_issue_types(
         if issue_type not in normalized:
             normalized.append(issue_type)
     return normalized
+
+
+def _same_revision_value(before: Any, after: Any) -> bool:
+    """재시도 대상 필드가 실제로 바뀌었는지 비교한다."""
+    if isinstance(before, list) or isinstance(after, list):
+        return [
+            " ".join(str(item or "").split())
+            for item in (before or [])
+        ] == [
+            " ".join(str(item or "").split())
+            for item in (after or [])
+        ]
+    return " ".join(str(before or "").split()) == " ".join(str(after or "").split())
+
+
+def _unchanged_requested_fields(
+    existing: QuestionSet,
+    patched: QuestionSet,
+    requested_fields: list[str],
+) -> list[str]:
+    questioner_owned_fields = {
+        "question_text",
+        "generation_basis",
+        "evaluation_guide",
+        "document_evidence",
+    }
+    unchanged: list[str] = []
+    for field_name in requested_fields:
+        if field_name not in questioner_owned_fields:
+            continue
+        if _same_revision_value(existing.get(field_name), patched.get(field_name)):
+            unchanged.append(field_name)
+    return unchanged
 
 
 def _should_refresh_predicted_answer(question: QuestionSet) -> bool:
@@ -683,7 +751,7 @@ def _questioner_mode(state: AgentState, questions: list[QuestionSet]) -> tuple[s
 
 
 def _task_instruction(mode: str, targets: list[QuestionSet]) -> str:
-            """Questioner?? ? ?? ?? ???? ???."""
+            """Questioner 모드별 작업 지시를 만든다."""
             if mode == "initial":
                 return (
                     f"총 면접 질문 {DEFAULT_QUESTION_COUNT}개를 생성하라. "
@@ -707,7 +775,7 @@ def _task_instruction(mode: str, targets: list[QuestionSet]) -> str:
 
             target_block = _format_questions(targets, include_answer=True)
             revision_rules = (
-                "수정 시 review_issue_types, requested_revision_fields, retry_guidance를 우선 반영하라. "
+                "수정 시 retry_issue_types, retry_requested_fields, regen_targets, retry_guidance를 우선 반영하라. "
                 "predicted_answer는 사실 단정형이 아니라 짧은 추정형으로 유지하고, "
                 "follow_up_question은 가장 중요한 검증 포인트 1개만 묻는 1문장으로 작성하라. "
                 "evaluation_guide는 반드시 상/중/하 3줄 체크형으로 작성하라. "
@@ -715,7 +783,7 @@ def _task_instruction(mode: str, targets: list[QuestionSet]) -> str:
             )
             return (
                 "지정한 질문만 수정하고, 나머지 질문은 유지하라. "
-                "requested_revision_fields ?? regen_targets? ??? ?? ??? ?? ????, "
+                "retry_requested_fields 또는 regen_targets에 포함된 필드는 반드시 이전 시도와 다르게 다시 작성하라. "
                 "일관성을 위해 꼭 필요하지 않다면 나머지 필드는 건드리지 말라. "
                 f"{revision_rules}\n"
                 f"{target_block}"
@@ -735,6 +803,17 @@ def _build_question_entry(
     질문 기본값과 초기 상태를 한 곳에서 통일할 수 있다.
     """
     question_text = _clip_question_text(model.get("question_text") or "")
+    retry_requested_fields = list(
+        requested_fields
+        or (existing or {}).get("retry_requested_fields")
+        or (existing or {}).get("requested_revision_fields")
+        or []
+    )
+    retry_issue_types = list(
+        (existing or {}).get("retry_issue_types")
+        or (existing or {}).get("review_issue_types")
+        or []
+    )
     entry: QuestionSet = {
         "id": question_id,
         "category": model.get("category") or (existing or {}).get("category") or "OTHER",
@@ -761,14 +840,12 @@ def _build_question_entry(
         "risk_tags": model.get("risk_tags") or list((existing or {}).get("risk_tags") or []),
         "competency_tags": model.get("competency_tags")
         or list((existing or {}).get("competency_tags") or []),
-        "review_status": "needs_revision",
-        "review_reason": str((existing or {}).get("review_reason") or ""),
-        "reject_reason": str((existing or {}).get("reject_reason") or ""),
-        "recommended_revision": str((existing or {}).get("recommended_revision") or ""),
-        "review_issue_types": list((existing or {}).get("review_issue_types") or []),
-        "requested_revision_fields": list(
-            requested_fields or list((existing or {}).get("requested_revision_fields") or [])
-        ),
+        "review_status": "",
+        "review_reason": "",
+        "reject_reason": "",
+        "recommended_revision": "",
+        "review_issue_types": [],
+        "requested_revision_fields": [],
         "question_quality_scores": {},
         "evaluation_guide_scores": {},
         "question_quality_average": 0.0,
@@ -776,8 +853,11 @@ def _build_question_entry(
         "score": 0.0,
         "score_reason": "",
         "status": "pending",
-        "regen_targets": list(requested_fields or []),
+        "regen_targets": list(retry_requested_fields),
         "generation_mode": generation_mode,
+        "retry_issue_types": retry_issue_types,
+        "retry_requested_fields": retry_requested_fields,
+        "retry_unchanged_fields": [],
         "retry_guidance": str((existing or {}).get("retry_guidance") or ""),
     }
     return entry
@@ -899,9 +979,38 @@ async def questioner_node(state: AgentState) -> dict[str, Any]:
                 patched["follow_up_question"] = existing.get("follow_up_question", "")
                 patched["follow_up_basis"] = existing.get("follow_up_basis", "")
                 patched["drill_type"] = existing.get("drill_type", "")
+            unchanged_fields = _unchanged_requested_fields(
+                existing,
+                patched,
+                requested_fields,
+            )
+            patched["retry_unchanged_fields"] = unchanged_fields
+            if unchanged_fields:
+                patched["status"] = "needs_revision"
+                patched["review_status"] = "needs_revision"
+                patched["review_reason"] = (
+                    "재시도 대상 필드가 이전 시도와 동일해 다시 수정이 필요합니다."
+                )
+                patched["retry_guidance"] = (
+                    f"{', '.join(unchanged_fields)} 필드는 이전 시도와 다르게 다시 작성하세요."
+                )
+                new_warnings.append(
+                    {
+                        "node": "questioner",
+                        "question_id": question_id,
+                        "message": (
+                            "재시도 대상 필드가 이전 값과 동일합니다: "
+                            f"{', '.join(unchanged_fields)}"
+                        ),
+                    }
+                )
         else:
             patched["regen_targets"] = []
             patched["requested_revision_fields"] = []
+            patched["retry_requested_fields"] = []
+            patched["retry_issue_types"] = []
+            patched["retry_unchanged_fields"] = []
+            patched["retry_guidance"] = ""
 
         existing.update(patched)
 
@@ -959,7 +1068,14 @@ async def predictor_node(state: AgentState) -> dict[str, Any]:
             continue
         target["predicted_answer"] = _normalize_predicted_answer(
             model.get("predicted_answer") or "",
-            issue_types=[str(item) for item in target.get("review_issue_types") or []],
+            issue_types=[
+                str(item)
+                for item in (
+                    target.get("retry_issue_types")
+                    or target.get("review_issue_types")
+                    or []
+                )
+            ],
             evidence=_normalize_document_evidence(target.get("document_evidence") or []),
         )
         target["predicted_answer_basis"] = model.get("predicted_answer_basis") or ""
@@ -1133,7 +1249,7 @@ def _normalize_reviewer_status(
     if raw_status == "rejected" and normalized != "rejected":
         return normalized
     if raw_status == "needs_revision" and normalized == "approved":
-        return "approved"
+        return "needs_revision"
     if raw_status in {"approved", "needs_revision", "rejected"}:
         return raw_status
     return normalized
@@ -1158,7 +1274,11 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
         difficulty_level=state.get("difficulty_level") or "(미지정)",
         difficulty_guidance=_difficulty_guidance(state),
         recruitment_criteria=_recruitment_criteria(state),
-        questions=_format_questions(targets, include_answer=True),
+        questions=_format_questions(
+            targets,
+            include_answer=True,
+            include_retry_feedback=False,
+        ),
     )
     new_usages: list[dict[str, Any]] = []
     new_warnings: list[dict[str, Any]] = []
@@ -1181,6 +1301,10 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
             item["recommended_revision"] = "프롬프트 형식과 입력 길이를 확인한 뒤 다시 검토하세요."
             item["requested_revision_fields"] = ["question_text", "evaluation_guide"]
             item["review_issue_types"] = ["review_execution_failure"]
+            item["retry_requested_fields"] = ["question_text", "evaluation_guide"]
+            item["retry_issue_types"] = ["review_execution_failure"]
+            item["retry_guidance"] = item["recommended_revision"]
+            item["regen_targets"] = ["question_text", "evaluation_guide"]
         return {
             "questions": questions,
             "retry_count": state.get("max_retry_count", 3),
@@ -1233,6 +1357,25 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
             float(overall_score),
             issue_types,
         )
+        unchanged_fields = [
+            str(item)
+            for item in target.get("retry_unchanged_fields") or []
+            if str(item).strip()
+        ]
+        if unchanged_fields:
+            for field_name in unchanged_fields:
+                if field_name not in inferred_fields:
+                    inferred_fields.append(field_name)
+            if "too_generic" not in issue_types:
+                issue_types.append("too_generic")
+            status = "needs_revision"
+            unchanged_reason = (
+                "재시도 대상 필드가 이전 시도와 동일해 개선 여부를 확인할 수 없습니다."
+            )
+            if model.get("reason"):
+                model["reason"] = f"{model.get('reason')} {unchanged_reason}"
+            else:
+                model["reason"] = unchanged_reason
 
         target["review_status"] = status
         target["review_reason"] = model.get("reason") or ""
@@ -1257,9 +1400,16 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
             target["requested_revision_fields"] = ["question_text", "evaluation_guide"]
         if status != "approved":
             target["regen_targets"] = list(target.get("requested_revision_fields") or [])
+            target["retry_issue_types"] = list(target.get("review_issue_types") or [])
+            target["retry_requested_fields"] = list(
+                target.get("requested_revision_fields") or []
+            )
         else:
             target["regen_targets"] = []
             target["requested_revision_fields"] = []
+            target["retry_issue_types"] = []
+            target["retry_requested_fields"] = []
+            target["retry_unchanged_fields"] = []
             target["retry_guidance"] = ""
 
     update: dict[str, Any] = {

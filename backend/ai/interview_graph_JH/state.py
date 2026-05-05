@@ -105,6 +105,9 @@ class QuestionSet(TypedDict, total=False):
     status: QuestionStatus
     regen_targets: list[str]
     generation_mode: str
+    retry_issue_types: list[str]
+    retry_requested_fields: list[str]
+    retry_unchanged_fields: list[str]
     retry_guidance: str
 
 
