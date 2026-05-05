@@ -11,6 +11,7 @@ from core.database import init_db
 
 settings = get_settings()
 
+# uv run fastapi dev main.py --host 0.0.0.0 --port 8000
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
