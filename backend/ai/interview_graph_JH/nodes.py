@@ -186,16 +186,7 @@ def _pick_follow_up_focus(question: QuestionSet) -> str:
             question.get("follow_up_question"),
         ]
     )
-    numeric_source = " ".join(
-        [
-            " ".join(str(item) for item in question.get("document_evidence") or []),
-            str(question.get("generation_basis") or ""),
-        ]
-    )
-    has_numeric_evidence = any(
-        marker in numeric_source
-        for marker in ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "%", "개월", "주", "건", "회"]
-    )
+    has_numeric_evidence = _has_numeric_evidence(question)
 
     if "doc_evidence_missing" in issue_set:
         if "CRM" in question_text or "KPI" in question_text or "지표" in guidance:
@@ -233,26 +224,17 @@ def _normalize_follow_up_question(value: str, question: QuestionSet) -> str:
         )
     )
     focus = _pick_follow_up_focus(question)
-    numeric_source = " ".join(
-        [
-            " ".join(str(item) for item in question.get("document_evidence") or []),
-            str(question.get("generation_basis") or ""),
-        ]
-    )
-    has_numeric_evidence = any(
-        marker in numeric_source
-        for marker in ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "%", "개월", "주", "건", "회"]
-    )
+    has_numeric_evidence = _has_numeric_evidence(question)
 
     if {"too_long_for_interview", "followup_not_specific", "doc_evidence_missing"} & issue_set:
         if focus == "kpi":
-            text = "그 경험에서 가장 중요하게 관리한 KPI 한 가지와 주간 또는 월간 점검 방식만 구체적으로 말씀해 주세요."
+            text = "그 경험에서 중요하게 본 지표가 있었다면 무엇이었고, 주간 또는 월간으로 어떻게 점검했는지 말씀해 주세요."
         elif focus == "period" and has_numeric_evidence:
             text = "그 경험이 실제로 진행된 기간만 구체적으로 말씀해 주세요."
         elif focus == "metric" and has_numeric_evidence:
             text = "그 경험과 연결된 핵심 수치 한 가지만 구체적으로 말씀해 주세요."
         elif focus == "result":
-            text = "그 경험 이후 실제로 달라진 결과 한 가지만 구체적으로 말씀해 주세요."
+            text = "그 경험 이후 실제로 달라진 점이 있었다면, 기억나는 범위에서 한 가지만 말씀해 주세요."
         else:
             text = "그 경험에서 본인이 직접 한 행동 한 가지만 구체적으로 말씀해 주세요."
 
@@ -261,9 +243,21 @@ def _normalize_follow_up_question(value: str, question: QuestionSet) -> str:
         for marker in ["몇 %", "몇건", "몇 건", "몇시간", "몇 시간", "몇주", "몇 주", "몇개월", "몇 개월"]
     ):
         if "KPI" in text or "지표" in text:
-            text = "그 경험에서 가장 중요하게 본 지표 한 가지와 그 지표를 어떻게 점검했는지만 말씀해 주세요."
+            text = "그 경험에서 중요하게 본 지표가 있었다면 무엇이었고, 그 지표를 어떻게 점검했는지만 말씀해 주세요."
         else:
-            text = "그 경험에서 본인이 직접 한 행동 한 가지와 그 결과만 간단히 말씀해 주세요."
+            text = "그 경험에서 본인이 직접 한 행동 한 가지와, 가능하면 그 결과도 함께 말씀해 주세요."
+
+    if not has_numeric_evidence:
+        softened = _soften_exploratory_text(text)
+        if softened != text:
+            text = softened
+        if any(token in text for token in ["관련 지표", "변화", "일정 변화", "관련 사례"]):
+            text = (
+                text.replace("말씀해 주시겠어요?", "말씀해 주세요.")
+                .replace("알려주시겠어요?", "말씀해 주세요.")
+            )
+            if "있었다면" not in text and "가능하면" not in text and "기억나는 범위에서" not in text:
+                text = f"{text.rstrip(' .?')} 가능하면 기억나는 범위에서 말씀해 주세요."
 
     return _clip_follow_up_text(text)
 
@@ -295,6 +289,14 @@ def _normalize_evaluation_guide(value: str) -> str:
         normalized_lines: list[str] = []
         for label in labels:
             content = labeled[label]
+            content = (
+                content.replace("명확한 수치 제시", "구체적 근거 제시")
+                .replace("결과 수치", "결과 근거")
+                .replace("정량적 결과", "구체적 결과")
+                .replace("수치가 추정적임", "근거가 모호함")
+            )
+            if "수치" in content and "있다면" not in content and "가능하면" not in content:
+                content = content.replace("수치", "수치가 있다면 그 근거")
             if sum(token in content for token in generic_tokens) >= 2:
                 if label == label_top:
                     content = "실제 사례와 본인 행동, 결과를 순서대로 구체적으로 설명함"
@@ -349,11 +351,11 @@ def _canonical_retry_guidance(
         )
     if "follow_up_question" in field_set and "doc_evidence_missing" in issue_set:
         parts.append(
-            "follow_up_question은 문서에 없는 정확한 수치 대신, 실제로 관리한 KPI·루틴·직접 행동 중 한 가지만 확인하도록 수정하세요."
+            "follow_up_question은 문서에 없는 정확한 수치를 전제하지 말고, 관련 지표가 있었다면 무엇이었는지 또는 실제 행동 한 가지를 탐색형으로 확인하도록 수정하세요."
         )
     if "follow_up_question" in field_set and {"weak_evidence", "followup_not_specific"} & issue_set:
         parts.append(
-            "follow_up_question은 수치, 기간, 실제 행동, 결과 중 가장 부족한 한 가지를 구체적으로 확인하도록 수정하세요."
+            "follow_up_question은 수치, 기간, 실제 행동, 결과 중 가장 부족한 한 가지를 탐색형으로 확인하고, 필요하면 '있었다면', '가능하면' 같은 조건부 표현을 사용하세요."
         )
     if "follow_up_question" in field_set and "too_long_for_interview" in issue_set:
         parts.append(
@@ -365,7 +367,7 @@ def _canonical_retry_guidance(
         )
     if "question_text" in field_set and "doc_evidence_missing" in issue_set:
         parts.append(
-            "question_text는 문서에서 확인 가능한 역할, 행동, 경험만 기준으로 다시 쓰고 개인 성과 수치나 향후 목표 수치를 먼저 전제하지 마세요."
+            "question_text는 문서에서 확인 가능한 역할, 행동, 경험만 기준으로 다시 쓰고 개인 성과 수치나 향후 목표 수치를 먼저 전제하지 마세요. 정량을 묻더라도 '있었다면' 같은 탐색형 표현을 사용하세요."
         )
     if "question_text" in field_set and "too_generic" in issue_set:
         parts.append(
@@ -632,6 +634,39 @@ def _normalize_review_issue_types(
         if issue_type not in normalized:
             normalized.append(issue_type)
     return normalized
+
+
+def _has_numeric_evidence(question: QuestionSet) -> bool:
+    numeric_source = " ".join(
+        [
+            " ".join(str(item) for item in question.get("document_evidence") or []),
+            str(question.get("generation_basis") or ""),
+        ]
+    )
+    return any(
+        marker in numeric_source
+        for marker in ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "%", "개월", "주", "건", "회"]
+    )
+
+
+def _soften_exploratory_text(text: str) -> str:
+    softened = " ".join(str(text or "").split()).strip()
+    replacements = [
+        ("몇 %포인트", "관련 지표 변화"),
+        ("몇 퍼센트포인트", "관련 지표 변화"),
+        ("몇 %", "관련 지표"),
+        ("몇 퍼센트", "관련 지표"),
+        ("전후 비교 수치", "기억나는 변화"),
+        ("전후 비교", "변화"),
+        ("몇 건", "관련 사례"),
+        ("몇건", "관련 사례"),
+        ("몇 일", "일정 변화"),
+        ("며칠", "일정 변화"),
+        ("얼마나 단축", "어떤 변화"),
+    ]
+    for source, target in replacements:
+        softened = softened.replace(source, target)
+    return softened
 
 
 def _same_revision_value(before: Any, after: Any) -> bool:
