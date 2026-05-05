@@ -43,7 +43,8 @@ logger = logging.getLogger(__name__)
 
 MAX_DOCUMENT_CHARS = 18000
 PREDICTOR_DOCUMENT_CHARS = 7000
-DEFAULT_QUESTION_COUNT = 5
+DEFAULT_CANDIDATE_QUESTION_COUNT = 10
+DEFAULT_SELECTED_QUESTION_COUNT = 5
 MORE_QUESTION_COUNT = 3
 ADD_QUESTION_COUNT = 2
 MAX_QUESTION_TEXT_CHARS = 180
@@ -70,6 +71,10 @@ EVALUATION_GUIDE_KEYS = [
 def _json(value: Any) -> str:
     """프롬프트에 넣기 쉽게 dict/list를 JSON 문자열로 바꾼다."""
     return json.dumps(value, ensure_ascii=False, indent=2, default=str)
+
+
+def _normalized_question_text(question: QuestionSet) -> str:
+    return " ".join(str(question.get("question_text") or "").split()).lower()
 
 
 def _clip(value: str, max_chars: int) -> str:
@@ -560,6 +565,67 @@ def _format_questions(
     return _json(compact)
 
 
+def _is_approved_question(question: QuestionSet) -> bool:
+    status = str(question.get("status") or question.get("review_status") or "").strip()
+    return status == "approved"
+
+
+def _select_top_questions(
+    questions: list[QuestionSet],
+    *,
+    limit: int,
+) -> list[QuestionSet]:
+    if not questions:
+        return []
+
+    unique_questions: list[QuestionSet] = []
+    seen_texts: set[str] = set()
+    for question in questions:
+        text_key = _normalized_question_text(question)
+        if not text_key or text_key in seen_texts:
+            continue
+        seen_texts.add(text_key)
+        unique_questions.append(question)
+
+    sorted_questions = sorted(
+        unique_questions,
+        key=lambda question: (
+            _is_approved_question(question),
+            float(question.get("score") or 0.0),
+            bool(question.get("document_evidence")),
+            bool(question.get("risk_tags")),
+            len(question.get("document_evidence") or []),
+        ),
+        reverse=True,
+    )
+
+    selected: list[QuestionSet] = []
+    used_categories: set[str] = set()
+    for question in sorted_questions:
+        if len(selected) >= limit:
+            break
+        category = str(question.get("category") or "OTHER")
+        if category in used_categories and len(selected) < min(limit, 3):
+            continue
+        selected.append(question)
+        used_categories.add(category)
+
+    for question in sorted_questions:
+        if len(selected) >= limit:
+            break
+        if question not in selected:
+            selected.append(question)
+
+    return selected
+
+
+def _selected_questions_for_output(state: AgentState) -> list[QuestionSet]:
+    return _select_top_questions(
+        list(state.get("questions") or []),
+        limit=_requested_question_count(state),
+    )
+
+
 def _question_id(question: QuestionSet, index: int) -> str:
     """질문 id가 비어 있으면 안전한 fallback id를 만든다."""
     return str(question.get("id") or f"q-{index + 1}")
@@ -740,9 +806,9 @@ def _task_instruction(mode: str, targets: list[QuestionSet]) -> str:
             """Questioner 모드별 작업 지시를 만든다."""
             if mode == "initial":
                 return (
-                    f"총 면접 질문 {DEFAULT_QUESTION_COUNT}개를 생성하라. "
+                    f"총 면접 질문 후보 {DEFAULT_CANDIDATE_QUESTION_COUNT}개를 생성하라. "
                     f"모든 question_text는 {MAX_QUESTION_TEXT_CHARS}자 이내로 유지하고 실제 면접에서 바로 읽을 수 있게 작성하라. "
-                    "질문 5개는 서로 역할이 겹치지 않게 분산하라. "
+                    "질문 후보들은 서로 역할이 겹치지 않게 분산하라. "
                     "가능하면 성과 검증, 실패/학습, 협업/조율, 우선순위/압박 대응, 직무 적합성 중 서로 다른 축을 우선 배치하라. "
                     "문서에 없는 정량 성과나 도구 활용을 먼저 가정하지 말고, 실제로 했는지 확인하는 질문을 먼저 만들라."
                 )
@@ -1332,10 +1398,14 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
             target["retry_issue_types"] = []
             target["retry_guidance"] = ""
 
+    selected_questions = _select_top_questions(
+        questions,
+        limit=_requested_question_count(state),
+    )
     update: dict[str, Any] = {
         "questions": questions,
-        "is_all_approved": bool(questions)
-        and all(item.get("status") == "approved" for item in questions),
+        "is_all_approved": bool(selected_questions)
+        and all(item.get("status") == "approved" for item in selected_questions),
     }
     if new_usages:
         update["llm_usages"] = list(state.get("llm_usages") or []) + new_usages
@@ -1346,10 +1416,17 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
 
 def review_router(state: AgentState) -> str:
     """Reviewer 결과를 보고 Questioner로 되돌릴지 종료할지 결정한다."""
+    selected_questions = _selected_questions_for_output(state)
     retryable_statuses = {"needs_revision", "rejected"}
     has_retryable = any(
-        item.get("status") in retryable_statuses for item in state.get("questions", [])
+        item.get("status") in retryable_statuses for item in selected_questions
     )
+    enough_approved = (
+        sum(1 for item in selected_questions if _is_approved_question(item))
+        >= _requested_question_count(state)
+    )
+    if enough_approved:
+        return "end"
     if has_retryable and state.get("retry_count", 0) < state.get("max_retry_count", 3):
         return "retry"
     return "end"
@@ -1357,7 +1434,7 @@ def review_router(state: AgentState) -> str:
 
 def _analysis_summary(state: AgentState) -> DocumentAnalysisOutput:
     """최종 응답용 간단한 분석 요약을 만든다."""
-    questions = state.get("questions", [])
+    questions = _selected_questions_for_output(state)
     risk_tags = sorted(
         {
             tag
@@ -1389,7 +1466,7 @@ def _requested_question_count(state: AgentState) -> int:
         return MORE_QUESTION_COUNT
     if mode == "add_question":
         return ADD_QUESTION_COUNT
-    return DEFAULT_QUESTION_COUNT
+    return DEFAULT_SELECTED_QUESTION_COUNT
 
 
 def build_response(state: AgentState) -> QuestionGenerationResponse:
@@ -1398,8 +1475,9 @@ def build_response(state: AgentState) -> QuestionGenerationResponse:
     중요한 원칙은 '노드가 만든 결과를 최대한 그대로 보존한다'는 것이다.
     즉 예쁘게 덮어쓰기보다는, 실제 생성된 메타데이터를 응답에 싣는 데 초점을 둔다.
     """
+    selected_questions = _selected_questions_for_output(state)
     items: list[InterviewQuestionItem] = []
-    for index, question in enumerate(state.get("questions", [])):
+    for index, question in enumerate(selected_questions):
         question_id = _question_id(question, index)
         question_model = QuestionCandidate.model_validate(
             {
@@ -1489,7 +1567,11 @@ def build_response(state: AgentState) -> QuestionGenerationResponse:
     hit_retry_limit = state.get("retry_count", 0) >= state.get("max_retry_count", 3)
     generation_mode = state.get("generation_mode") or "initial"
     requested_count = _requested_question_count(state)
-    enough_questions = len(items) >= requested_count if generation_mode in {"initial", "more", "add_question"} else bool(items)
+    enough_questions = (
+        len(items) >= requested_count
+        if generation_mode in {"initial", "more", "add_question"}
+        else bool(items)
+    )
     is_partial = not enough_questions or not all_approved or hit_retry_limit
 
     return QuestionGenerationResponse(
@@ -1501,14 +1583,15 @@ def build_response(state: AgentState) -> QuestionGenerationResponse:
         analysis_summary=_analysis_summary(state),
         questions=items,
         generation_metadata={
-            "pipeline": "interview_graph",
+            "pipeline": "interview_graph_JH",
             "generation_mode": generation_mode,
             "total_candidate_questions": len(state.get("questions", [])),
             "selected_question_count": len(items),
+            "approved_selected_question_count": approved_count,
             "requested_question_count": requested_count,
             "retry_count": state.get("retry_count", 0),
             "is_all_approved": all_approved,
             "node_warnings": state.get("node_warnings", []),
-            "graph": "PrepareContext -> Questioner -> Predictor -> Driller -> Reviewer",
+            "graph": "PrepareContext -> Questioner -> Predictor -> Driller -> Reviewer -> Selector",
         },
     )

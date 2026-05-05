@@ -257,7 +257,7 @@ def _failed_response(
         ),
         questions=[],
         generation_metadata={
-            "pipeline": "interview_graph",
+            "pipeline": "interview_graph_JH",
             "total_candidate_questions": 0,
             "selected_question_count": 0,
             "retry_count": 0,
