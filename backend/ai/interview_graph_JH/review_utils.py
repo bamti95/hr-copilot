@@ -107,6 +107,58 @@ def canonical_retry_guidance(
     return guidance[:280]
 
 
+AUXILIARY_ISSUE_TYPES = frozenset({
+    "over_specific_predicted_answer",
+    "followup_not_specific",
+    "too_long_for_interview",
+})
+
+
+def _looks_exploratory(question_text: str) -> bool:
+    markers = [
+        "있었다면",
+        "기억나는 범위",
+        "가능하면",
+        "맡은 역할",
+        "기여 범위",
+        "어떻게",
+        "구체적으로",
+    ]
+    normalized = " ".join(str(question_text or "").split())
+    return any(marker in normalized for marker in markers)
+
+
+def _has_resume_anchor(question: QuestionSet) -> bool:
+    evidence = list(question.get("document_evidence") or [])
+    basis = str(question.get("generation_basis") or "").strip()
+    text = str(question.get("question_text") or "").strip()
+    return bool(evidence or basis or text)
+
+
+def soften_issue_types_for_interview_depth(
+    question: QuestionSet,
+    issue_types: list[str],
+) -> list[str]:
+    issue_set = list(dict.fromkeys(issue_types))
+    question_text = str(question.get("question_text") or "")
+    has_anchor = _has_resume_anchor(question)
+    exploratory = _looks_exploratory(question_text)
+
+    if has_anchor and exploratory:
+        issue_set = [
+            issue
+            for issue in issue_set
+            if issue not in {"weak_evidence", "doc_evidence_missing"}
+        ]
+
+    if has_anchor and "too_generic" in issue_set:
+        concrete_markers = ["역할", "행동", "기여", "판단", "우선순위", "사례", "경험"]
+        if any(marker in question_text for marker in concrete_markers):
+            issue_set = [issue for issue in issue_set if issue != "too_generic"]
+
+    return issue_set
+
+
 def overall_status_from_score(
     question_avg: float,
     guide_avg: float,
@@ -114,23 +166,21 @@ def overall_status_from_score(
     issue_types: list[str],
 ) -> str:
     issue_set = set(issue_types)
+    core_issue_set = issue_set - AUXILIARY_ISSUE_TYPES
     hard_issue_types = {"fairness_risk", "job_relevance_issue"}
     revision_required_issue_types = {
         "weak_evidence",
         "doc_evidence_missing",
-        "followup_not_specific",
         "too_generic",
-        "too_long_for_interview",
         "difficulty_mismatch",
         "weak_evaluation_guide",
-        "over_specific_predicted_answer",
         "duplicate_question",
     }
-    if hard_issue_types & issue_set:
+    if hard_issue_types & core_issue_set:
         return "needs_revision" if overall_score >= 3.2 else "rejected"
-    if revision_required_issue_types & issue_set:
+    if revision_required_issue_types & core_issue_set:
         return "needs_revision" if overall_score >= 2.6 else "rejected"
-    if overall_score >= 4.3 and question_avg >= 4.3 and guide_avg >= 4.0:
+    if overall_score >= 3.7 and question_avg >= 3.8 and guide_avg >= 3.5:
         return "approved"
     if overall_score >= 3.1:
         return "needs_revision"
@@ -150,10 +200,19 @@ def normalize_reviewer_status(
         overall_score,
         issue_types,
     )
+    core_issues = [i for i in issue_types if i not in AUXILIARY_ISSUE_TYPES]
     if raw_status == "approved":
-        return "approved" if normalized == "approved" and not issue_types else "needs_revision"
-    if raw_status in {"needs_revision", "rejected"}:
-        return raw_status
+        return "approved" if normalized == "approved" and not core_issues else "needs_revision"
+    if raw_status == "needs_revision":
+        if normalized == "approved" and not core_issues:
+            return "approved"
+        return "needs_revision"
+    if raw_status == "rejected":
+        if normalized == "approved" and not core_issues:
+            return "approved"
+        if normalized == "needs_revision":
+            return "needs_revision"
+        return "rejected"
     return normalized
 
 

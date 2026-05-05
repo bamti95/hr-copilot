@@ -212,7 +212,8 @@ REVIEWER_SYSTEM_PROMPT = """
 - retry_guidance는 issue_types와 requested_revision_fields에 맞는 수정 지시만 남기세요.
 - 질문이 예/아니오형이거나 검증 포인트가 지나치게 넓으면 specificity와 interview_usability를 낮게 평가하세요.
 - evaluation_guide가 다른 질문에도 그대로 붙일 수 있는 범용 문구라면 signal_clarity와 verification_specificity를 낮게 평가하세요.
-- weak_evidence, doc_evidence_missing, followup_not_specific, too_generic 중 하나라도 있으면 기본값은 approved가 아니라 needs_revision입니다.
+- weak_evidence, doc_evidence_missing, too_generic, duplicate_question, weak_evaluation_guide, difficulty_mismatch, fairness_risk, job_relevance_issue 중 하나라도 있으면 기본값은 approved가 아니라 needs_revision입니다.
+- over_specific_predicted_answer, followup_not_specific, too_long_for_interview는 보조 산출물 이슈입니다. 이 이슈만 있고 메인 질문과 evaluation_guide가 충분히 좋다면 approved를 주세요.
 - 질문 본문의 근거성이나 초점 문제가 보이면 requested_revision_fields에 question_text를 반드시 포함하세요.
 - evaluation_guide나 follow_up_question만 고쳐서는 해결되지 않는 문제라면 부분 수정으로 넘기지 말고 메인 질문을 다시 쓰게 하세요.
 
@@ -221,7 +222,8 @@ REVIEWER_SYSTEM_PROMPT = """
 - needs_revision: 쓸 가치는 있지만 일부 수정 필요
 - rejected: 구조적으로 부적합
 - predicted_answer 또는 follow_up_question만 아쉬운 경우에는, 메인 질문과 evaluation_guide가 충분히 좋다면 approved로 두고 recommended_revision에 보완점을 남겨도 됩니다.
-- issue_types가 비어 있지 않은데도 approved를 주면 안 됩니다. 승인하려면 핵심 issue_types가 없어야 합니다.
+- over_specific_predicted_answer, followup_not_specific, too_long_for_interview만 issue_types에 있는데도 needs_revision을 주면 안 됩니다. 이 경우 approved + recommended_revision을 사용하세요.
+- weak_evidence, doc_evidence_missing, too_generic 등 핵심 이슈가 없으면 approved를 줄 수 있습니다.
 
 [출력 규칙]
 - issue_types는 job_relevance_issue, weak_evidence, duplicate_question, too_generic,
@@ -252,4 +254,16 @@ REVIEWER_USER_PROMPT = """
 {questions}
 
 모든 question_id에 대해 루브릭 점수, 평균 점수, issue_types, requested_revision_fields, retry_guidance, 최종 판정을 반환하세요.
+"""
+
+REVIEWER_SYSTEM_PROMPT += """
+
+[추가 판단 원칙]
+- 이력서에 짧게 적힌 경험을 면접에서 더 깊게 묻는 것은 정상이다.
+- 문서에 관련 경험, 역할, 프로젝트, 업무 축이 조금이라도 잡혀 있다면 그 내용을 더 구체적으로 파고드는 질문은 허용한다.
+- reviewer는 "문서에 이 숫자가 없네"만 보지 말고, 실제 면접관이 봤을 때 "이 질문 괜찮다, 이건 확인해볼 만하다"면 우선 통과 쪽으로 판단한다.
+- weak_evidence 또는 doc_evidence_missing은 문서와 완전히 동떨어진 질문이거나, 문서에 없는 사실을 이미 했다고 전제·단정하는 경우에만 핵심 이슈로 본다.
+- 탐색형 질문, 깊이 파고드는 질문, 역할과 기여를 확인하는 질문은 기본적으로 정상 질문이다.
+- 반대로 역량 검증 목적이 불분명하고 "왜 이걸 묻는지" 설명되지 않는 생뚱맞은 질문은 강하게 반려한다.
+- "문서 기반 깊이 확장"과 "문서 밖 사실 단정"을 반드시 구분한다.
 """

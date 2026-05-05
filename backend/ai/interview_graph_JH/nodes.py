@@ -49,6 +49,7 @@ from ai.interview_graph_JH.review_utils import (
     normalize_review_issue_types,
     normalize_reviewer_status,
     score_reason,
+    soften_issue_types_for_interview_depth,
 )
 from ai.interview_graph_JH.schemas import (
     DrillerOutput,
@@ -316,8 +317,7 @@ async def questioner_node(state: AgentState) -> dict[str, Any]:
 
         if mode == "partial_rewrite" and requested_fields:
             _apply_partial_rewrite(existing, patched, requested_fields)
-        else:
-            _clear_retry_state(patched)
+        _clear_retry_state(patched)
 
         existing.update(patched)
 
@@ -523,6 +523,7 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
             [str(item) for item in model.get("issue_types") or []],
             inferred_fields,
         )
+        issue_types = soften_issue_types_for_interview_depth(target, issue_types)
         status = normalize_reviewer_status(
             str(model.get("status") or ""),
             float(question_avg),
