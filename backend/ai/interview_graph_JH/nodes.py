@@ -349,6 +349,14 @@ def _canonical_retry_guidance(
         parts.append(
             "question_text는 문서에 직접 근거가 있는 검증 포인트만 남기고, 문서에 없는 기술스택이나 성과는 새로 요구하지 마세요."
         )
+    if "question_text" in field_set and "doc_evidence_missing" in issue_set:
+        parts.append(
+            "question_text는 문서에서 확인 가능한 역할, 행동, 경험만 기준으로 다시 쓰고 개인 성과 수치나 향후 목표 수치를 먼저 전제하지 마세요."
+        )
+    if "question_text" in field_set and "too_generic" in issue_set:
+        parts.append(
+            "question_text는 검증 포인트를 1개로 줄이고, 너무 넓은 질문 대신 특정 행동·판단·결과 중 하나만 확인하도록 다시 좁히세요."
+        )
     if "evaluation_guide" in field_set or "weak_evaluation_guide" in issue_set:
         parts.append(
             "evaluation_guide는 상/중/하 3줄 체크형을 유지하고, 무엇을 들으면 점수를 줄지 짧게 적으세요."
@@ -368,9 +376,6 @@ def _infer_requested_revision_fields(
     issue_types: list[str],
     existing_fields: list[str],
 ) -> list[str]:
-    if existing_fields:
-        return existing_fields
-
     field_order = [
         "question_text",
         "generation_basis",
@@ -379,19 +384,30 @@ def _infer_requested_revision_fields(
         "follow_up_question",
         "document_evidence",
     ]
+    if existing_fields:
+        normalized = [field for field in existing_fields if field in field_order]
+        if any(issue in {"weak_evidence", "doc_evidence_missing", "too_generic"} for issue in issue_types):
+            if "question_text" not in normalized:
+                normalized.insert(0, "question_text")
+        deduped: list[str] = []
+        for field in normalized:
+            if field not in deduped:
+                deduped.append(field)
+        return sorted(deduped, key=field_order.index) if deduped else ["question_text", "evaluation_guide"]
+
     mapped: list[str] = []
     issue_map = {
         "job_relevance_issue": ["question_text", "generation_basis"],
-        "weak_evidence": ["generation_basis", "document_evidence"],
-        "doc_evidence_missing": ["generation_basis", "document_evidence", "predicted_answer"],
-        "followup_not_specific": ["follow_up_question"],
+        "weak_evidence": ["question_text", "generation_basis", "document_evidence", "evaluation_guide"],
+        "doc_evidence_missing": ["question_text", "generation_basis", "document_evidence", "predicted_answer", "follow_up_question"],
+        "followup_not_specific": ["question_text", "follow_up_question"],
         "duplicate_question": ["question_text"],
-        "too_generic": ["question_text"],
+        "too_generic": ["question_text", "evaluation_guide"],
         "fairness_risk": ["question_text", "evaluation_guide"],
         "too_long_for_interview": ["question_text", "follow_up_question", "evaluation_guide"],
         "difficulty_mismatch": ["question_text", "evaluation_guide"],
         "weak_evaluation_guide": ["evaluation_guide"],
-        "over_specific_predicted_answer": ["predicted_answer", "follow_up_question"],
+        "over_specific_predicted_answer": ["question_text", "predicted_answer", "follow_up_question"],
     }
     for issue_type in issue_types:
         for field_name in issue_map.get(issue_type, []):
@@ -578,8 +594,6 @@ def _normalize_review_issue_types(
         if issue_type == "weak_evidence":
             if field_set <= {"follow_up_question"}:
                 issue_type = "followup_not_specific"
-            elif {"document_evidence", "generation_basis", "predicted_answer"} & field_set:
-                issue_type = "doc_evidence_missing"
         if issue_type not in normalized:
             normalized.append(issue_type)
     return normalized
@@ -1060,21 +1074,37 @@ def _overall_status_from_score(
     overall_score: float,
     issue_types: list[str],
 ) -> str:
-    """메인 질문/가이드 품질을 우선 보고, 보조 산출물 이슈는 완만하게 반영한다."""
+    """메인 질문/가이드 품질을 우선 보되, 근거성과 실사용성 이슈는 승인 전에 반드시 수정하게 한다."""
     issue_set = set(issue_types)
     hard_issue_types = {
         "fairness_risk",
         "job_relevance_issue",
+    }
+    revision_required_issue_types = {
+        "weak_evidence",
+        "doc_evidence_missing",
+        "followup_not_specific",
+        "too_generic",
+        "too_long_for_interview",
+        "difficulty_mismatch",
+        "weak_evaluation_guide",
+        "over_specific_predicted_answer",
+        "duplicate_question",
     }
     if hard_issue_types & issue_set:
         if overall_score >= 3.2:
             return "needs_revision"
         return "rejected"
 
+    if revision_required_issue_types & issue_set:
+        if overall_score >= 2.6:
+            return "needs_revision"
+        return "rejected"
+
     if (
-        overall_score >= 4.0
-        and question_avg >= 4.0
-        and guide_avg >= 3.8
+        overall_score >= 4.3
+        and question_avg >= 4.3
+        and guide_avg >= 4.0
     ):
         return "approved"
     if overall_score >= 3.1:
@@ -1089,13 +1119,15 @@ def _normalize_reviewer_status(
     overall_score: float,
     issue_types: list[str],
 ) -> str:
-    """Reviewer 판정이 과도하게 엄격할 때 메인 품질 기준으로 한 번 더 보정한다."""
+    """Reviewer 판정이 느슨하거나 과도하게 엄격할 때 내부 기준으로 다시 보정한다."""
     normalized = _overall_status_from_score(
         question_avg,
         guide_avg,
         overall_score,
         issue_types,
     )
+    if raw_status == "approved" and issue_types:
+        return normalized if normalized != "approved" else "needs_revision"
     if raw_status == "approved" and normalized != "approved":
         return normalized
     if raw_status == "rejected" and normalized != "rejected":

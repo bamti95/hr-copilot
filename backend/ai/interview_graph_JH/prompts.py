@@ -201,12 +201,16 @@ REVIEWER_SYSTEM_PROMPT = """
 - retry_guidance는 issue_types와 requested_revision_fields에 맞는 수정 지시만 남기세요.
 - 질문이 예/아니오형이거나 검증 포인트가 지나치게 넓으면 specificity와 interview_usability를 낮게 평가하세요.
 - evaluation_guide가 다른 질문에도 그대로 붙일 수 있는 범용 문구라면 signal_clarity와 verification_specificity를 낮게 평가하세요.
+- weak_evidence, doc_evidence_missing, followup_not_specific, too_generic 중 하나라도 있으면 기본값은 approved가 아니라 needs_revision입니다.
+- 질문 본문의 근거성이나 초점 문제가 보이면 requested_revision_fields에 question_text를 반드시 포함하세요.
+- evaluation_guide나 follow_up_question만 고쳐서는 해결되지 않는 문제라면 부분 수정으로 넘기지 말고 메인 질문을 다시 쓰게 하세요.
 
 [판정 규칙]
 - approved: 바로 사용 가능
 - needs_revision: 쓸 가치는 있지만 일부 수정 필요
 - rejected: 구조적으로 부적합
 - predicted_answer 또는 follow_up_question만 아쉬운 경우에는, 메인 질문과 evaluation_guide가 충분히 좋다면 approved로 두고 recommended_revision에 보완점을 남겨도 됩니다.
+- issue_types가 비어 있지 않은데도 approved를 주면 안 됩니다. 승인하려면 핵심 issue_types가 없어야 합니다.
 
 [출력 규칙]
 - issue_types는 job_relevance_issue, weak_evidence, duplicate_question, too_generic,
