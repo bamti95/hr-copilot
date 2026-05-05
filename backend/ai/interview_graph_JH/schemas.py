@@ -62,7 +62,10 @@ class QuestionCandidate(GraphBaseModel):
     question_text: str = Field(..., description="면접관이 실제로 읽을 질문")
     evaluation_guide: str = Field(
         ...,
-        description="좋은 답변/보통 답변/부족한 답변을 가르는 평가 기준",
+        description=(
+            "면접관용 실전 가이드. 관찰 포인트, 좋은/보통/부족한 답변 기준, "
+            "모호한 답변의 후속 확인 방향을 포함"
+        ),
     )
 
 
@@ -200,7 +203,10 @@ class InterviewQuestionItem(GraphBaseModel):
     question_text: str
     generation_basis: str
     document_evidence: list[str] = Field(default_factory=list)
-    evaluation_guide: str
+    evaluation_guide: str = Field(
+        ...,
+        description="면접관이 답변을 들으며 바로 사용할 수 있는 평가 및 진행 가이드",
+    )
 
     predicted_answer: str = ""
     predicted_answer_basis: str = ""
