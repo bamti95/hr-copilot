@@ -177,6 +177,13 @@ def _normalize_existing_question(
         "status": "human_rejected" if is_regeneration_target else "approved",
         "regen_targets": list(raw.get("regen_targets") or requested_fields),
         "generation_mode": str(raw.get("generation_mode") or "initial"),
+        "retry_issue_types": list(raw.get("review_issue_types") or []),
+        "retry_guidance": str(
+            raw.get("retry_guidance")
+            or raw.get("recommended_revision")
+            or raw.get("review_reason")
+            or ""
+        ),
     }
 
 

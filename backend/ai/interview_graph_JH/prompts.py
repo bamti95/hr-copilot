@@ -79,8 +79,8 @@ QUESTIONER_USER_PROMPT = """
 [하드 제약]
 - 모든 question_text는 {question_text_limit}자 이내로 작성하세요.
 - question_text는 문서 문장을 길게 그대로 복사하지 마세요.
-- rewrite 또는 partial_rewrite일 때는 retry_feedback의 retry_issue_types, retry_requested_fields, regen_targets, retry_guidance를 반드시 반영하세요.
-- retry_requested_fields 또는 regen_targets에 포함된 필드는 이전 시도와 다르게 다시 작성하세요.
+- rewrite 또는 partial_rewrite일 때는 retry_feedback의 retry_issue_types, regen_targets, retry_guidance를 반드시 반영하세요.
+- regen_targets에 포함된 필드는 이전 시도와 다르게 다시 작성하세요.
 - 이전 시도와 같은 문제를 반복하지 마세요.
 - question_text는 한 질문 안에 검증 포인트를 1개만 두세요.
 - question_text에서 문서에 없는 성과 수치, 비율, 기간, 건수를 이미 있었던 사실처럼 단정하지 마세요.
