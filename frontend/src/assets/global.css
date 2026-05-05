@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.theme-dark, .theme-dark *));
+
 :root {
   font-family: "Pretendard Variable", "Noto Sans KR", "Segoe UI", sans-serif;
   color: #111827;
@@ -28,6 +30,11 @@ body.theme-dark {
   --line: #243252;
   --text: #eef4ff;
   --muted: #96a5c2;
+  --surface-soft: rgba(28, 39, 62, 0.72);
+  --surface-subtle: rgba(35, 48, 73, 0.62);
+  --surface-hover: rgba(49, 95, 188, 0.18);
+  --surface-danger: rgba(127, 29, 29, 0.22);
+  --line-soft: rgba(127, 147, 180, 0.28);
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
   background:
     radial-gradient(circle at top left, rgba(73, 109, 255, 0.2), transparent 22%),
@@ -49,6 +56,92 @@ body {
   min-height: 100vh;
   color: var(--text);
   background: var(--bg);
+}
+
+body.theme-dark :where(.admin-shell, .manager-shell, .admin-shell__content) {
+  color: var(--text);
+  background: transparent;
+}
+
+body.theme-dark :where(
+  .bg-white,
+  [class~="bg-white/60"],
+  [class~="bg-white/70"],
+  [class~="bg-white/74"],
+  [class~="bg-white/80"],
+  [class~="bg-white/85"],
+  [class~="bg-white/90"]
+) {
+  background-color: var(--panel) !important;
+}
+
+body.theme-dark :where(
+  .bg-slate-50,
+  .bg-slate-100,
+  [class~="bg-slate-50/50"],
+  [class~="bg-slate-100/50"]
+) {
+  background-color: var(--surface-subtle) !important;
+}
+
+body.theme-dark :where(
+  .text-slate-950,
+  .text-slate-900,
+  .text-slate-800,
+  .text-slate-700
+) {
+  color: var(--text) !important;
+}
+
+body.theme-dark :where(
+  .text-slate-600,
+  .text-slate-500,
+  .text-slate-400
+) {
+  color: var(--muted) !important;
+}
+
+body.theme-dark :where(
+  .border-slate-100,
+  .border-slate-200,
+  .border-slate-300,
+  [class~="border-white/55"],
+  [class~="border-white/70"]
+) {
+  border-color: var(--line) !important;
+}
+
+body.theme-dark :where(
+  .hover\:bg-slate-50:hover,
+  .hover\:bg-slate-100:hover,
+  [class~="hover:bg-white/80"]:hover,
+  [class~="hover:bg-[#f5f8ff]"]:hover
+) {
+  background-color: var(--surface-hover) !important;
+}
+
+body.theme-dark :where(
+  .bg-rose-50,
+  .bg-red-50
+) {
+  background-color: var(--surface-danger) !important;
+}
+
+body.theme-dark :where(
+  input,
+  select,
+  textarea
+) {
+  color: var(--text);
+  background-color: var(--panel-strong);
+  border-color: var(--line);
+}
+
+body.theme-dark :where(
+  input::placeholder,
+  textarea::placeholder
+) {
+  color: var(--muted);
 }
 
 .global-loading-spinner {
@@ -710,6 +803,70 @@ body.theme-dark .sidebar-toggle {
 .pagination__button.is-active {
   background: linear-gradient(135deg, var(--primary), var(--primary-strong));
   color: #fff;
+}
+
+body.theme-dark :where(
+  .admin-header,
+  .manager-header,
+  .manager-sidebar,
+  .page-intro,
+  .panel,
+  .summary-card,
+  .activity-card,
+  .pagination
+) {
+  background: var(--panel) !important;
+  border-color: var(--line) !important;
+  color: var(--text);
+}
+
+body.theme-dark .manager-sidebar {
+  background:
+    linear-gradient(180deg, rgba(18, 26, 44, 0.98) 0%, rgba(15, 22, 37, 0.96) 100%) !important;
+}
+
+body.theme-dark :where(
+  .manager-sidebar__link,
+  .manager-sidebar__profile,
+  .manager-header__menu,
+  .header-chip,
+  .pagination__button,
+  .panel__search,
+  .manager-header__search
+) {
+  color: var(--text);
+  background: var(--panel-strong) !important;
+  border-color: var(--line) !important;
+}
+
+body.theme-dark :where(
+  .manager-sidebar__link:hover,
+  .manager-sidebar__link.is-active,
+  .pagination__button.is-active
+) {
+  background: linear-gradient(135deg, var(--primary), var(--primary-strong)) !important;
+  color: #fff !important;
+}
+
+body.theme-dark .manager-sidebar__icon {
+  background: var(--surface-subtle);
+  color: #b9c7ff;
+}
+
+body.theme-dark :where(.summary-card, .activity-card) {
+  background: var(--surface-soft) !important;
+}
+
+body.theme-dark .status-pill.is-warning {
+  color: #f5c451;
+}
+
+body.theme-dark .status-pill.is-danger {
+  color: #ff8f8f;
+}
+
+body.theme-dark .status-pill.is-neutral {
+  color: var(--muted);
 }
 
 @media (max-width: 1080px) {
