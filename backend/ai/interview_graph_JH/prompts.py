@@ -13,7 +13,9 @@ QUESTIONER_SYSTEM_PROMPT = """
 2. "왜/어떻게/어떤 기준으로/무엇을 배웠는지"를 묻는 탐색형 질문을 선호합니다.
 3. 정량 수치가 문서에 없더라도 "어떤 지표로 확인했는지" 탐색하는 질문은 가능합니다.
 4. 질문 하나에는 하나의 핵심 역량만 담습니다.
-5. 평가가이드는 비전문 면접관도 바로 사용할 수 있어야 합니다.
+5. 질문 하나에 두 가지 이상을 한꺼번에 묻지 마세요.
+6. 면접관이 그대로 읽을 수 있도록 짧고 선명한 한 문장 질문을 만드세요.
+7. 평가가이드는 비전문 면접관도 바로 사용할 수 있어야 합니다.
 
 평가가이드 작성 원칙:
 - 해당 직무의 전문 지식이 깊지 않은 면접관도 판단할 수 있게 씁니다.
@@ -86,6 +88,9 @@ QUESTIONER_USER_PROMPT = """
 
 중요:
 - question_id는 작성하지 마세요. 시스템이 부여합니다.
+- question_text는 반드시 한 개의 질문만 담으세요.
+- `그리고`, `또`, `혹은`, `/` 등을 사용해 두 질문을 합치지 마세요.
+- 면접관이 그대로 읽을 수 있게 질문은 짧고 선명하게 작성하세요.
 - evaluation_guide는 반드시 `관찰 포인트 / 상 / 중 / 하 / 추가 확인` 형식을 따르세요.
 - evaluation_guide는 해당 직무 전문지식이 없는 면접관도 평가 가능한 언어로 작성하세요.
 """.strip()
@@ -98,6 +103,7 @@ PREDICTOR_SYSTEM_PROMPT = """
 - 여기서 예상답변은 "정답"이 아닙니다.
 - 지원자 문서만 보고 추정한 `답변 가설`입니다.
 - 문서에 없는 내용은 사실처럼 쓰지 말고, 확인이 필요하다고 명시하세요.
+- 길게 쓰지 마세요. 면접관이 빠르게 참고할 수 있는 짧은 가설만 작성하세요.
 
 원칙:
 - 문서에 적힌 내용과 합리적 추론을 구분합니다.
@@ -120,6 +126,9 @@ PREDICTOR_USER_PROMPT = """
 중요:
 - 실제로 이렇게 답할 것이라고 단정하지 마세요.
 - 문서 근거가 부족하면 그 점을 명시하세요.
+- predicted_answer는 2~4문장의 짧은 가설로 작성하세요.
+- 불필요한 배경설명, 추측 확장, 장황한 해설은 넣지 마세요.
+- predicted_answer_basis도 한두 문장으로 간결하게 작성하세요.
 """.strip()
 
 
@@ -171,6 +180,8 @@ REVIEWER_SYSTEM_PROMPT = """
 - 상/중/하 구분 기준이 실제 답변 품질 차이를 드러내는가
 - 기술 지식이 없어도 역할, 근거, 판단 기준, 결과 설명 여부로 평가할 수 있는가
 - 추가 확인 포인트가 면접 진행에 도움이 되는가
+- question_text가 한 번에 하나의 질문만 묻고 있는가
+- predicted_answer가 실전 참고용으로 간결한가
 
 점수 기준:
 - job_relevance: 채용 기준 역량과 연결되는가
@@ -207,6 +218,8 @@ REVIEWER_USER_PROMPT = """
 - approved도 이유와 selection_reason을 반드시 작성합니다.
 - needs_revision/rejected만 requested_revision_fields와 recommended_revision을 작성합니다.
 - evaluation_guide가 비전문 면접관 기준에서 막연하거나 상/중/하 구분이 약하면 requested_revision_fields에 evaluation_guide를 포함합니다.
+- question_text가 복합 질문이면 requested_revision_fields에 question_text를 포함합니다.
+- predicted_answer가 장황하면 risks에 요약 필요를 남길 수 있습니다.
 - rejected는 reject_reason을 작성합니다.
 - strengths와 risks는 상위 5개 선별에 도움이 되도록 짧게 작성합니다.
 """.strip()

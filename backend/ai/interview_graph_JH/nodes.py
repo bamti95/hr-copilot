@@ -51,6 +51,9 @@ RETRY_CANDIDATE_COUNT = 5
 MAX_RETRY_COUNT = 2
 MIN_SELECTABLE_SCORE = 3.0
 STRONG_SELECTABLE_SCORE = 3.6
+QUESTION_TEXT_LIMIT = 140
+PREDICTED_ANSWER_LIMIT = 260
+PREDICTED_BASIS_LIMIT = 180
 
 
 def _safe_json(value: Any) -> str:
@@ -64,6 +67,23 @@ def _clip_text(text: str | None, limit: int) -> str:
     if len(normalized) <= limit:
         return normalized
     return normalized[: limit - 1].rstrip() + "..."
+
+
+def _compact_sentences(text: str | None, *, max_sentences: int, limit: int) -> str:
+    normalized = _clip_text(text, limit * 2)
+    if not normalized:
+        return ""
+    parts = re.split(r"(?<=[.!?])\s+", normalized)
+    compact = " ".join(part.strip() for part in parts[:max_sentences] if part.strip())
+    return _clip_text(compact or normalized, limit)
+
+
+def _normalize_question_text(text: str | None) -> str:
+    normalized = _clip_text(text, QUESTION_TEXT_LIMIT)
+    normalized = normalized.strip(" \"'")
+    if normalized.count("?") > 1:
+        normalized = normalized.split("?", 1)[0].strip() + "?"
+    return _clip_text(normalized, QUESTION_TEXT_LIMIT)
 
 
 def _list_from_value(value: Any) -> list[str]:
@@ -286,7 +306,7 @@ def _candidate_to_question(candidate: QuestionCandidate, question_id: str) -> Qu
         "category": candidate.category.strip() or "직무역량",
         "generation_basis": candidate.generation_basis.strip(),
         "document_evidence": candidate.document_evidence.strip(),
-        "question_text": candidate.question_text.strip(),
+        "question_text": _normalize_question_text(candidate.question_text),
         "evaluation_guide": candidate.evaluation_guide.strip(),
         "status": "pending",
         "review_status": "pending",
@@ -367,6 +387,14 @@ def _apply_candidates(
 
 def _question_text_key(text: str | None) -> str:
     return re.sub(r"\s+", " ", (text or "")).strip().lower()
+
+
+def _is_compound_question_text(text: str | None) -> bool:
+    normalized = _question_text_key(text)
+    if normalized.count("?") > 1:
+        return True
+    compound_markers = [" 그리고 ", " 또한 ", " 혹은 ", " 또는 ", " / "]
+    return any(marker in f" {normalized} " for marker in compound_markers)
 
 
 def _question_signature_tokens(question: QuestionSet) -> set[str]:
@@ -516,13 +544,14 @@ def _is_selectable(question: QuestionSet) -> bool:
 def _selection_key(question: QuestionSet) -> tuple[float, float, float, int, int]:
     status_bonus = 0.35 if question.get("review_status") == "approved" else 0.0
     evidence_bonus = 0.15 if question.get("document_evidence") else 0.0
+    compound_penalty = 0.5 if _is_compound_question_text(question.get("question_text")) else 0.0
     score = float(question.get("score") or 0)
     quality = float(question.get("question_quality_average") or 0)
     guide = float(question.get("evaluation_guide_average") or 0)
     risk_penalty = len(question.get("review_risks", []) or [])
     issue_penalty = len(question.get("review_issue_types", []) or [])
     return (
-        score + status_bonus + evidence_bonus,
+        score + status_bonus + evidence_bonus - compound_penalty,
         quality,
         guide,
         -risk_penalty,
@@ -729,8 +758,16 @@ async def predictor_node(state: AgentState) -> AgentState:
         answer = by_id.get(str(question.get("id")))
         if not answer:
             continue
-        question["predicted_answer"] = answer.predicted_answer.strip()
-        question["predicted_answer_basis"] = answer.predicted_answer_basis.strip()
+        question["predicted_answer"] = _compact_sentences(
+            answer.predicted_answer,
+            max_sentences=3,
+            limit=PREDICTED_ANSWER_LIMIT,
+        )
+        question["predicted_answer_basis"] = _compact_sentences(
+            answer.predicted_answer_basis,
+            max_sentences=2,
+            limit=PREDICTED_BASIS_LIMIT,
+        )
 
     return {
         **state,
