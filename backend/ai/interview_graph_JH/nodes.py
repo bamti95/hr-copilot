@@ -604,7 +604,16 @@ def _should_refresh_follow_up(question: QuestionSet) -> bool:
     targets = set(_default_regen_targets(question))
     if not question.get("follow_up_question"):
         return True
-    return bool({"question_text", "predicted_answer", "follow_up_question"} & targets)
+    return bool(
+        {
+            "question_text",
+            "generation_basis",
+            "document_evidence",
+            "predicted_answer",
+            "follow_up_question",
+        }
+        & targets
+    )
 
 
 def _calculate_average(scores: dict[str, int], expected_keys: list[str]) -> float:
@@ -1087,6 +1096,8 @@ def _normalize_reviewer_status(
         overall_score,
         issue_types,
     )
+    if raw_status == "approved" and normalized != "approved":
+        return normalized
     if raw_status == "rejected" and normalized != "rejected":
         return normalized
     if raw_status == "needs_revision" and normalized == "approved":

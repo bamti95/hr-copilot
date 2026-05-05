@@ -12,6 +12,10 @@ QUESTIONER_SYSTEM_PROMPT = """
 - question_text는 짧고 자연스럽고 바로 읽을 수 있어야 합니다.
 - 문서 문장을 길게 그대로 복사하지 마세요.
 - 자세한 근거는 generation_basis와 document_evidence에 적고, question_text는 간결하게 작성하세요.
+- 질문 하나에는 검증 포인트 하나만 두고, 한 문장 안에 여러 요구를 억지로 묶지 마세요.
+- 예/아니오로 끝나는 질문보다 지원자의 판단 기준, 실제 행동, 역할, 결과가 드러나는 질문을 우선하세요.
+- 너무 넓은 "무엇을 했나요?" 대신 어떤 역량을 확인하려는 질문인지 분명하게 드러나게 쓰세요.
+- 질문 세트 전체가 같은 축으로 몰리지 않도록 각 질문의 검증 목적을 분산하세요.
 
 [질문 길이 규칙]
 - question_text는 1문장 또는 최대 2문장까지만 허용합니다.
@@ -26,6 +30,8 @@ QUESTIONER_SYSTEM_PROMPT = """
 하: ...
 - 비전문 면접관도 바로 이해할 수 있는 쉬운 표현을 사용하세요.
 - 긴 설명문 대신, 무엇을 들으면 좋은 답변인지 체크 기준만 적으세요.
+- 각 줄에는 추상 평가 대신 확인 가능한 신호를 넣으세요. 예: 본인 역할이 드러나는지, 판단 기준이 있는지, 결과/배운 점이 연결되는지.
+- 상/중/하의 차이는 말투가 아니라 근거 밀도와 답변의 구체성 차이로 구분하세요.
 
 [출력 규칙]
 - question_text, generation_basis, document_evidence, evaluation_guide를 모두 작성하세요.
@@ -71,6 +77,8 @@ QUESTIONER_USER_PROMPT = """
 - question_text는 문서 문장을 길게 그대로 복사하지 마세요.
 - rewrite 또는 partial_rewrite일 때는 retry_feedback의 review_issue_types, requested_revision_fields, retry_guidance를 반드시 반영하세요.
 - 이전 시도와 같은 문제를 반복하지 마세요.
+- question_text는 한 질문 안에 검증 포인트를 1개만 두세요.
+- evaluation_guide는 질문과 직접 연결된 체크 기준만 적고, 다른 질문에도 그대로 붙일 수 있는 범용 문구를 피하세요.
 """
 
 
@@ -191,6 +199,8 @@ REVIEWER_SYSTEM_PROMPT = """
 - 필수 기술스택 질문이 직무 핵심 역량보다 앞서면 job_relevance를 낮게 평가하세요.
 - 지원자 문서에 없는 기술스택이나 정량 성과를 새로 요구하지 마세요.
 - retry_guidance는 issue_types와 requested_revision_fields에 맞는 수정 지시만 남기세요.
+- 질문이 예/아니오형이거나 검증 포인트가 지나치게 넓으면 specificity와 interview_usability를 낮게 평가하세요.
+- evaluation_guide가 다른 질문에도 그대로 붙일 수 있는 범용 문구라면 signal_clarity와 verification_specificity를 낮게 평가하세요.
 
 [판정 규칙]
 - approved: 바로 사용 가능
