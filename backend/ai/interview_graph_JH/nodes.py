@@ -160,6 +160,8 @@ def _normalize_predicted_answer(
 
 
 def _pick_follow_up_focus(question: QuestionSet) -> str:
+    issue_set = set(str(item) for item in question.get("review_issue_types") or [])
+    question_text = " ".join(str(question.get("question_text") or "").split())
     guidance = " ".join(
         str(part or "")
         for part in [
@@ -168,6 +170,10 @@ def _pick_follow_up_focus(question: QuestionSet) -> str:
             question.get("follow_up_question"),
         ]
     )
+    if "doc_evidence_missing" in issue_set:
+        if "CRM" in question_text or "KPI" in question_text or "지표" in guidance:
+            return "kpi"
+        return "action"
     if "기간" in guidance:
         return "period"
     if "수치" in guidance or "%" in guidance or "정량" in guidance:
@@ -189,9 +195,15 @@ def _normalize_follow_up_question(value: str, question: QuestionSet) -> str:
         end = text.index(")") + 1
         text = f"{text[:start].rstrip()} {text[end:].lstrip()}".strip()
     issue_set = set(str(item) for item in question.get("review_issue_types") or [])
-    if "too_long_for_interview" in issue_set or "followup_not_specific" in issue_set:
+    if {
+        "too_long_for_interview",
+        "followup_not_specific",
+        "doc_evidence_missing",
+    } & issue_set:
         focus = _pick_follow_up_focus(question)
-        if focus == "period":
+        if focus == "kpi":
+            text = "그 경험에서 가장 중요하게 관리한 KPI 한 가지와 주간 또는 월간 점검 방식만 구체적으로 말씀해 주세요."
+        elif focus == "period":
             text = "그 경험이 실제로 진행된 기간을 구체적으로 말씀해 주세요."
         elif focus == "metric":
             text = "그 경험과 연결된 핵심 수치 하나만 구체적으로 말씀해 주세요."
@@ -259,6 +271,10 @@ def _canonical_retry_guidance(
     if "predicted_answer" in field_set and "doc_evidence_missing" in issue_set:
         parts.append(
             "predicted_answer는 문서에서 직접 확인되는 경험 수준까지만 언급하고, 산출물·성과는 추론하지 마세요."
+        )
+    if "follow_up_question" in field_set and "doc_evidence_missing" in issue_set:
+        parts.append(
+            "follow_up_question은 문서에 없는 정확한 수치 대신, 실제로 관리한 KPI·루틴·직접 행동 중 한 가지만 확인하도록 수정하세요."
         )
     if "follow_up_question" in field_set and {"weak_evidence", "followup_not_specific"} & issue_set:
         parts.append(
@@ -657,11 +673,13 @@ def _build_question_entry(
         "competency_tags": model.get("competency_tags")
         or list((existing or {}).get("competency_tags") or []),
         "review_status": "needs_revision",
-        "review_reason": "",
-        "reject_reason": "",
-        "recommended_revision": "",
-        "review_issue_types": [],
-        "requested_revision_fields": list(requested_fields or []),
+        "review_reason": str((existing or {}).get("review_reason") or ""),
+        "reject_reason": str((existing or {}).get("reject_reason") or ""),
+        "recommended_revision": str((existing or {}).get("recommended_revision") or ""),
+        "review_issue_types": list((existing or {}).get("review_issue_types") or []),
+        "requested_revision_fields": list(
+            requested_fields or list((existing or {}).get("requested_revision_fields") or [])
+        ),
         "question_quality_scores": {},
         "evaluation_guide_scores": {},
         "question_quality_average": 0.0,
