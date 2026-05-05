@@ -202,6 +202,40 @@ def _normalize_action(action: Any) -> str:
     return "generate"
 
 
+def _clip_text(value: Any, limit: int) -> str:
+    text = str(value or "").strip()
+    if len(text) <= limit:
+        return text
+    return f"{text[: limit - 3].rstrip()}..."
+
+
+def _prompt_profile_summary_text(payload: CandidateInterviewPrepInput) -> str:
+    profile = payload.prompt_profile
+    if profile is None:
+        return ""
+
+    parts = [
+        f"프로필 키: {profile.profile_key}",
+        f"프로필 대상 직무: {profile.target_job or payload.session.target_job or ''}",
+    ]
+    if profile.system_prompt:
+        parts.append(f"프로필 시스템 프롬프트 요약: {_clip_text(profile.system_prompt, 3000)}")
+    if profile.output_schema:
+        parts.append(
+            "프로필 출력 스키마: "
+            + _clip_text(json.dumps(profile.output_schema, ensure_ascii=False), 1500)
+        )
+    return "\n".join(part for part in parts if part)
+
+
+def _build_job_posting_context(payload: CandidateInterviewPrepInput) -> str:
+    parts = [f"채용 직무명: {payload.session.target_job}"]
+    profile_summary = _prompt_profile_summary_text(payload)
+    if profile_summary:
+        parts.append(profile_summary)
+    return "\n\n".join(part for part in parts if part).strip()
+
+
 def _normalize_existing_question(
     raw: dict[str, Any],
     index: int,
@@ -211,6 +245,15 @@ def _normalize_existing_question(
     is_target = question_id in target_question_ids
     status = "human_rejected" if is_target else "approved"
     score = _score_to_five(raw.get("score")) or 4.0
+    review_reason = str(raw.get("review_reason") or "")
+    score_reason = str(raw.get("score_reason") or raw.get("review_reason") or "")
+    recommended_revision = str(raw.get("recommended_revision") or "")
+    rewrite_feedback_parts = [
+        f"이전 상태: {raw.get('review_status') or 'unknown'}",
+        f"리뷰 사유: {review_reason}" if review_reason else "",
+        f"점수 사유: {score_reason}" if score_reason else "",
+        f"권장 수정: {recommended_revision}" if recommended_revision else "",
+    ]
     return {
         "id": question_id,
         "original_question_id": question_id,
@@ -228,9 +271,9 @@ def _normalize_existing_question(
         "follow_up_intents": _normalize_document_evidence(raw.get("follow_up_intents"))
         or _normalize_document_evidence(raw.get("follow_up_basis")),
         "review_status": "pending" if is_target else "approved",
-        "review_reason": str(raw.get("review_reason") or ""),
+        "review_reason": review_reason,
         "reject_reason": str(raw.get("reject_reason") or raw.get("review_reject_reason") or ""),
-        "recommended_revision": str(raw.get("recommended_revision") or ""),
+        "recommended_revision": recommended_revision,
         "review_issue_types": list(raw.get("review_issue_types") or []),
         "requested_revision_fields": list(raw.get("requested_revision_fields") or []),
         "question_quality_scores": dict(raw.get("question_quality_scores") or {}),
@@ -238,12 +281,20 @@ def _normalize_existing_question(
         "question_quality_average": float(raw.get("question_quality_average") or 4.0),
         "evaluation_guide_average": float(raw.get("evaluation_guide_average") or 4.0),
         "score": 0.0 if is_target else score,
-        "score_reason": str(raw.get("score_reason") or raw.get("review_reason") or ""),
+        "score_reason": score_reason,
         "status": status,
         "is_selectable": not is_target,
-        "selection_reason": str(raw.get("score_reason") or raw.get("review_reason") or ""),
+        "selection_reason": score_reason or review_reason,
         "review_strengths": [],
         "review_risks": list(raw.get("risk_tags") or []),
+        "previous_review_status": str(raw.get("review_status") or ""),
+        "previous_review_reason": review_reason,
+        "previous_score_reason": score_reason,
+        "previous_recommended_revision": recommended_revision,
+        "previous_score": score,
+        "rewrite_feedback": "\n".join(
+            part for part in rewrite_feedback_parts if part
+        ),
     }
 
 
@@ -267,14 +318,24 @@ def _initial_state(payload: CandidateInterviewPrepInput) -> AgentState:
     target_question_ids = {str(question_id) for question_id in payload.target_question_ids}
     documents = _document_bucket(payload)
     action = _normalize_action(payload.human_action)
+    prompt_profile_summary = _prompt_profile_summary_text(payload)
     return {
         "session_id": payload.session.session_id,
         "candidate_id": payload.candidate.candidate_id,
         "target_job": payload.session.target_job,
         "difficulty_level": payload.session.difficulty_level,
-        "job_posting": getattr(payload.session, "job_posting", None)
-        or payload.session.target_job
-        or "",
+        "job_posting": _build_job_posting_context(payload),
+        "prompt_profile_key": payload.prompt_profile.profile_key if payload.prompt_profile else None,
+        "prompt_profile_target_job": (
+            payload.prompt_profile.target_job if payload.prompt_profile else None
+        ),
+        "prompt_profile_system_prompt": (
+            payload.prompt_profile.system_prompt if payload.prompt_profile else None
+        ),
+        "prompt_profile_output_schema": (
+            payload.prompt_profile.output_schema if payload.prompt_profile else None
+        ),
+        "prompt_profile_summary": prompt_profile_summary,
         "company_name": getattr(payload.session, "company_name", None),
         "applicant_name": payload.candidate.name,
         "resume": documents["resume"],

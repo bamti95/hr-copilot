@@ -41,6 +41,9 @@ QUESTIONER_USER_PROMPT = """
 [채용공고]
 {job_posting}
 
+[프롬프트 프로필]
+{prompt_profile_summary}
+
 [지원자 문서]
 {candidate_context}
 
@@ -68,10 +71,14 @@ QUESTIONER_USER_PROMPT = """
 [기존 평가 피드백]
 {retry_guidance}
 
+[재생성 대상 상세 피드백]
+{target_question_feedback}
+
 작업 지시:
 {task_instruction}
 
 각 질문은 반드시 다음을 포함하세요.
+- question_id는 넣지 마세요. 질문 생성 후 시스템이 부여합니다.
 - category
 - generation_basis
 - document_evidence
@@ -104,7 +111,8 @@ PREDICTOR_USER_PROMPT = """
 [질문 목록]
 {questions}
 
-각 질문에 대해 예상 답변과 근거를 작성하세요.
+각 질문에 대해 입력에 포함된 `id`를 그대로 `question_id`에 복사하고,
+예상 답변과 근거를 작성하세요.
 """.strip()
 
 
@@ -128,7 +136,8 @@ DRILLER_USER_PROMPT = """
 [질문 및 예상답변]
 {questions}
 
-각 질문에 대해 꼬리질문과 질문 의도를 작성하세요.
+각 질문에 대해 입력에 포함된 `id`를 그대로 `question_id`에 복사하고,
+꼬리질문과 질문 의도를 작성하세요.
 """.strip()
 
 
@@ -176,6 +185,9 @@ REVIEWER_USER_PROMPT = """
 [채용공고]
 {job_posting}
 
+[프롬프트 프로필]
+{prompt_profile_summary}
+
 [지원자 문서]
 {candidate_context}
 
@@ -185,6 +197,7 @@ REVIEWER_USER_PROMPT = """
 각 후보를 평가하세요.
 
 출력 원칙:
+- question_id는 입력 질문의 id를 그대로 복사합니다.
 - question_text는 입력 질문과 동일하게 작성합니다.
 - approved도 이유와 selection_reason을 반드시 작성합니다.
 - needs_revision/rejected만 requested_revision_fields와 recommended_revision을 작성합니다.

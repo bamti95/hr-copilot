@@ -78,6 +78,7 @@ class QuestionerOutput(GraphBaseModel):
 
 
 class PredictedAnswer(GraphBaseModel):
+    question_id: str
     question_text: str
     predicted_answer: str = Field(
         ...,
@@ -94,6 +95,7 @@ class PredictorOutput(GraphBaseModel):
 
 
 class FollowUpQuestion(GraphBaseModel):
+    question_id: str
     question_text: str
     follow_up_questions: list[str] = Field(..., min_length=2, max_length=3)
     follow_up_intents: list[str] = Field(..., min_length=2, max_length=3)
@@ -184,6 +186,7 @@ class ReviewResult(GraphBaseModel):
 
 
 class ReviewedQuestion(GraphBaseModel):
+    question_id: str = ""
     question_text: str
     review: ReviewResult
 

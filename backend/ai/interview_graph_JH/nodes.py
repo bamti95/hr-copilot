@@ -140,6 +140,52 @@ def _existing_questions_for_prompt(state: AgentState) -> str:
     return _safe_json(compact[:30])
 
 
+def _prompt_profile_summary(state: AgentState) -> str:
+    profile_key = state.get("prompt_profile_key") or ""
+    profile_target_job = state.get("prompt_profile_target_job") or ""
+    system_prompt = _clip_text(state.get("prompt_profile_system_prompt"), 2500)
+    output_schema = _clip_text(_safe_json(state.get("prompt_profile_output_schema")), 1200)
+
+    summary = {
+        "profile_key": profile_key,
+        "target_job": profile_target_job,
+        "system_prompt": system_prompt,
+        "output_schema": output_schema,
+    }
+    return _safe_json(summary)
+
+
+def _target_question_feedback(state: AgentState) -> str:
+    target_ids = _target_ids(state)
+    if not target_ids:
+        return "없음"
+
+    feedback_items: list[dict[str, Any]] = []
+    for question in state.get("questions") or []:
+        if (
+            str(question.get("id")) not in target_ids
+            and str(question.get("original_question_id")) not in target_ids
+        ):
+            continue
+        feedback_items.append(
+            {
+                "id": question.get("id"),
+                "question_text": question.get("question_text"),
+                "previous_review_status": question.get("previous_review_status")
+                or question.get("review_status"),
+                "previous_score": question.get("previous_score") or question.get("score"),
+                "previous_review_reason": question.get("previous_review_reason")
+                or question.get("review_reason"),
+                "previous_score_reason": question.get("previous_score_reason")
+                or question.get("score_reason"),
+                "previous_recommended_revision": question.get("previous_recommended_revision")
+                or question.get("recommended_revision"),
+                "rewrite_feedback": question.get("rewrite_feedback") or "",
+            }
+        )
+    return _safe_json(feedback_items) if feedback_items else "없음"
+
+
 def _format_questions_for_llm(questions: list[QuestionSet]) -> str:
     payload: list[dict[str, Any]] = []
     for question in questions:
@@ -175,6 +221,20 @@ def _review_guidance(questions: list[QuestionSet]) -> str:
             }
         )
     return _safe_json(weak_items[:10]) if weak_items else "없음"
+
+
+def _quality_gate(selected: list[QuestionSet], requested_count: int) -> tuple[bool, float, int]:
+    if len(selected) < requested_count:
+        return False, 0.0, 0
+    average_score = round(mean(float(question.get("score") or 0) for question in selected), 2)
+    approved_count = len(
+        [question for question in selected if question.get("review_status") == "approved"]
+    )
+    enough_quality = average_score >= STRONG_SELECTABLE_SCORE and approved_count >= min(
+        3,
+        requested_count,
+    )
+    return enough_quality, average_score, approved_count
 
 
 def _task_instruction(state: AgentState, generation_mode: str) -> str:
@@ -239,6 +299,12 @@ def _candidate_to_question(candidate: QuestionCandidate, question_id: str) -> Qu
         "review_risks": [],
         "follow_up_questions": [],
         "follow_up_intents": [],
+        "previous_review_status": "",
+        "previous_review_reason": "",
+        "previous_score_reason": "",
+        "previous_recommended_revision": "",
+        "previous_score": 0.0,
+        "rewrite_feedback": "",
     }
 
 
@@ -268,6 +334,22 @@ def _apply_candidates(
             merged = _candidate_to_question(candidate, str(question.get("id")))
             merged["original_question_id"] = question.get("original_question_id")
             merged["generation_mode"] = mode
+            merged["previous_review_status"] = question.get("previous_review_status") or question.get(
+                "review_status"
+            )
+            merged["previous_review_reason"] = question.get("previous_review_reason") or question.get(
+                "review_reason"
+            )
+            merged["previous_score_reason"] = question.get("previous_score_reason") or question.get(
+                "score_reason"
+            )
+            merged["previous_recommended_revision"] = question.get(
+                "previous_recommended_revision"
+            ) or question.get("recommended_revision")
+            merged["previous_score"] = float(
+                question.get("previous_score") or question.get("score") or 0.0
+            )
+            merged["rewrite_feedback"] = question.get("rewrite_feedback") or ""
             rewritten.append(merged)
         for candidate in replacement_iter:
             new_question = _candidate_to_question(candidate, _next_question_id(rewritten))
@@ -467,6 +549,7 @@ def prepare_context_node(state: AgentState) -> AgentState:
         part
         for part in (
             f"[채용공고]\n{_clip_text(state.get('job_posting'), 7000)}",
+            f"[프롬프트 프로필]\n{_clip_text(state.get('prompt_profile_summary'), 4000)}",
             f"[지원자 문서]\n{candidate_context}",
         )
         if part.strip()
@@ -491,6 +574,7 @@ async def questioner_node(state: AgentState) -> AgentState:
 
     prompt = QUESTIONER_USER_PROMPT.format(
         job_posting=state.get("job_posting") or "",
+        prompt_profile_summary=_prompt_profile_summary(state),
         candidate_context=state.get("candidate_context") or _candidate_context(state),
         company_name=state.get("company_name") or "",
         applicant_name=state.get("applicant_name") or "",
@@ -506,6 +590,7 @@ async def questioner_node(state: AgentState) -> AgentState:
         feedback=state.get("feedback") or "",
         regen_targets=_safe_json(list(_target_ids(state))),
         retry_guidance=_review_guidance(questions),
+        target_question_feedback=_target_question_feedback(state),
         task_instruction=_task_instruction(state, mode),
     )
 
@@ -583,13 +668,13 @@ async def predictor_node(state: AgentState) -> AgentState:
 
     raw_outputs["predictor"] = {"output": output.model_dump(mode="json")}
 
-    by_text = {
-        _question_text_key(answer.question_text): answer
+    by_id = {
+        str(answer.question_id): answer
         for answer in output.answers
-        if isinstance(answer, PredictedAnswer)
+        if isinstance(answer, PredictedAnswer) and str(answer.question_id).strip()
     }
     for question in questions:
-        answer = by_text.get(_question_text_key(question.get("question_text")))
+        answer = by_id.get(str(question.get("id")))
         if not answer:
             continue
         question["predicted_answer"] = answer.predicted_answer.strip()
@@ -638,13 +723,13 @@ async def driller_node(state: AgentState) -> AgentState:
 
     raw_outputs["driller"] = {"output": output.model_dump(mode="json")}
 
-    by_text = {
-        _question_text_key(item.question_text): item
+    by_id = {
+        str(item.question_id): item
         for item in output.follow_ups
-        if item.question_text
+        if str(item.question_id).strip()
     }
     for question in questions:
-        item = by_text.get(_question_text_key(question.get("question_text")))
+        item = by_id.get(str(question.get("id")))
         if not item:
             continue
         question["follow_up_questions"] = [
@@ -683,6 +768,7 @@ async def reviewer_node(state: AgentState) -> AgentState:
 
     prompt = REVIEWER_USER_PROMPT.format(
         job_posting=state.get("job_posting") or "",
+        prompt_profile_summary=_prompt_profile_summary(state),
         candidate_context=state.get("candidate_context") or _candidate_context(state),
         questions=_format_questions_for_llm(targets),
     )
@@ -698,6 +784,7 @@ async def reviewer_node(state: AgentState) -> AgentState:
         output = ReviewerOutput(
             reviews=[
                 ReviewedQuestion(
+                    question_id=str(question.get("id") or ""),
                     question_text=question.get("question_text") or "",
                     review=_fallback_review(question, "리뷰어 호출 실패"),
                 )
@@ -710,6 +797,7 @@ async def reviewer_node(state: AgentState) -> AgentState:
         output = ReviewerOutput(
             reviews=[
                 ReviewedQuestion(
+                    question_id=str(question.get("id") or ""),
                     question_text=question.get("question_text") or "",
                     review=_fallback_review(question, "리뷰어 호출 실패"),
                 )
@@ -719,15 +807,15 @@ async def reviewer_node(state: AgentState) -> AgentState:
         usages = []
 
     raw_outputs["reviewer"] = {"output": output.model_dump(mode="json")}
-    reviews_by_text = {
-        _question_text_key(item.question_text): item.review
+    reviews_by_id = {
+        str(item.question_id): item.review
         for item in output.reviews
-        if isinstance(item, ReviewedQuestion)
+        if isinstance(item, ReviewedQuestion) and str(item.question_id).strip()
     }
 
     updates: dict[str, QuestionSet] = {}
     for question in targets:
-        review = reviews_by_text.get(_question_text_key(question.get("question_text")))
+        review = reviews_by_id.get(str(question.get("id")))
         if review is None:
             review = _fallback_review(question, "리뷰어가 해당 질문 평가를 반환하지 않았습니다.")
         updates[str(question.get("id"))] = _review_to_question(question, review)
@@ -758,14 +846,7 @@ def review_router(state: AgentState) -> str:
     max_retry = int(state.get("max_retry_count") or MAX_RETRY_COUNT)
 
     if len(selected) >= requested:
-        average_score = mean(float(question.get("score") or 0) for question in selected)
-        approved_count = len(
-            [question for question in selected if question.get("review_status") == "approved"]
-        )
-        enough_quality = average_score >= STRONG_SELECTABLE_SCORE and approved_count >= min(
-            3,
-            requested,
-        )
+        enough_quality, _, _ = _quality_gate(selected, requested)
         if enough_quality or retry_count >= max_retry:
             return "end"
         return "retry"
@@ -810,6 +891,7 @@ def build_response(state: AgentState) -> QuestionGenerationResponse:
     errors = list(state.get("errors") or [])
     retry_count = int(state.get("retry_count") or 0)
     enough_selected = len(selected) >= requested
+    enough_quality, average_score, approved_count = _quality_gate(selected, requested)
 
     items: list[InterviewQuestionItem] = []
     for question in selected[:requested]:
@@ -842,7 +924,7 @@ def build_response(state: AgentState) -> QuestionGenerationResponse:
 
     if state.get("status") == "failed" or (errors and not items):
         status = "failed"
-    elif enough_selected:
+    elif enough_selected and enough_quality:
         status = "completed"
     else:
         status = "partial_completed"
@@ -855,16 +937,27 @@ def build_response(state: AgentState) -> QuestionGenerationResponse:
         status=status,
         questions=items,
         analysis_summary={
-            "job_fit": "지원자 문서와 채용공고를 근거로 면접 질문 후보를 평가하고 상위 질문을 선별했습니다.",
-            "risks": errors,
+            "job_fit": "지원자 문서와 채용공고 및 프롬프트 프로필을 근거로 면접 질문 후보를 평가하고 상위 질문을 선별했습니다.",
+            "risks": errors
+            + (
+                []
+                if enough_quality or not items
+                else [
+                    f"품질 게이트 미통과: average_score={average_score}, approved_count={approved_count}"
+                ]
+            ),
         },
         generation_metadata={
             "candidate_count": len(questions),
             "selected_count": len(items),
             "retry_count": retry_count,
+            "average_selected_score": average_score,
+            "quality_gate_passed": enough_quality,
+            "required_approved_count": min(3, requested),
             "approved_selected_count": len(
                 [item for item in items if item.review.status == "approved"]
             ),
+            "approved_count": approved_count,
             "all_selected_approved": all(
                 item.review.status == "approved" for item in items
             )

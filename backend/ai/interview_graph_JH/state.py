@@ -77,10 +77,26 @@ class QuestionSet(TypedDict, total=False):
     regen_targets: list[str]
     retry_issue_types: list[str]
     retry_guidance: str
+    previous_review_status: str
+    previous_review_reason: str
+    previous_score_reason: str
+    previous_recommended_revision: str
+    previous_score: float
+    rewrite_feedback: str
 
 
 class AgentState(TypedDict, total=False):
+    session_id: int
+    candidate_id: int
+    target_job: str
+    difficulty_level: str | None
+
     job_posting: str
+    prompt_profile_key: str | None
+    prompt_profile_target_job: str | None
+    prompt_profile_system_prompt: str | None
+    prompt_profile_output_schema: dict[str, Any] | list[Any] | str | None
+    prompt_profile_summary: str
     company_name: str | None
     applicant_name: str | None
     resume: str
