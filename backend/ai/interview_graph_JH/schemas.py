@@ -63,8 +63,8 @@ class QuestionCandidate(GraphBaseModel):
     evaluation_guide: str = Field(
         ...,
         description=(
-            "면접관용 실전 가이드. 관찰 포인트, 좋은/보통/부족한 답변 기준, "
-            "모호한 답변의 후속 확인 방향을 포함"
+            "면접관용 실전 가이드. 비전문 면접관도 평가 가능하도록 "
+            "관찰 포인트, 상/중/하 기준, 추가 확인 방향을 포함"
         ),
     )
 
@@ -82,11 +82,11 @@ class PredictedAnswer(GraphBaseModel):
     question_text: str
     predicted_answer: str = Field(
         ...,
-        description="지원자 문서만 근거로 추론한 예상 답변. 문서에 없으면 추정이라고 명시",
+        description="지원자 문서만 근거로 만든 예상답변 가설. 정답이 아니며 문서에 없으면 확인 필요라고 명시",
     )
     predicted_answer_basis: str = Field(
         ...,
-        description="예상 답변을 만든 문서 근거 또는 추론 근거",
+        description="예상답변 가설을 만든 문서 근거 또는 추론 근거",
     )
 
 
