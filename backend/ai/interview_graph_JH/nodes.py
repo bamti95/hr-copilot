@@ -284,14 +284,23 @@ def _heuristic_verification_profile(state: AgentState) -> dict[str, Any]:
             must_ask=True,
         )
 
-    if any(keyword in text for keyword in ("직무 전환", "진로 탐색", "전환", "커리어 전환")):
+    explicit_transition_keywords = (
+        "직무 전환",
+        "커리어 전환",
+        "진로 탐색",
+        "영업으로 전환",
+        "마케팅으로 전환",
+        "개발자로 전환",
+        "데이터 직무로 전환",
+    )
+    if any(keyword in text for keyword in explicit_transition_keywords):
         add_point(
             "must_verify_points",
             dimension="career_context",
             signal_type="career_transition_evidence",
             severity="high",
             evidence=_first_matching_snippet(
-                text, ("직무 전환", "진로 탐색", "전환", "커리어 전환")
+                text, explicit_transition_keywords
             ),
             why_it_matters=(
                 "직무 전환은 관심 표현보다 실제 준비 행동과 직무 적합성 근거가 "
@@ -400,7 +409,7 @@ def _heuristic_verification_profile(state: AgentState) -> dict[str, Any]:
             must_ask=True,
         )
 
-    transition_keywords = ("직무 전환", "전환", "진로 탐색", "커리어 전환")
+    transition_keywords = explicit_transition_keywords
     reason_keywords = ("이유", "계기", "관심", "동기", "희망", "느꼈", "판단")
     if any(keyword in text for keyword in transition_keywords):
         signal_type = (
@@ -599,7 +608,11 @@ def _generation_mode(state: AgentState) -> str:
     questions = state.get("questions") or []
     retry_count = int(state.get("retry_count") or 0)
     if questions and retry_count < int(state.get("max_retry_count") or MAX_RETRY_COUNT):
-        selected = select_top_questions(questions, _requested_count(state))
+        selected = select_top_questions(
+            questions,
+            _requested_count(state),
+            state.get("verification_profile"),
+        )
         selectable_count = len([q for q in questions if _is_selectable(q)])
         if len(selected) < _requested_count(state) or selectable_count < _requested_count(state):
             return "retry_candidates"
@@ -710,6 +723,51 @@ def _is_multi_track_question_text(text: str | None) -> bool:
     return any(marker in f" {normalized} " for marker in compound_markers)
 
 
+def _focus_area_key(question: QuestionSet) -> str:
+    return str(question.get("focus_area") or "").strip().lower()
+
+
+def _normalize_overlap_source(text: str | None) -> str:
+    source = (text or "").lower()
+    return re.sub(r"\s+", " ", source)
+
+
+def _metric_tokens_from_text(text: str | None) -> set[str]:
+    source = _normalize_overlap_source(text)
+    metric_pattern = re.compile(
+        r"\d+(?:\.\d+)?\s*(?:%|퍼센트|건|회|배|명|시간|일|주|개월|년|억|만원|원)"
+    )
+    return {match.group(0).strip() for match in metric_pattern.finditer(source)}
+
+
+def _evidence_signature_tokens(question: QuestionSet) -> set[str]:
+    source = " ".join(
+        _list_from_value(question.get("document_evidence"))
+        + [str(question.get("generation_basis") or "")]
+    ).lower()
+    normalized = re.sub(r"[^0-9a-zA-Z가-힣\s]", " ", source)
+    stopwords = {
+        "이력서",
+        "포트폴리오",
+        "자기소개서",
+        "경력기술서",
+        "프로젝트",
+        "경험",
+        "사례",
+        "설명",
+        "질문",
+        "검증",
+        "지원자",
+        "문서",
+        "기반",
+    }
+    return {
+        token
+        for token in normalized.split()
+        if len(token) >= 2 and token not in stopwords
+    }
+
+
 def _question_signature_tokens(question: QuestionSet) -> set[str]:
     source = " ".join(
         [
@@ -723,9 +781,40 @@ def _question_signature_tokens(question: QuestionSet) -> set[str]:
     return tokens
 
 
+def _shares_metric_anchor(candidate: QuestionSet, existing: QuestionSet) -> bool:
+    candidate_metrics = _metric_tokens_from_text(
+        " ".join(
+            [
+                str(candidate.get("question_text") or ""),
+                str(candidate.get("generation_basis") or ""),
+                " ".join(_list_from_value(candidate.get("document_evidence"))),
+            ]
+        )
+    )
+    existing_metrics = _metric_tokens_from_text(
+        " ".join(
+            [
+                str(existing.get("question_text") or ""),
+                str(existing.get("generation_basis") or ""),
+                " ".join(_list_from_value(existing.get("document_evidence"))),
+            ]
+        )
+    )
+    return bool(candidate_metrics and existing_metrics and candidate_metrics & existing_metrics)
+
+
+def _same_verification_axis(candidate: QuestionSet, existing: QuestionSet) -> bool:
+    candidate_focus = _focus_area_key(candidate)
+    existing_focus = _focus_area_key(existing)
+    if candidate_focus and candidate_focus == existing_focus:
+        return True
+    return bool(candidate.get("category") and candidate.get("category") == existing.get("category"))
+
+
 def _is_near_duplicate_question(candidate: QuestionSet, selected: list[QuestionSet]) -> bool:
     candidate_key = _question_text_key(candidate.get("question_text"))
     candidate_tokens = _question_signature_tokens(candidate)
+    candidate_evidence_tokens = _evidence_signature_tokens(candidate)
     if not candidate_tokens:
         return False
 
@@ -737,6 +826,7 @@ def _is_near_duplicate_question(candidate: QuestionSet, selected: list[QuestionS
             return True
 
         existing_tokens = _question_signature_tokens(existing)
+        existing_evidence_tokens = _evidence_signature_tokens(existing)
         if not existing_tokens:
             continue
 
@@ -754,7 +844,55 @@ def _is_near_duplicate_question(candidate: QuestionSet, selected: list[QuestionS
             and jaccard >= 0.35
         ):
             return True
+        if _same_verification_axis(candidate, existing):
+            evidence_union = len(candidate_evidence_tokens | existing_evidence_tokens)
+            if evidence_union:
+                evidence_overlap = len(candidate_evidence_tokens & existing_evidence_tokens) / evidence_union
+                if evidence_overlap >= 0.45:
+                    return True
+            if _shares_metric_anchor(candidate, existing):
+                return True
     return False
+
+
+def _append_unique_note(existing: list[str], note: str) -> list[str]:
+    values = [str(item).strip() for item in existing if str(item).strip()]
+    if note not in values:
+        values.append(note)
+    return values
+
+
+def _apply_overlap_penalties(questions: list[QuestionSet]) -> list[QuestionSet]:
+    """Downgrade paraphrased duplicates before the selector sees them."""
+
+    normalized = deepcopy(questions)
+    ranked = sorted(normalized, key=_selection_key, reverse=True)
+    accepted: list[QuestionSet] = []
+
+    for question in ranked:
+        if not _is_selectable(question):
+            continue
+        if not _is_near_duplicate_question(question, accepted):
+            accepted.append(question)
+            continue
+
+        question["status"] = "needs_revision"
+        question["review_status"] = "needs_revision"
+        question["is_selectable"] = False
+        question["review_issue_types"] = _append_unique_note(
+            _list_from_value(question.get("review_issue_types")),
+            "overlap_with_other_questions",
+        )
+        question["review_risks"] = _append_unique_note(
+            _list_from_value(question.get("review_risks")),
+            "이미 더 강한 질문이 같은 문서 근거와 검증축을 다루고 있어 최종 질문 세트의 다양성을 해칠 수 있음",
+        )
+        question["recommended_revision"] = (
+            question.get("recommended_revision")
+            or "같은 성과나 같은 문서 근거를 반복하지 말고, 다른 근거나 다른 검증축을 찌르는 질문으로 바꿔 주세요."
+        )
+
+    return normalized
 
 
 def _questions_to_evaluate(questions: list[QuestionSet]) -> list[QuestionSet]:
@@ -797,6 +935,9 @@ def _is_candidate_choice_prompt(question: QuestionSet) -> bool:
 
 def _is_easy_escape_prompt(question: QuestionSet) -> bool:
     question_text = str(question.get("question_text") or "")
+    fallback_markers = ("없다면", "없으면", "없을 경우", "없더라도")
+    if any(marker in question_text for marker in fallback_markers):
+        return False
     escape_markers = (
         "있다면",
         "있으시다면",
@@ -974,9 +1115,72 @@ def _selection_key(question: QuestionSet) -> tuple[float, float, float, int, int
     )
 
 
-def select_top_questions(questions: list[QuestionSet], requested_count: int) -> list[QuestionSet]:
-    eligible = [question for question in questions if _is_selectable(question)]
+def _must_ask_focus_areas(verification_profile: dict[str, Any] | None) -> set[str]:
+    if not verification_profile:
+        return set()
+    points = verification_profile.get("must_verify_points") or []
+    focus_areas: set[str] = set()
+    for point in points:
+        if not isinstance(point, dict):
+            continue
+        if point.get("must_ask"):
+            dimension = str(point.get("dimension") or "").strip().lower()
+            if dimension:
+                focus_areas.add(dimension)
+    return focus_areas
+
+
+def _focus_area_cap(question: QuestionSet, requested_count: int) -> int:
+    if requested_count < 5:
+        return requested_count
+
+    focus_area = _focus_area_key(question)
+    if focus_area == "technical_depth":
+        return 2
+    if focus_area in {"performance_ownership", "career_context", "growth_adaptability"}:
+        return 1
+    if focus_area in PEOPLE_FOCUS_AREAS:
+        return 1
+    return 1
+
+
+def _can_add_question(
+    question: QuestionSet,
+    selected: list[QuestionSet],
+    seen_categories: set[str],
+    ranked_count: int,
+    requested_count: int,
+) -> bool:
+    if requested_count >= 5 and _is_people_focus(question) and any(
+        _is_people_focus(item) for item in selected
+    ):
+        return False
+
+    focus_area = _focus_area_key(question)
+    if focus_area:
+        current_focus_count = len(
+            [item for item in selected if _focus_area_key(item) == focus_area]
+        )
+        if current_focus_count >= _focus_area_cap(question, requested_count):
+            return False
+
+    category = str(question.get("category") or "")
+    if category in seen_categories and ranked_count >= requested_count + 2:
+        return False
+
+    return not _is_near_duplicate_question(question, selected)
+
+
+def select_top_questions(
+    questions: list[QuestionSet],
+    requested_count: int,
+    verification_profile: dict[str, Any] | None = None,
+) -> list[QuestionSet]:
+    eligible = _apply_overlap_penalties(
+        [question for question in questions if _is_selectable(question)]
+    )
     ranked = sorted(eligible, key=_selection_key, reverse=True)
+    must_ask_focus_areas = _must_ask_focus_areas(verification_profile)
 
     selected: list[QuestionSet] = []
     seen_categories: set[str] = set()
@@ -992,7 +1196,37 @@ def select_top_questions(questions: list[QuestionSet], requested_count: int) -> 
             and float(question.get("score") or 0) >= STRONG_SELECTABLE_SCORE
         ]
         for question in people_candidates:
-            if _is_near_duplicate_question(question, selected):
+            if not _can_add_question(
+                question,
+                selected,
+                seen_categories,
+                len(ranked),
+                requested_count,
+            ):
+                continue
+            selected.append(question)
+            selected_ids.add(str(question.get("id")))
+            seen_categories.add(str(question.get("category") or ""))
+            break
+
+    # Protect high-priority must-ask dimensions so a duplicated performance
+    # question cannot push out a stronger career-context question such as
+    # return-to-work readiness.
+    for focus_area in ("performance_ownership", "career_context", "growth_adaptability"):
+        if focus_area not in must_ask_focus_areas:
+            continue
+        for question in ranked:
+            if str(question.get("id")) in selected_ids:
+                continue
+            if _focus_area_key(question) != focus_area:
+                continue
+            if not _can_add_question(
+                question,
+                selected,
+                seen_categories,
+                len(ranked),
+                requested_count,
+            ):
                 continue
             selected.append(question)
             selected_ids.add(str(question.get("id")))
@@ -1002,18 +1236,17 @@ def select_top_questions(questions: list[QuestionSet], requested_count: int) -> 
     for question in ranked:
         if str(question.get("id")) in selected_ids:
             continue
-        if requested_count >= 5 and _is_people_focus(question) and any(
-            _is_people_focus(item) for item in selected
+        if not _can_add_question(
+            question,
+            selected,
+            seen_categories,
+            len(ranked),
+            requested_count,
         ):
-            continue
-        category = str(question.get("category") or "")
-        if category in seen_categories and len(ranked) >= requested_count + 2:
-            continue
-        if _is_near_duplicate_question(question, selected):
             continue
         selected.append(question)
         selected_ids.add(str(question.get("id")))
-        seen_categories.add(category)
+        seen_categories.add(str(question.get("category") or ""))
         if len(selected) >= requested_count:
             break
 
@@ -1047,10 +1280,18 @@ def _response_selection(state: AgentState, requested_count: int) -> list[Questio
             if str(question.get("id")) in target_ids
             or str(question.get("original_question_id")) in target_ids
         ]
-        selected_targets = select_top_questions(targets, max(1, len(target_ids)))
+        selected_targets = select_top_questions(
+            targets,
+            max(1, len(target_ids)),
+            state.get("verification_profile"),
+        )
         if selected_targets:
             return selected_targets
-    return state.get("selected_questions") or select_top_questions(questions, requested_count)
+    return state.get("selected_questions") or select_top_questions(
+        questions,
+        requested_count,
+        state.get("verification_profile"),
+    )
 
 
 def _merge_question_lists(
@@ -1350,7 +1591,11 @@ async def reviewer_node(state: AgentState) -> AgentState:
     requested = _requested_count(state)
 
     if not targets:
-        selected = select_top_questions(questions, requested)
+        selected = select_top_questions(
+            questions,
+            requested,
+            state.get("verification_profile"),
+        )
         return {
             **state,
             "selected_questions": selected,
@@ -1415,8 +1660,12 @@ async def reviewer_node(state: AgentState) -> AgentState:
             review = _fallback_review(question, "리뷰어가 해당 질문 평가를 반환하지 않았습니다.")
         updates[str(question.get("id"))] = _review_to_question(question, review)
 
-    merged = _merge_question_lists(questions, updates)
-    selected = select_top_questions(merged, requested)
+    merged = _apply_overlap_penalties(_merge_question_lists(questions, updates))
+    selected = select_top_questions(
+        merged,
+        requested,
+        state.get("verification_profile"),
+    )
     return {
         **state,
         "questions": merged,
@@ -1436,6 +1685,7 @@ def review_router(state: AgentState) -> str:
     selected = state.get("selected_questions") or select_top_questions(
         state.get("questions") or [],
         requested,
+        state.get("verification_profile"),
     )
     retry_count = int(state.get("retry_count") or 0)
     max_retry = int(state.get("max_retry_count") or MAX_RETRY_COUNT)

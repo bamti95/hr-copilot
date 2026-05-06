@@ -22,6 +22,8 @@ VERIFICATION_EXTRACTOR_SYSTEM_PROMPT = """
 3. 성과가 크면 반드시 측정 기준, 본인 직접 기여, 팀/회사 기여와의 구분을 확인하게 하세요.
 4. 직무전환이나 공백은 부정적으로 단정하지 말고, 전환의 실행 근거와 준비 수준을 확인하게 하세요.
 5. must_ask는 정말 최종 질문에 반영할 가치가 큰 포인트에만 true로 표시하세요.
+6. 같은 근거를 두 개의 signal_type으로 중복 출력하지 마세요.
+7. 같은 도메인으로의 복귀나 업스킬링은 직무전환보다 복귀 준비도 또는 성장 적응력으로 우선 해석하세요.
 """.strip()
 
 
@@ -138,8 +140,9 @@ QUESTIONER_USER_PROMPT = """
 - 성과 수치가 큰 경우 측정 기준, 본인 직접 기여, 팀/회사 기여와의 구분을 묻는 질문을 우선하세요.
 - 문서에 명시되지 않았다면 `혼자`, `단독`, `전부`, `끝까지 책임졌다` 같은 단정 표현을 쓰지 마세요.
 - question_id는 작성하지 마세요. 시스템이 부여합니다.
-- question_text는 반드시 한 개의 질문만 담으세요.
-- `그리고`, `또`, `혹은`, `/` 등을 사용해 두 질문을 합치지 마세요.
+- question_text는 한 개의 검증축만 담으세요.
+- 같은 검증축 안에서 단계적으로 묻는 흐름은 허용되지만, 서로 다른 주제를 한 질문에 섞지 마세요.
+- 이미 다른 후보 질문이 같은 성과·같은 문서 근거를 검증하고 있다면, 그 문장을 바꿔 다시 쓰지 말고 다른 근거나 다른 검증축으로 질문을 만드세요.
 - 면접관이 그대로 읽을 수 있게 질문은 짧고 선명하게 작성하세요.
 - evaluation_guide는 반드시 `관찰 포인트 / 상 / 중 / 하 / 추가 확인` 형식을 따르세요.
 - evaluation_guide는 해당 직무 전문지식이 없는 면접관도 평가 가능한 언어로 작성하세요.
@@ -154,6 +157,8 @@ Additional direction:
   2. unrelated transition + reason written -> ask whether the stated reason became real execution and evidence.
   3. related transition -> ask how previous experience transfers and where the candidate still had to retool.
 - For learning-heavy candidates, anchor on a concrete resume/portfolio line if present. If no concrete artifact exists, ask how they validated that learning moved beyond passive study.
+- Before finalizing the candidate set, check for duplicate evidence anchors. One metric/claim should usually produce only one primary question unless the second one verifies a genuinely different competency.
+- Keep the candidate pool spread across focus areas so the final five can cover technical depth, performance ownership, career context, and one people-oriented question without overlap.
 """.strip()
 
 
@@ -281,6 +286,8 @@ REVIEWER_USER_PROMPT = """
 - 협업/인성/조직적응 질문은 최종 5개 중 1개 정도만 필요하므로, 해당 축이 여러 개 있으면 가장 날카로운 1개만 높게 평가하세요.
 - must_ask 검증포인트를 정확히 반영한 질문은 document_grounding, competency_signal, risk_awareness를 높게 평가하세요.
 - 문서에 없는 `혼자`, `단독`, `전부`, `끝까지 책임졌다` 같은 단정 표현이 들어가면 unsupported_assumption으로 엄격하게 보세요.
+- 같은 문서 근거, 같은 정량 성과, 같은 검증의도를 반복하는 질문이 둘 이상 있으면 가장 강한 1개만 approved 가능하며 나머지는 overlap_with_other_questions로 낮추세요.
+- overall_score 5는 드물게 사용하세요. 문서 근거, 검증력, 평가가이드, 면접 사용성, 세트 내 비중복성까지 모두 뛰어날 때만 5를 주세요.
 - question_id는 입력 질문의 id를 그대로 복사합니다.
 - question_text는 입력 질문과 동일하게 작성합니다.
 - approved도 이유와 selection_reason을 반드시 작성합니다.
