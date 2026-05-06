@@ -1,5 +1,45 @@
 """Prompt templates for the JH interview-question graph."""
 
+VERIFICATION_EXTRACTOR_SYSTEM_PROMPT = """
+당신은 채용 면접관의 관점에서 지원자 문서의 검증 포인트를 찾는 평가 설계자입니다.
+
+목표:
+- 문서에서 반드시 확인해야 할 기술, 성과, 경력 맥락, 협업, 조직 적응, 성장성 포인트를 구조화합니다.
+- 리스크를 낙인찍지 말고, 면접에서 확인 가능한 업무 행동과 근거 중심으로 바꿉니다.
+- 최종 질문 5개 중 협업/인성/조직적응 질문은 1개 정도만 들어가도록 우선순위를 설계합니다.
+
+검증 차원:
+- technical_depth: 직무 핵심 기술 또는 실무 깊이
+- performance_ownership: 성과 수치, 본인 기여도, 역할 범위
+- career_context: 공백기, 직무전환, 정규 경력 부재, 복귀 준비
+- collaboration: 협업, 갈등 조율, 이해관계자 커뮤니케이션
+- culture_fit: 피드백 수용성, 책임감, 조직 적응, 업무 압박 대응
+- growth_adaptability: 학습력, 회복탄력성, 빠른 적응
+
+중요한 안전 규칙:
+1. 건강, 심리치료, 가정사 등 민감한 개인 사정을 직접 캐묻는 질문으로 유도하지 마세요.
+2. 대신 업무 복귀 준비도, 협업 안정성, 실행 근거, 산출물, 피드백 이후 행동 변화처럼 확인 가능한 행동으로 바꾸세요.
+3. 성과가 크면 반드시 측정 기준, 본인 직접 기여, 팀/회사 기여와의 구분을 확인하게 하세요.
+4. 직무전환이나 공백은 부정적으로 단정하지 말고, 전환의 실행 근거와 준비 수준을 확인하게 하세요.
+5. must_ask는 정말 최종 질문에 반영할 가치가 큰 포인트에만 true로 표시하세요.
+""".strip()
+
+
+VERIFICATION_EXTRACTOR_USER_PROMPT = """
+[채용 직무]
+{job_posting}
+
+[지원자 원문]
+{candidate_context}
+
+[사전 탐지 신호]
+{heuristic_signals}
+
+면접에서 반드시 확인해야 할 검증 포인트를 추출하세요.
+기술 검증에만 치우치지 말고, 성과 기여도와 경력 맥락을 충분히 보되 협업/인성/조직적응 축은 최종 5개 중 1개 정도로만 들어가게 우선순위를 잡으세요.
+사전 탐지 신호를 그대로 복사하지 말고, 실제 문서 근거를 다시 읽어 더 날카롭게 다듬으세요.
+""".strip()
+
 QUESTIONER_SYSTEM_PROMPT = """
 당신은 채용 면접 질문을 설계하는 시니어 면접관입니다.
 
@@ -49,6 +89,9 @@ QUESTIONER_USER_PROMPT = """
 [지원자 문서]
 {candidate_context}
 
+[면접 검증포인트]
+{verification_profile}
+
 [회사명]
 {company_name}
 
@@ -80,6 +123,7 @@ QUESTIONER_USER_PROMPT = """
 {task_instruction}
 
 각 질문은 반드시 다음을 포함하세요.
+- focus_area
 - category
 - generation_basis
 - document_evidence
@@ -87,12 +131,29 @@ QUESTIONER_USER_PROMPT = """
 - evaluation_guide
 
 중요:
+- focus_area는 technical_depth, performance_ownership, career_context, collaboration, culture_fit, growth_adaptability 중 하나로 작성하세요.
+- 최종 5개 중 협업/인성/조직적응 축은 1개 정도만 필요하므로, 후보 질문에서도 해당 축을 과도하게 만들지 마세요.
+- must_ask 검증포인트가 있으면 최소 1개 이상 질문 후보로 반영하세요.
+- 공백기, 회복, 직무전환은 민감한 사정을 직접 캐묻지 말고 실행 근거, 산출물, 업무 행동, 피드백 이후 변화로 검증하세요.
+- 성과 수치가 큰 경우 측정 기준, 본인 직접 기여, 팀/회사 기여와의 구분을 묻는 질문을 우선하세요.
+- 문서에 명시되지 않았다면 `혼자`, `단독`, `전부`, `끝까지 책임졌다` 같은 단정 표현을 쓰지 마세요.
 - question_id는 작성하지 마세요. 시스템이 부여합니다.
 - question_text는 반드시 한 개의 질문만 담으세요.
 - `그리고`, `또`, `혹은`, `/` 등을 사용해 두 질문을 합치지 마세요.
 - 면접관이 그대로 읽을 수 있게 질문은 짧고 선명하게 작성하세요.
 - evaluation_guide는 반드시 `관찰 포인트 / 상 / 중 / 하 / 추가 확인` 형식을 따르세요.
 - evaluation_guide는 해당 직무 전문지식이 없는 면접관도 평가 가능한 언어로 작성하세요.
+Additional direction:
+- A single question may contain a guided sequence if every clause verifies the same theme.
+- Good pattern: claim -> evidence -> change/result. Bad pattern: unrelated topic A + unrelated topic B.
+- Avoid short-answer prompts that can end with "없습니다". When evidence may not exist, ask for both (1) what was actually done and (2) if no artifact exists, how the candidate still prepared or proved readiness.
+- Do not make the user choose the topic for you when the document already gives a clear anchor. Prefer "FastAPI와 Docker를 함께 사용한 사례에서..." over "가장 자신 있는 두 가지를 골라...".
+- For career gaps, ask in a way that still yields an evaluable answer whether or not a portfolio artifact exists.
+- For career transitions, branch by case:
+  1. unrelated transition + no reason written -> ask transition reason, preparation effort, and proof.
+  2. unrelated transition + reason written -> ask whether the stated reason became real execution and evidence.
+  3. related transition -> ask how previous experience transfers and where the candidate still had to retool.
+- For learning-heavy candidates, anchor on a concrete resume/portfolio line if present. If no concrete artifact exists, ask how they validated that learning moved beyond passive study.
 """.strip()
 
 
@@ -207,12 +268,19 @@ REVIEWER_USER_PROMPT = """
 [지원자 문서]
 {candidate_context}
 
+[면접 검증포인트]
+{verification_profile}
+
 [질문 후보]
 {questions}
 
 각 후보를 평가하세요.
 
 출력 원칙:
+- 기술 질문만 높게 평가하지 말고 문서 근거, 성과 기여도 검증, 경력 맥락 검증, 면접 사용성을 함께 보세요.
+- 협업/인성/조직적응 질문은 최종 5개 중 1개 정도만 필요하므로, 해당 축이 여러 개 있으면 가장 날카로운 1개만 높게 평가하세요.
+- must_ask 검증포인트를 정확히 반영한 질문은 document_grounding, competency_signal, risk_awareness를 높게 평가하세요.
+- 문서에 없는 `혼자`, `단독`, `전부`, `끝까지 책임졌다` 같은 단정 표현이 들어가면 unsupported_assumption으로 엄격하게 보세요.
 - question_id는 입력 질문의 id를 그대로 복사합니다.
 - question_text는 입력 질문과 동일하게 작성합니다.
 - approved도 이유와 selection_reason을 반드시 작성합니다.

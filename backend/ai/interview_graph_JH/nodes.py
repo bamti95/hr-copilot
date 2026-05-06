@@ -26,6 +26,8 @@ from .prompts import (
     QUESTIONER_USER_PROMPT,
     REVIEWER_SYSTEM_PROMPT,
     REVIEWER_USER_PROMPT,
+    VERIFICATION_EXTRACTOR_SYSTEM_PROMPT,
+    VERIFICATION_EXTRACTOR_USER_PROMPT,
 )
 from .schemas import (
     DrillerOutput,
@@ -41,19 +43,21 @@ from .schemas import (
     ReviewedQuestion,
     ReviewerOutput,
     EvaluationGuideRubric,
+    VerificationProfileOutput,
 )
 from .state import AgentState, QuestionSet
 
 
 DEFAULT_REQUESTED_COUNT = 5
-INITIAL_CANDIDATE_COUNT = 10
-RETRY_CANDIDATE_COUNT = 5
+INITIAL_CANDIDATE_COUNT = 14
+RETRY_CANDIDATE_COUNT = 7
 MAX_RETRY_COUNT = 2
 MIN_SELECTABLE_SCORE = 3.0
 STRONG_SELECTABLE_SCORE = 3.6
 QUESTION_TEXT_LIMIT = 140
 PREDICTED_ANSWER_LIMIT = 260
 PREDICTED_BASIS_LIMIT = 180
+PEOPLE_FOCUS_AREAS = {"collaboration", "culture_fit"}
 
 
 def _safe_json(value: Any) -> str:
@@ -176,6 +180,311 @@ def _prompt_profile_summary(state: AgentState) -> str:
     return _safe_json(summary)
 
 
+def _verification_profile_for_prompt(state: AgentState) -> str:
+    profile = state.get("verification_profile") or {}
+    return _safe_json(profile) if profile else "{}"
+
+
+def _context_snippet(text: str, keyword: str, *, window: int = 170) -> str:
+    index = text.find(keyword)
+    if index < 0:
+        return ""
+    start = max(0, index - 35)
+    end = min(len(text), index + window)
+    return _clip_text(text[start:end], 220)
+
+
+def _first_matching_snippet(text: str, keywords: tuple[str, ...]) -> str:
+    for keyword in keywords:
+        snippet = _context_snippet(text, keyword)
+        if snippet:
+            return snippet
+    return ""
+
+
+def _candidate_text_for_heuristics(state: AgentState) -> str:
+    return str(state.get("candidate_context") or _candidate_context(state) or "")
+
+
+def _heuristic_verification_profile(state: AgentState) -> dict[str, Any]:
+    """Seed obvious verification points so the extractor never starts from zero.
+
+    These heuristics are intentionally conservative. They do not replace the
+    LLM judgement; they highlight document patterns that real interviewers
+    almost always want to verify.
+    """
+
+    text = _candidate_text_for_heuristics(state)
+    seed: dict[str, Any] = {
+        "must_verify_points": [],
+        "strength_points": [],
+        "ambiguity_points": [],
+        "recommended_question_mix": {
+            "technical_depth": 2,
+            "performance_ownership": 1,
+            "career_context": 1,
+            "collaboration_or_culture_fit": 1,
+            "growth_adaptability": 1,
+        },
+    }
+
+    def add_point(
+        bucket: str,
+        *,
+        dimension: str,
+        signal_type: str,
+        severity: str,
+        evidence: str,
+        why_it_matters: str,
+        question_angle: str,
+        avoid: str,
+        must_ask: bool,
+    ) -> None:
+        if not evidence:
+            return
+        existing = seed[bucket]
+        if any(
+            item["dimension"] == dimension
+            and item["signal_type"] == signal_type
+            and item["evidence"] == evidence
+            for item in existing
+        ):
+            return
+        existing.append(
+            {
+                "dimension": dimension,
+                "signal_type": signal_type,
+                "severity": severity,
+                "evidence": evidence,
+                "why_it_matters": why_it_matters,
+                "question_angle": question_angle,
+                "avoid": avoid,
+                "must_ask": must_ask,
+            }
+        )
+
+    if any(keyword in text for keyword in ("임금체불", "공백", "퇴사 이후", "복귀", "재취업")):
+        add_point(
+            "must_verify_points",
+            dimension="career_context",
+            signal_type="return_to_work_readiness",
+            severity="high",
+            evidence=_first_matching_snippet(
+                text, ("임금체불", "공백", "퇴사 이후", "복귀", "재취업")
+            ),
+            why_it_matters=(
+                "공백 사유 자체보다 복귀 준비도와 현재 업무 안정성을 확인해야 "
+                "실무 적응 가능성을 판단할 수 있습니다."
+            ),
+            question_angle=(
+                "민감한 개인 사정이 아니라 복귀를 위해 만든 산출물, 학습 기준, "
+                "실무 감각 유지 방식으로 검증"
+            ),
+            avoid="치료 내용, 사생활, 개인적 트라우마를 직접 묻는 질문",
+            must_ask=True,
+        )
+
+    if any(keyword in text for keyword in ("직무 전환", "진로 탐색", "전환", "커리어 전환")):
+        add_point(
+            "must_verify_points",
+            dimension="career_context",
+            signal_type="career_transition_evidence",
+            severity="high",
+            evidence=_first_matching_snippet(
+                text, ("직무 전환", "진로 탐색", "전환", "커리어 전환")
+            ),
+            why_it_matters=(
+                "직무 전환은 관심 표현보다 실제 준비 행동과 직무 적합성 근거가 "
+                "있는지 확인해야 합니다."
+            ),
+            question_angle=(
+                "전환 동기 설명보다 실행 근거, 보완한 약점, 실전 경험으로 검증"
+            ),
+            avoid="막연한 흥미나 포부만 반복하게 하는 질문",
+            must_ask=True,
+        )
+
+    metric_match = re.search(
+        r"(\d+\s*(억|만|천만|%|배|건|곳|명))",
+        text,
+    )
+    if metric_match and any(
+        keyword in text for keyword in ("매출", "수주", "유치", "개선", "감소", "증가", "단축")
+    ):
+        add_point(
+            "must_verify_points",
+            dimension="performance_ownership",
+            signal_type="metric_ownership",
+            severity="high",
+            evidence=_context_snippet(text, metric_match.group(1)),
+            why_it_matters=(
+                "큰 성과 수치는 매력적이지만, 본인 직접 기여와 측정 기준을 "
+                "구분해서 확인해야 과장 위험을 줄일 수 있습니다."
+            ),
+            question_angle=(
+                "대표 성과 1건을 골라 본인 액션, 팀 기여, 측정 기준을 분리해서 설명하게 함"
+            ),
+            avoid="성과 수치를 사실로 단정하거나 전부 본인 공로로 전제하는 질문",
+            must_ask=True,
+        )
+
+    if any(keyword in text for keyword in ("부트캠프", "Kaggle", "온라인 강의", "학습", "프로젝트")):
+        add_point(
+            "ambiguity_points",
+            dimension="growth_adaptability",
+            signal_type="learning_to_execution",
+            severity="medium",
+            evidence=_first_matching_snippet(
+                text, ("부트캠프", "Kaggle", "온라인 강의", "학습", "프로젝트")
+            ),
+            why_it_matters=(
+                "학습 경험이 실제 운영 제약, 재현성, 협업 맥락으로 이어지는지 "
+                "확인해야 실무 적응력을 판단할 수 있습니다."
+            ),
+            question_angle=(
+                "학습 내용 소개보다 실전 적용, 실패 수정, 운영 제약 대응 경험으로 검증"
+            ),
+            avoid="수강 여부나 수료 사실만 확인하는 질문",
+            must_ask=False,
+        )
+
+    if any(keyword in text for keyword in ("협업", "팀", "조율", "갈등", "피드백", "소통")):
+        add_point(
+            "ambiguity_points",
+            dimension="collaboration",
+            signal_type="collaboration_depth",
+            severity="medium",
+            evidence=_first_matching_snippet(
+                text, ("협업", "팀", "조율", "갈등", "피드백", "소통")
+            ),
+            why_it_matters=(
+                "최종 질문 5개 중 1개 정도는 실제 협업 방식과 피드백 수용성을 "
+                "확인해야 조직 적응 가능성을 볼 수 있습니다."
+            ),
+            question_angle=(
+                "갈등 유무가 아니라 의견 충돌 시 조정 기준과 행동 변화로 검증"
+            ),
+            avoid="성격 평가처럼 느껴지는 추상적 인성 질문",
+            must_ask=False,
+        )
+
+    artifact_keywords = (
+        "포트폴리오",
+        "프로젝트",
+        "깃허브",
+        "github",
+        "배포",
+        "커밋",
+        "산출물",
+        "데모",
+        "kaggle",
+    )
+    if any(keyword in text for keyword in ("공백", "복귀", "퇴사 이후", "재취업")) and not any(
+        keyword in text.lower() for keyword in artifact_keywords
+    ):
+        add_point(
+            "ambiguity_points",
+            dimension="career_context",
+            signal_type="gap_without_artifact",
+            severity="high",
+            evidence=_first_matching_snippet(text, ("공백", "복귀", "퇴사 이후", "재취업")),
+            why_it_matters=(
+                "공백기 이후의 준비를 증명할 산출물이 약하면, 시간을 어떻게 보냈는지와 "
+                "왜 산출물 없이도 준비가 되었다고 볼 수 있는지까지 같이 확인해야 합니다."
+            ),
+            question_angle=(
+                "산출물이 있으면 그것으로 검증하고, 없으면 공백기 동안의 루틴, 학습 방식, "
+                "실무 감각 유지 방법, 복귀 준비 판단 기준을 함께 묻는 질문으로 설계"
+            ),
+            avoid="산출물이 없다는 이유만으로 무의미한 시간을 보냈다고 단정하는 질문",
+            must_ask=True,
+        )
+
+    transition_keywords = ("직무 전환", "전환", "진로 탐색", "커리어 전환")
+    reason_keywords = ("이유", "계기", "관심", "동기", "희망", "느꼈", "판단")
+    if any(keyword in text for keyword in transition_keywords):
+        signal_type = (
+            "transition_reason_present"
+            if any(keyword in text for keyword in reason_keywords)
+            else "transition_reason_missing"
+        )
+        question_angle = (
+            "문서에 적힌 전환 이유가 실제 행동과 준비로 이어졌는지, 약점을 어떻게 보완했는지 확인"
+            if signal_type == "transition_reason_present"
+            else "왜 전환하려는지, 무엇을 준비했는지, 그 준비를 어떤 증거로 보여줄 수 있는지 함께 확인"
+        )
+        add_point(
+            "must_verify_points",
+            dimension="career_context",
+            signal_type=signal_type,
+            severity="high",
+            evidence=_first_matching_snippet(text, transition_keywords),
+            why_it_matters=(
+                "직무 전환은 이유의 설득력만이 아니라 실행 근거와 준비 수준이 함께 확인되어야 "
+                "실제 전환 가능성을 판단할 수 있습니다."
+            ),
+            question_angle=question_angle,
+            avoid="막연한 포부만 말하게 두거나 이유만 확인하고 끝내는 질문",
+            must_ask=True,
+        )
+
+    learning_keywords = ("부트캠프", "kaggle", "강의", "자율학습", "온라인", "스터디")
+    experience_keywords = ("인턴", "실무", "운영", "배포", "근무", "회사", "고객사")
+    if any(keyword in text.lower() for keyword in learning_keywords) and not any(
+        keyword in text for keyword in experience_keywords
+    ):
+        add_point(
+            "must_verify_points",
+            dimension="growth_adaptability",
+            signal_type="learning_without_strong_artifact",
+            severity="high",
+            evidence=_first_matching_snippet(
+                text, ("부트캠프", "Kaggle", "강의", "자율학습", "온라인", "스터디")
+            ),
+            why_it_matters=(
+                "학습 이력이 많은 후보자는 '배웠다'와 '실제로 쓸 수 있다' 사이의 간극을 "
+                "검증해야 합니다. 특히 포트폴리오나 산출물이 약하면 검증 질문이 더 구체적이어야 합니다."
+            ),
+            question_angle=(
+                "포트폴리오/프로젝트가 있으면 그 근거를 직접 찌르고, 없으면 무엇을 만들거나 검증했는지, "
+                "없는데도 실무 가능하다고 보는 이유가 무엇인지 함께 묻는 질문으로 설계"
+            ),
+            avoid="단순 수강 여부, 공부량 자랑만 확인하는 질문",
+            must_ask=True,
+        )
+
+    return seed
+
+
+def _merge_verification_profiles(
+    llm_profile: dict[str, Any], heuristic_profile: dict[str, Any]
+) -> dict[str, Any]:
+    merged = deepcopy(llm_profile) if llm_profile else {}
+
+    for bucket in ("must_verify_points", "strength_points", "ambiguity_points"):
+        combined: list[dict[str, Any]] = list(merged.get(bucket) or [])
+        seen = {
+            (
+                item.get("dimension"),
+                item.get("signal_type"),
+                item.get("evidence"),
+            )
+            for item in combined
+        }
+        for item in heuristic_profile.get(bucket, []):
+            key = (item.get("dimension"), item.get("signal_type"), item.get("evidence"))
+            if key in seen:
+                continue
+            combined.append(item)
+            seen.add(key)
+        merged[bucket] = combined
+
+    if not merged.get("recommended_question_mix"):
+        merged["recommended_question_mix"] = heuristic_profile.get("recommended_question_mix", {})
+
+    return merged
+
+
 def _target_question_feedback(state: AgentState) -> str:
     target_ids = _target_ids(state)
     if not target_ids:
@@ -213,6 +522,7 @@ def _format_questions_for_llm(questions: list[QuestionSet]) -> str:
         payload.append(
             {
                 "id": question.get("id"),
+                "focus_area": question.get("focus_area"),
                 "category": question.get("category"),
                 "generation_basis": question.get("generation_basis"),
                 "document_evidence": question.get("document_evidence"),
@@ -303,6 +613,7 @@ def _target_ids(state: AgentState) -> set[str]:
 def _candidate_to_question(candidate: QuestionCandidate, question_id: str) -> QuestionSet:
     return {
         "id": question_id,
+        "focus_area": candidate.focus_area.strip() or "technical_depth",
         "category": candidate.category.strip() or "직무역량",
         "generation_basis": candidate.generation_basis.strip(),
         "document_evidence": candidate.document_evidence.strip(),
@@ -389,11 +700,13 @@ def _question_text_key(text: str | None) -> str:
     return re.sub(r"\s+", " ", (text or "")).strip().lower()
 
 
-def _is_compound_question_text(text: str | None) -> bool:
+def _is_multi_track_question_text(text: str | None) -> bool:
     normalized = _question_text_key(text)
     if normalized.count("?") > 1:
         return True
-    compound_markers = [" 그리고 ", " 또한 ", " 혹은 ", " 또는 ", " / "]
+    # Allow one question to walk through a single verification flow such as
+    # "판단 -> 행동 변화 -> 결과". Flag only clear alternatives or unrelated splits.
+    compound_markers = [" 혹은 ", " 또는 ", " / "]
     return any(marker in f" {normalized} " for marker in compound_markers)
 
 
@@ -456,6 +769,43 @@ def _hard_issue(issue_types: list[str]) -> bool:
     return bool(set(issue_types) & HARD_REVIEW_ISSUES)
 
 
+def _has_unsupported_ownership_phrase(question: QuestionSet) -> bool:
+    question_text = str(question.get("question_text") or "")
+    if not question_text:
+        return False
+
+    risky_phrases = ("혼자", "단독", "전부", "끝까지 책임")
+    if not any(phrase in question_text for phrase in risky_phrases):
+        return False
+
+    evidence_text = " ".join(_list_from_value(question.get("document_evidence")))
+    supported_markers = ("혼자", "단독", "1인", "전담", "전 과정", "end-to-end", "엔드투엔드")
+    return not any(marker in evidence_text for marker in supported_markers)
+
+
+def _is_candidate_choice_prompt(question: QuestionSet) -> bool:
+    question_text = str(question.get("question_text") or "")
+    candidate_choice_markers = (
+        "가장 자신 있는",
+        "하나를 골라",
+        "두 가지를 골라",
+        "편한 사례를 골라",
+        "원하는 사례를 골라",
+    )
+    return any(marker in question_text for marker in candidate_choice_markers)
+
+
+def _is_easy_escape_prompt(question: QuestionSet) -> bool:
+    question_text = str(question.get("question_text") or "")
+    escape_markers = (
+        "있다면",
+        "있으시다면",
+        "있다면 말씀해 주세요",
+        "있다면 설명해 주세요",
+    )
+    return any(marker in question_text for marker in escape_markers)
+
+
 def _normalize_status(review: ReviewResult) -> str:
     issue_types = _list_from_value(review.issue_types)
     score = float(review.overall_score or 0)
@@ -501,6 +851,51 @@ def _review_to_question(question: QuestionSet, review: ReviewResult) -> Question
             "review_risks": _list_from_value(review.risks),
         }
     )
+
+    if _has_unsupported_ownership_phrase(updated):
+        issue_types = list(updated.get("review_issue_types") or [])
+        if "unsupported_assumption" not in issue_types:
+            issue_types.append("unsupported_assumption")
+        risks = list(updated.get("review_risks") or [])
+        risks.append("문서 근거 없이 단독 수행/전면 책임을 전제한 표현이 포함됨")
+        updated.update(
+            {
+                "status": "needs_revision",
+                "review_status": "needs_revision",
+                "review_issue_types": issue_types,
+                "review_risks": risks,
+                "is_selectable": False,
+            }
+        )
+
+    if _is_candidate_choice_prompt(updated):
+        issue_types = list(updated.get("review_issue_types") or [])
+        if "no_document_anchor" not in issue_types:
+            issue_types.append("no_document_anchor")
+        risks = list(updated.get("review_risks") or [])
+        risks.append("문서의 구체 근거를 찌르지 않고 지원자에게 검증 대상을 고르게 함")
+        updated.update(
+            {
+                "status": "needs_revision",
+                "review_status": "needs_revision",
+                "review_issue_types": issue_types,
+                "review_risks": risks,
+                "is_selectable": False,
+            }
+        )
+
+    if _is_easy_escape_prompt(updated):
+        risks = list(updated.get("review_risks") or [])
+        risks.append("'없습니다' 한마디로 답변이 끝날 가능성이 있는 질문 구조")
+        updated.update(
+            {
+                "review_risks": risks,
+                "is_selectable": False,
+            }
+        )
+        if updated.get("review_status") == "approved":
+            updated["status"] = "needs_revision"
+            updated["review_status"] = "needs_revision"
     return updated
 
 
@@ -541,10 +936,30 @@ def _is_selectable(question: QuestionSet) -> bool:
     return float(question.get("score") or 0) >= MIN_SELECTABLE_SCORE
 
 
+def _is_people_focus(question: QuestionSet) -> bool:
+    focus_area = str(question.get("focus_area") or "").strip().lower()
+    if focus_area in PEOPLE_FOCUS_AREAS:
+        return True
+    category = str(question.get("category") or "")
+    people_keywords = (
+        "협업",
+        "갈등",
+        "커뮤니케이션",
+        "소통",
+        "피드백",
+        "조직",
+        "적응",
+        "인성",
+        "문화",
+        "책임감",
+    )
+    return any(keyword in category for keyword in people_keywords)
+
+
 def _selection_key(question: QuestionSet) -> tuple[float, float, float, int, int]:
     status_bonus = 0.35 if question.get("review_status") == "approved" else 0.0
     evidence_bonus = 0.15 if question.get("document_evidence") else 0.0
-    compound_penalty = 0.5 if _is_compound_question_text(question.get("question_text")) else 0.0
+    compound_penalty = 0.5 if _is_multi_track_question_text(question.get("question_text")) else 0.0
     score = float(question.get("score") or 0)
     quality = float(question.get("question_quality_average") or 0)
     guide = float(question.get("evaluation_guide_average") or 0)
@@ -565,26 +980,51 @@ def select_top_questions(questions: list[QuestionSet], requested_count: int) -> 
 
     selected: list[QuestionSet] = []
     seen_categories: set[str] = set()
+    selected_ids: set[str] = set()
+
+    # Keep room for one collaboration/culture-fit question, but only if that
+    # question is actually strong enough to survive in a real interview set.
+    if requested_count >= 5:
+        people_candidates = [
+            question
+            for question in ranked
+            if _is_people_focus(question)
+            and float(question.get("score") or 0) >= STRONG_SELECTABLE_SCORE
+        ]
+        for question in people_candidates:
+            if _is_near_duplicate_question(question, selected):
+                continue
+            selected.append(question)
+            selected_ids.add(str(question.get("id")))
+            seen_categories.add(str(question.get("category") or ""))
+            break
 
     for question in ranked:
+        if str(question.get("id")) in selected_ids:
+            continue
+        if requested_count >= 5 and _is_people_focus(question) and any(
+            _is_people_focus(item) for item in selected
+        ):
+            continue
         category = str(question.get("category") or "")
         if category in seen_categories and len(ranked) >= requested_count + 2:
             continue
         if _is_near_duplicate_question(question, selected):
             continue
         selected.append(question)
+        selected_ids.add(str(question.get("id")))
         seen_categories.add(category)
         if len(selected) >= requested_count:
             break
 
     if len(selected) < requested_count:
-        selected_ids = {question.get("id") for question in selected}
         for question in ranked:
-            if question.get("id") in selected_ids:
+            if str(question.get("id")) in selected_ids:
                 continue
             if _is_near_duplicate_question(question, selected) and len(ranked) > requested_count:
                 continue
             selected.append(question)
+            selected_ids.add(str(question.get("id")))
             if len(selected) >= requested_count:
                 break
 
@@ -647,6 +1087,70 @@ def prepare_context_node(state: AgentState) -> AgentState:
     }
 
 
+async def verification_point_extractor_node(state: AgentState) -> AgentState:
+    if state.get("verification_profile"):
+        return state
+
+    errors = list(state.get("errors") or [])
+    raw_outputs = dict(state.get("raw_outputs") or {})
+    heuristic_profile = _heuristic_verification_profile(state)
+    prompt = VERIFICATION_EXTRACTOR_USER_PROMPT.format(
+        job_posting=state.get("job_posting") or "",
+        candidate_context=state.get("candidate_context") or _candidate_context(state),
+        heuristic_signals=_safe_json(heuristic_profile),
+    )
+
+    try:
+        output, usages = await call_structured_output_with_usage(
+            node_name="verification_point_extractor",
+            system_prompt=VERIFICATION_EXTRACTOR_SYSTEM_PROMPT,
+            user_prompt=prompt,
+            response_model=VerificationProfileOutput,
+        )
+    except StructuredOutputCallError as exc:
+        errors.append(f"verification_point_extractor 호출 실패: {exc}")
+        fallback = VerificationProfileOutput(
+        )
+        merged = _merge_verification_profiles(
+            fallback.model_dump(mode="json"), heuristic_profile
+        )
+        return {
+            **state,
+            "verification_profile": merged,
+            "errors": errors,
+            "raw_outputs": raw_outputs,
+            "llm_usages": list(state.get("llm_usages") or []) + exc.usages,
+        }
+    except Exception as exc:  # noqa: BLE001
+        errors.append(f"verification_point_extractor 호출 실패: {exc}")
+        fallback = VerificationProfileOutput()
+        merged = _merge_verification_profiles(
+            fallback.model_dump(mode="json"), heuristic_profile
+        )
+        return {
+            **state,
+            "verification_profile": merged,
+            "errors": errors,
+            "raw_outputs": raw_outputs,
+        }
+
+    merged_output = _merge_verification_profiles(
+        output.model_dump(mode="json"), heuristic_profile
+    )
+    raw_outputs["verification_point_extractor"] = {
+        "heuristic_seed": heuristic_profile,
+        "output": output.model_dump(mode="json"),
+        "merged_output": merged_output,
+    }
+    return {
+        **state,
+        "verification_profile": merged_output,
+        "errors": errors,
+        "raw_outputs": raw_outputs,
+        "llm_usages": list(state.get("llm_usages") or []) + usages,
+    }
+
+
 async def questioner_node(state: AgentState) -> AgentState:
     errors = list(state.get("errors") or [])
     raw_outputs = dict(state.get("raw_outputs") or {})
@@ -657,6 +1161,7 @@ async def questioner_node(state: AgentState) -> AgentState:
         job_posting=state.get("job_posting") or "",
         prompt_profile_summary=_prompt_profile_summary(state),
         candidate_context=state.get("candidate_context") or _candidate_context(state),
+        verification_profile=_verification_profile_for_prompt(state),
         company_name=state.get("company_name") or "",
         applicant_name=state.get("applicant_name") or "",
         existing_questions=_existing_questions_for_prompt(state),
@@ -859,6 +1364,7 @@ async def reviewer_node(state: AgentState) -> AgentState:
         job_posting=state.get("job_posting") or "",
         prompt_profile_summary=_prompt_profile_summary(state),
         candidate_context=state.get("candidate_context") or _candidate_context(state),
+        verification_profile=_verification_profile_for_prompt(state),
         questions=_format_questions_for_llm(targets),
     )
     try:

@@ -41,6 +41,7 @@ GraphStatus = Literal[
 class QuestionSet(TypedDict, total=False):
     id: str
     original_question_id: int | str | None
+    focus_area: str
     category: str
     generation_basis: str
     document_evidence: str
@@ -111,6 +112,7 @@ class AgentState(TypedDict, total=False):
 
     context: str
     candidate_context: str
+    verification_profile: dict[str, Any]
     questions: list[QuestionSet]
 
     selected_questions: list[QuestionSet]

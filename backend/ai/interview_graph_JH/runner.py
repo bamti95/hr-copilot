@@ -21,6 +21,7 @@ from ai.interview_graph_JH.nodes import (
     questioner_node,
     review_router,
     reviewer_node,
+    verification_point_extractor_node,
 )
 from ai.interview_graph_JH.schemas import (
     DocumentAnalysisOutput,
@@ -144,13 +145,15 @@ def _build_graph() -> Any:
 
     graph = StateGraph(AgentState)
     graph.add_node("prepare_context", prepare_context_node)
+    graph.add_node("verification_point_extractor", verification_point_extractor_node)
     graph.add_node("questioner", questioner_node)
     graph.add_node("predictor", predictor_node)
     graph.add_node("driller", driller_node)
     graph.add_node("reviewer", reviewer_node)
 
     graph.add_edge(START, "prepare_context")
-    graph.add_edge("prepare_context", "questioner")
+    graph.add_edge("prepare_context", "verification_point_extractor")
+    graph.add_edge("verification_point_extractor", "questioner")
     graph.add_edge("questioner", "predictor")
     graph.add_edge("predictor", "driller")
     graph.add_edge("driller", "reviewer")

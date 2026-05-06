@@ -46,7 +46,58 @@ class GraphBaseModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+FocusArea = Literal[
+    "technical_depth",
+    "performance_ownership",
+    "career_context",
+    "collaboration",
+    "culture_fit",
+    "growth_adaptability",
+]
+
+
+class VerificationPoint(GraphBaseModel):
+    dimension: FocusArea = Field(
+        default="technical_depth",
+        description=(
+            "technical_depth, performance_ownership, career_context, "
+            "collaboration, culture_fit, growth_adaptability 중 하나"
+        ),
+    )
+    signal_type: str = ""
+    severity: Literal["low", "medium", "high"] = "medium"
+    evidence: str = ""
+    why_it_matters: str = ""
+    question_angle: str = ""
+    avoid: str = ""
+    must_ask: bool = False
+
+
+class RecommendedQuestionMix(GraphBaseModel):
+    technical_depth: int = Field(default=1, ge=0, le=5)
+    performance_ownership: int = Field(default=1, ge=0, le=5)
+    career_context: int = Field(default=1, ge=0, le=5)
+    collaboration_or_culture_fit: int = Field(default=1, ge=0, le=5)
+    growth_adaptability: int = Field(default=1, ge=0, le=5)
+
+
+class VerificationProfileOutput(GraphBaseModel):
+    must_verify_points: list[VerificationPoint] = Field(default_factory=list)
+    strength_points: list[VerificationPoint] = Field(default_factory=list)
+    ambiguity_points: list[VerificationPoint] = Field(default_factory=list)
+    recommended_question_mix: RecommendedQuestionMix = Field(
+        default_factory=RecommendedQuestionMix
+    )
+
+
 class QuestionCandidate(GraphBaseModel):
+    focus_area: FocusArea = Field(
+        default="technical_depth",
+        description=(
+            "technical_depth, performance_ownership, career_context, "
+            "collaboration, culture_fit, growth_adaptability 중 하나"
+        ),
+    )
     category: str = Field(
         ...,
         description="역량/경험/직무적합도 등 면접 질문 카테고리",
