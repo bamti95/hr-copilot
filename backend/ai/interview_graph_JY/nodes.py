@@ -24,6 +24,7 @@ from ai.interview_graph_JY.schemas import (
     ScoreResult,
 )
 from ai.interview_graph_JY import prompts
+from ai.interview_graph_JY.router import route_after_review
 from ai.interview_graph_JY.state import AgentState
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,7 @@ T = TypeVar("T", bound=BaseModel)
 MAX_DOCUMENT_CHARS = 18000
 PREDICTOR_DOCUMENT_CHARS = 7000
 LOW_SCORE_THRESHOLD = 80
+QUESTIONER_RETRY_TARGET_LIMIT = 2
 REVIEW_SCORE_BASE = {"approved": 38, "needs_revision": 20, "rejected": 0}
 ANALYZER_RISK_LIMIT = 6
 ANALYZER_EVIDENCE_LIMIT = 5
@@ -44,6 +46,8 @@ QUESTION_EVIDENCE_LIMIT = 2
 QUESTION_EVIDENCE_CHARS = 140
 QUESTION_EVALUATION_GUIDE_CHARS = 180
 QUESTION_TAG_LIMIT = 4
+
+DRILLER_CONCURRENCY = 3
 
 
 async def _call_structured_output(
@@ -467,6 +471,8 @@ async def questioner_node(state: AgentState) -> dict[str, Any]:
                     "questions": [
                         _compact_question(question)
                         for question in state.get("questions", [])
+                        if (not is_partial_regeneration)
+                        or (_question_id(question, 0) not in set(target_question_ids))
                     ],
                     "retry_feedback": state.get("retry_feedback"),
                 }
@@ -608,59 +614,61 @@ async def driller_node(state: AgentState) -> dict[str, Any]:
             for answer in scoped_answers
             if answer.get("question_id")
         }
+        semaphore = asyncio.Semaphore(DRILLER_CONCURRENCY)
 
         async def call_single_driller(
             question: dict[str, Any],
             question_id: str,
         ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
-            answer = answer_by_question_id.get(question_id) or _fallback_answer(
-                question_id
-            ).model_dump(mode="json")
-            try:
-                result, usages = await _call_structured_output(
-                    node_name="jy_driller",
-                    system_prompt=prompts.DRILLER_SYSTEM_PROMPT,
-                    user_prompt=prompts.DRILLER_USER_PROMPT.format(
-                        questions=_json([{**question, "id": question_id}]),
-                        answers=_json([answer]),
-                        document_analysis=document_analysis,
-                    ),
-                    response_model=DrillerOutput,
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "JY driller failed for question_id=%s; using fallback follow-up: %s",
-                    question_id,
-                    exc,
-                )
-                usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
-                return (
-                    [_fallback_follow_up(question_id).model_dump(mode="json")],
-                    usages,
-                    [
-                        {
-                            "node": "jy_driller",
-                            "message": f"{question_id}: {exc}",
-                        }
-                    ],
-                )
+            async with semaphore:
+                answer = answer_by_question_id.get(question_id) or _fallback_answer(
+                    question_id
+                ).model_dump(mode="json")
+                try:
+                    result, usages = await _call_structured_output(
+                        node_name="jy_driller",
+                        system_prompt=prompts.DRILLER_SYSTEM_PROMPT,
+                        user_prompt=prompts.DRILLER_USER_PROMPT.format(
+                            questions=_json([{**question, "id": question_id}]),
+                            answers=_json([answer]),
+                            document_analysis=document_analysis,
+                        ),
+                        response_model=DrillerOutput,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "JY driller failed for question_id=%s; using fallback follow-up: %s",
+                        question_id,
+                        exc,
+                    )
+                    usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
+                    return (
+                        [_fallback_follow_up(question_id).model_dump(mode="json")],
+                        usages,
+                        [
+                            {
+                                "node": "jy_driller",
+                                "message": f"{question_id}: {exc}",
+                            }
+                        ],
+                    )
 
-            follow_ups = [item.model_dump(mode="json") for item in result.follow_ups]
-            follow_up = _find_by_question_id(follow_ups, question_id)
-            if not follow_up and follow_ups:
-                follow_up = {**follow_ups[0], "question_id": question_id}
-            if not follow_up:
-                return (
-                    [_fallback_follow_up(question_id).model_dump(mode="json")],
-                    usages,
-                    [
-                        {
-                            "node": "jy_driller",
-                            "message": f"{question_id}: Driller가 꼬리질문을 반환하지 않아 fallback을 사용했습니다.",
-                        }
-                    ],
-                )
-            return ([follow_up], usages, [])
+                follow_ups = [item.model_dump(mode="json") for item in result.follow_ups]
+                follow_up = _find_by_question_id(follow_ups, question_id)
+                if not follow_up and follow_ups:
+                    follow_up = {**follow_ups[0], "question_id": question_id}
+                if not follow_up:
+                    return (
+                        [_fallback_follow_up(question_id).model_dump(mode="json")],
+                        usages,
+                        [
+                            {
+                                "node": "jy_driller",
+                                "message": f"{question_id}: Driller가 꼬리질문을 반환하지 않아 fallback을 사용했습니다.",
+                            }
+                        ],
+                    )
+                return ([follow_up], usages, [])
 
         driller_results = await asyncio.gather(
             *(
@@ -869,40 +877,51 @@ async def scorer_node(state: AgentState) -> dict[str, Any]:
     low_score_ids = [str(score["question_id"]) for score in scores if score["score"] < LOW_SCORE_THRESHOLD]
     quality_issues = sorted({flag for score in scores for flag in score.get("quality_flags", [])})
     avg_score = round(sum(score["score"] for score in scores) / len(scores), 2) if scores else 0
+    review_summary = {
+        "approved_count": approved_count,
+        "low_score_count": len(low_score_ids),
+        "low_score_question_ids": low_score_ids,
+        "avg_score": avg_score,
+        "quality_issues": quality_issues,
+        "scored_question_count": len(scores),
+    }
+    router_decision = route_after_review(
+        {
+            **state,
+            "questions": questions,
+            "scores": scores,
+            "review_summary": review_summary,
+        }
+    )
     return {
         "questions": questions,
         "scores": scores,
-        "review_summary": {
-            "approved_count": approved_count,
-            "low_score_count": len(low_score_ids),
-            "low_score_question_ids": low_score_ids,
-            "avg_score": avg_score,
-            "quality_issues": quality_issues,
-            "scored_question_count": len(scores),
-        },
+        "review_summary": review_summary,
+        "router_decision": router_decision,
         "llm_usages": [],
     }
 
 
 def _retry_feedback(state: AgentState) -> str:
     summary = state.get("review_summary", {})
-    low_score_ids = {
+    low_score_ids = [
         str(item)
         for item in (summary or {}).get("low_score_question_ids", [])
         if item
-    }
+    ][:QUESTIONER_RETRY_TARGET_LIMIT]
+    low_score_id_set = set(low_score_ids)
     reviews = state.get("reviews", [])
     scores = state.get("scores", [])
-    if 0 < len(low_score_ids) <= 2:
+    if low_score_id_set:
         reviews = [
             review
             for review in reviews
-            if str(review.get("question_id")) in low_score_ids
+            if str(review.get("question_id")) in low_score_id_set
         ]
         scores = [
             score
             for score in scores
-            if str(score.get("question_id")) in low_score_ids
+            if str(score.get("question_id")) in low_score_id_set
         ]
     return _json(
         {
@@ -914,13 +933,55 @@ def _retry_feedback(state: AgentState) -> str:
     )
 
 
-async def increment_retry_for_questioner_node(state: AgentState) -> dict[str, Any]:
+def _retry_target_question_ids(state: AgentState) -> list[str]:
+    """
+    재시도 시 전체 질문을 재생성하지 않도록, "고치면 효과가 큰" 질문 ID를 최대 2개 선택한다.
+    우선순위: low_score_question_ids -> (점수 오름차순) -> (미승인 리뷰) -> (앞쪽 2개)
+    """
+    summary = state.get("review_summary", {}) or {}
     low_score_ids = [
         str(item)
-        for item in (state.get("review_summary", {}) or {}).get("low_score_question_ids", [])
+        for item in (summary.get("low_score_question_ids", []) or [])
         if item
     ]
-    target_ids = low_score_ids if 0 < len(low_score_ids) <= 2 else []
+    target_ids = [qid for qid in low_score_ids if qid][:QUESTIONER_RETRY_TARGET_LIMIT]
+    if target_ids:
+        return target_ids
+
+    scores = list(state.get("scores", []) or [])
+    scored = [
+        (str(item.get("question_id")), int(item.get("score", 0) or 0))
+        for item in scores
+        if item.get("question_id")
+    ]
+    scored.sort(key=lambda pair: pair[1])
+    for qid, _ in scored:
+        if qid and qid not in target_ids:
+            target_ids.append(qid)
+        if len(target_ids) >= QUESTIONER_RETRY_TARGET_LIMIT:
+            return target_ids
+
+    reviews = list(state.get("reviews", []) or [])
+    for review in reviews:
+        qid = str(review.get("question_id") or "").strip()
+        if not qid or qid in target_ids:
+            continue
+        if str(review.get("status") or "") != "approved":
+            target_ids.append(qid)
+        if len(target_ids) >= QUESTIONER_RETRY_TARGET_LIMIT:
+            return target_ids
+
+    for question in state.get("questions", []) or []:
+        qid = str(question.get("id") or "").strip()
+        if qid and qid not in target_ids:
+            target_ids.append(qid)
+        if len(target_ids) >= QUESTIONER_RETRY_TARGET_LIMIT:
+            break
+    return target_ids
+
+
+async def increment_retry_for_questioner_node(state: AgentState) -> dict[str, Any]:
+    target_ids = _retry_target_question_ids(state)
     return {
         "retry_count": state.get("retry_count", 0) + 1,
         "questioner_retry_count": state.get("questioner_retry_count", 0) + 1,
@@ -1024,7 +1085,7 @@ async def final_formatter_node(state: AgentState) -> dict[str, Any]:
             "retry_count": state.get("retry_count", 0),
             "questioner_retry_count": state.get("questioner_retry_count", 0),
             "driller_retry_count": state.get("driller_retry_count", 0),
-            "router_decision": "selector",
+            "router_decision": state.get("router_decision") or "selector",
             "is_all_approved": bool(items) and approved_count == len(items),
             "review_summary": state.get("review_summary", {}),
             "node_warnings": state.get("node_warnings", []),

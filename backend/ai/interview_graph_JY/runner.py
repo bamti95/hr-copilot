@@ -6,6 +6,7 @@
 
 import logging
 from collections.abc import Awaitable, Callable
+from functools import lru_cache
 from typing import Any
 
 from ai.graph_usage import collect_llm_usage_update
@@ -32,6 +33,7 @@ from schemas.session_generation import CandidateInterviewPrepInput
 logger = logging.getLogger(__name__)
 
 
+@lru_cache(maxsize=1)
 def _build_graph() -> Any:
     try:
         from langgraph.graph import END, START, StateGraph
@@ -153,7 +155,10 @@ async def run_interview_question_graph(
         nonlocal llm_logs_saved
         if llm_logs_saved:
             return
-        await save_llm_call_logs(payload=payload, usages=collected_llm_usages)
+        try:
+            await save_llm_call_logs(payload=payload, usages=collected_llm_usages)
+        except Exception:  # noqa: BLE001 - logging must not hide the root cause.
+            logger.exception("interview_graph_JY LLM 로그 저장 실패")
         llm_logs_saved = True
 
     try:

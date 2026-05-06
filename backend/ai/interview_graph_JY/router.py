@@ -4,7 +4,6 @@ from ai.interview_graph_JY.state import AgentState
 FOLLOW_UP_FLAGS = {"FOLLOW_UP_TOO_WEAK", "꼬리질문_약함"}
 QUESTION_REWRITE_FLAGS = {
     "REVIEW_NOT_APPROVED",
-    "LOW_SCORE",
     "EVIDENCE_TOO_WEAK",
     "LOW_JOB_RELEVANCE",
     "DUPLICATE_RISK",
@@ -26,9 +25,14 @@ def route_after_review(state: AgentState) -> str:
     ):
         return "retry_driller"
 
-    if (
-        (low_score_count > 0 or approved_count < 5 or quality_issues.intersection(QUESTION_REWRITE_FLAGS))
-        and state.get("questioner_retry_count", 0) < state.get("max_questioner_retry_count", 1)
+    should_retry_questioner = (
+        approved_count < 4
+        or quality_issues.intersection(QUESTION_REWRITE_FLAGS)
+        or low_score_count >= 3
+    )
+    if should_retry_questioner and state.get("questioner_retry_count", 0) < state.get(
+        "max_questioner_retry_count",
+        1,
     ):
         return "retry_questioner"
 
