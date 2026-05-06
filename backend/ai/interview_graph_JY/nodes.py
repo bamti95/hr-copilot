@@ -941,7 +941,8 @@ async def final_formatter_node(state: AgentState) -> dict[str, Any]:
         questions=items,
         generation_metadata={
             "pipeline": "jy",
-            "graph": "build_state -> analyzer -> questioner -> selector_lite -> predictor -> driller -> reviewer -> scorer -> selector -> final_formatter",
+            "graph": "build_state -> analyzer -> questioner -> selector_lite -> (predictor || driller) -> reviewer -> scorer -> selector -> final_formatter",
+            "driller_mode": "question_and_document_first_with_optional_predicted_answer",
             "total_candidate_questions": len(state.get("questions", [])),
             "selected_question_count": len(items),
             "retry_count": state.get("retry_count", 0),
