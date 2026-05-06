@@ -33,6 +33,16 @@ MAX_DOCUMENT_CHARS = 18000
 PREDICTOR_DOCUMENT_CHARS = 7000
 LOW_SCORE_THRESHOLD = 80
 REVIEW_SCORE_BASE = {"approved": 38, "needs_revision": 20, "rejected": 0}
+ANALYZER_RISK_LIMIT = 6
+ANALYZER_EVIDENCE_LIMIT = 5
+ANALYZER_QUESTION_POINT_LIMIT = 8
+QUESTION_COUNT = 8
+QUESTION_TEXT_CHARS = 180
+QUESTION_BASIS_CHARS = 140
+QUESTION_EVIDENCE_LIMIT = 2
+QUESTION_EVIDENCE_CHARS = 140
+QUESTION_EVALUATION_GUIDE_CHARS = 180
+QUESTION_TAG_LIMIT = 4
 
 
 async def _call_structured_output(
@@ -61,6 +71,23 @@ def _clip(value: str, max_chars: int) -> str:
     return f"{text[:max_chars]}\n\n...(길이 제한으로 일부 생략)"
 
 
+def _truncate(value: Any, max_chars: int) -> str:
+    text = " ".join(str(value or "").split())
+    if len(text) <= max_chars:
+        return text
+    return text[: max_chars - 1].rstrip() + "…"
+
+
+def _truncate_list(values: Any, *, limit: int, max_chars: int) -> list[str]:
+    if not isinstance(values, list):
+        values = [values] if _has_text(values) else []
+    return [
+        truncated
+        for truncated in (_truncate(value, max_chars) for value in values[:limit])
+        if truncated
+    ]
+
+
 def _question_id(question: dict[str, Any], index: int) -> str:
     value = str(question.get("id") or "").strip()
     return value or f"jy-q-{index + 1:03d}"
@@ -74,6 +101,74 @@ def _has_items(value: Any) -> bool:
     if isinstance(value, list):
         return any(_has_text(item) for item in value)
     return _has_text(value)
+
+
+def _compact_document_evidence(item: Any) -> dict[str, Any]:
+    if hasattr(item, "model_dump"):
+        item = item.model_dump(mode="json")
+    if not isinstance(item, dict):
+        return {"quote": _truncate(item, 120), "reason": ""}
+    return {
+        "document_id": item.get("document_id"),
+        "document_type": item.get("document_type"),
+        "title": _truncate(item.get("title"), 80),
+        "quote": _truncate(item.get("quote"), 120),
+        "reason": _truncate(item.get("reason"), 120),
+    }
+
+
+def _compact_document_analysis(analysis: dict[str, Any]) -> dict[str, Any]:
+    evidence = [
+        compact
+        for compact in (
+            _compact_document_evidence(item)
+            for item in list(analysis.get("document_evidence") or [])[:ANALYZER_EVIDENCE_LIMIT]
+        )
+        if compact.get("quote") or compact.get("reason")
+    ]
+    return {
+        "strengths": [],
+        "weaknesses": [],
+        "risks": _truncate_list(
+            analysis.get("risks", []),
+            limit=ANALYZER_RISK_LIMIT,
+            max_chars=100,
+        ),
+        "document_evidence": evidence,
+        "job_fit": _truncate(analysis.get("job_fit"), 220),
+        "questionable_points": _truncate_list(
+            analysis.get("questionable_points", []),
+            limit=ANALYZER_QUESTION_POINT_LIMIT,
+            max_chars=120,
+        ),
+    }
+
+
+def _compact_question(question: dict[str, Any]) -> dict[str, Any]:
+    return {
+        **question,
+        "question_text": _truncate(question.get("question_text"), QUESTION_TEXT_CHARS),
+        "generation_basis": _truncate(question.get("generation_basis"), QUESTION_BASIS_CHARS),
+        "document_evidence": _truncate_list(
+            question.get("document_evidence", []),
+            limit=QUESTION_EVIDENCE_LIMIT,
+            max_chars=QUESTION_EVIDENCE_CHARS,
+        ),
+        "evaluation_guide": _truncate(
+            question.get("evaluation_guide"),
+            QUESTION_EVALUATION_GUIDE_CHARS,
+        ),
+        "risk_tags": _truncate_list(
+            question.get("risk_tags", []),
+            limit=QUESTION_TAG_LIMIT,
+            max_chars=40,
+        ),
+        "competency_tags": _truncate_list(
+            question.get("competency_tags", []),
+            limit=QUESTION_TAG_LIMIT,
+            max_chars=40,
+        ),
+    }
 
 
 def _is_risk_question(question: dict[str, Any]) -> bool:
@@ -149,6 +244,74 @@ def _replace_questions_by_id(
     return merged
 
 
+def _target_question_ids(state: AgentState) -> list[str]:
+    seen: set[str] = set()
+    target_ids: list[str] = []
+    for item in state.get("target_question_ids", []) or []:
+        question_id = str(item).strip()
+        if question_id and question_id not in seen:
+            target_ids.append(question_id)
+            seen.add(question_id)
+    return target_ids
+
+
+def _questions_for_targets(
+    questions: list[dict[str, Any]],
+    target_question_ids: list[str],
+) -> list[dict[str, Any]]:
+    if not target_question_ids:
+        return questions
+    target_set = set(target_question_ids)
+    return [
+        {**question, "id": _question_id(question, index)}
+        for index, question in enumerate(questions)
+        if _question_id(question, index) in target_set
+    ]
+
+
+def _items_for_question_ids(
+    items: list[dict[str, Any]],
+    question_ids: list[str],
+) -> list[dict[str, Any]]:
+    if not question_ids:
+        return items
+    target_set = set(question_ids)
+    return [item for item in items if str(item.get("question_id")) in target_set]
+
+
+def _merge_items_by_question_id(
+    current: list[dict[str, Any]],
+    replacements: list[dict[str, Any]],
+    target_question_ids: list[str],
+) -> list[dict[str, Any]]:
+    if not target_question_ids:
+        return replacements
+
+    target_set = set(target_question_ids)
+    replacement_by_id = {
+        str(item.get("question_id")): item
+        for item in replacements
+        if item.get("question_id")
+    }
+    merged: list[dict[str, Any]] = []
+    used_ids: set[str] = set()
+    for item in current:
+        question_id = str(item.get("question_id"))
+        if question_id in target_set:
+            replacement = replacement_by_id.get(question_id)
+            if replacement:
+                merged.append(replacement)
+                used_ids.add(question_id)
+            continue
+        merged.append(item)
+    merged.extend(
+        replacement
+        for question_id, replacement in replacement_by_id.items()
+        if question_id not in used_ids
+    )
+    return merged
+
+
 def _find_by_question_id(items: list[dict[str, Any]], question_id: str) -> dict[str, Any]:
     return next((item for item in items if item.get("question_id") == question_id), {})
 
@@ -219,14 +382,20 @@ async def analyzer_node(state: AgentState) -> dict[str, Any]:
         ),
         response_model=DocumentAnalysisOutput,
     )
-    return {"document_analysis": result.model_dump(mode="json"), "llm_usages": llm_usages}
+    return {
+        "document_analysis": _compact_document_analysis(result.model_dump(mode="json")),
+        "llm_usages": llm_usages,
+    }
 
 
 async def questioner_node(state: AgentState) -> dict[str, Any]:
-    target_question_ids = [str(item) for item in state.get("target_question_ids", [])]
+    target_question_ids = _target_question_ids(state)
     human_action = state.get("human_action")
+    is_partial_regeneration = human_action == "regenerate_question" and bool(target_question_ids)
     question_count_instruction = "- 최종 후보 질문은 8개 생성하세요."
-    if human_action == "regenerate_question" and target_question_ids:
+    expected_question_count = QUESTION_COUNT
+    if is_partial_regeneration:
+        expected_question_count = len(target_question_ids)
         question_count_instruction = (
             f"- 재생성 대상 ID 수에 맞춰 질문은 정확히 {len(target_question_ids)}개 생성하세요."
         )
@@ -247,10 +416,15 @@ async def questioner_node(state: AgentState) -> dict[str, Any]:
             additional_instruction=state.get("additional_instruction"),
             target_question_ids=target_question_ids,
             candidate_context=state.get("candidate_context", ""),
-            document_analysis=_json(state.get("document_analysis", {})),
+            document_analysis=_json(
+                _compact_document_analysis(state.get("document_analysis", {}))
+            ),
             existing_questions=_json(
                 {
-                    "questions": state.get("questions", []),
+                    "questions": [
+                        _compact_question(question)
+                        for question in state.get("questions", [])
+                    ],
                     "retry_feedback": state.get("retry_feedback"),
                 }
             ),
@@ -259,65 +433,125 @@ async def questioner_node(state: AgentState) -> dict[str, Any]:
     )
 
     generated = [
-        {**question.model_dump(mode="json"), "id": _question_id(question.model_dump(mode="json"), index)}
-        for index, question in enumerate(result.questions)
+        _compact_question(
+            {
+                **question.model_dump(mode="json"),
+                "id": _question_id(question.model_dump(mode="json"), index),
+            }
+        )
+        for index, question in enumerate(result.questions[:expected_question_count])
     ]
-    if human_action == "regenerate_question" and target_question_ids:
+    if is_partial_regeneration:
         questions = _replace_questions_by_id(state.get("questions", []), generated, target_question_ids)
     else:
         questions = generated
-    return {
+    update = {
         "questions": questions,
-        "answers": [],
-        "follow_ups": [],
-        "reviews": [],
-        "scores": [],
         "human_action": None,
-        "target_question_ids": [],
+        "target_question_ids": target_question_ids if is_partial_regeneration else [],
         "llm_usages": llm_usages,
     }
+    if is_partial_regeneration:
+        update.update(
+            {
+                "answers": state.get("answers", []),
+                "follow_ups": state.get("follow_ups", []),
+                "reviews": state.get("reviews", []),
+                "scores": state.get("scores", []),
+            }
+        )
+    else:
+        update.update({"answers": [], "follow_ups": [], "reviews": [], "scores": []})
+    return update
 
 
 async def predictor_node(state: AgentState) -> dict[str, Any]:
+    target_question_ids = _target_question_ids(state)
+    questions = state.get("questions", [])
+    scoped_questions = _questions_for_targets(questions, target_question_ids)
+    if target_question_ids and not scoped_questions:
+        return {
+            "answers": state.get("answers", []),
+            "llm_usages": [],
+            "node_warnings": [
+                {
+                    "node": "jy_predictor",
+                    "message": "부분 재생성 대상 질문을 찾지 못해 기존 예상 답변을 유지했습니다.",
+                }
+            ],
+        }
     try:
         result, llm_usages = await _call_structured_output(
             node_name="jy_predictor",
             system_prompt=prompts.PREDICTOR_SYSTEM_PROMPT,
             user_prompt=prompts.PREDICTOR_USER_PROMPT.format(
                 candidate_context=_clip(state.get("candidate_context", ""), PREDICTOR_DOCUMENT_CHARS),
-                document_analysis=_json(state.get("document_analysis", {})),
-                questions=_json(state.get("questions", [])),
+                document_analysis=_json(
+                    _compact_document_analysis(state.get("document_analysis", {}))
+                ),
+                questions=_json(scoped_questions),
             ),
             response_model=PredictorOutput,
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("JY predictor failed; using fallback answers: %s", exc)
         usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
+        fallback_answers = [
+            _fallback_answer(_question_id(question, index)).model_dump(mode="json")
+            for index, question in enumerate(scoped_questions)
+        ]
         return {
-            "answers": [
-                _fallback_answer(_question_id(question, index)).model_dump(mode="json")
-                for index, question in enumerate(state.get("questions", []))
-            ],
+            "answers": _merge_items_by_question_id(
+                state.get("answers", []),
+                fallback_answers,
+                target_question_ids,
+            ),
             "llm_usages": usages,
             "node_warnings": [{"node": "jy_predictor", "message": str(exc)}],
         }
+    answers = [answer.model_dump(mode="json") for answer in result.answers]
     return {
-        "answers": [answer.model_dump(mode="json") for answer in result.answers],
+        "answers": _merge_items_by_question_id(
+            state.get("answers", []),
+            answers,
+            target_question_ids,
+        ),
         "llm_usages": llm_usages,
     }
 
 
 async def driller_node(state: AgentState) -> dict[str, Any]:
+    target_question_ids = _target_question_ids(state)
+    questions = state.get("questions", [])
+    scoped_questions = _questions_for_targets(questions, target_question_ids)
+    scoped_question_ids = [
+        _question_id(question, index)
+        for index, question in enumerate(scoped_questions)
+    ]
+    scoped_answers = _items_for_question_ids(state.get("answers", []), scoped_question_ids)
+    if target_question_ids and not scoped_questions:
+        return {
+            "follow_ups": state.get("follow_ups", []),
+            "llm_usages": [],
+            "node_warnings": [
+                {
+                    "node": "jy_driller",
+                    "message": "부분 재생성 대상 질문을 찾지 못해 기존 꼬리질문을 유지했습니다.",
+                }
+            ],
+        }
     try:
         result, llm_usages = await _call_structured_output(
             node_name="jy_driller",
             system_prompt=prompts.DRILLER_SYSTEM_PROMPT,
             user_prompt=prompts.DRILLER_USER_PROMPT.format(
-                questions=_json(state.get("questions", [])),
-                answers=_json(state.get("answers", [])),
+                questions=_json(scoped_questions),
+                answers=_json(scoped_answers),
                 document_analysis=_json(
                     {
-                        "document_analysis": state.get("document_analysis", {}),
+                        "document_analysis": _compact_document_analysis(
+                            state.get("document_analysis", {})
+                        ),
                         "retry_feedback": state.get("retry_feedback"),
                     }
                 ),
@@ -327,21 +561,51 @@ async def driller_node(state: AgentState) -> dict[str, Any]:
     except Exception as exc:  # noqa: BLE001
         logger.warning("JY driller failed; using fallback follow-ups: %s", exc)
         usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
+        fallback_follow_ups = [
+            _fallback_follow_up(_question_id(question, index)).model_dump(mode="json")
+            for index, question in enumerate(scoped_questions)
+        ]
         return {
-            "follow_ups": [
-                _fallback_follow_up(_question_id(question, index)).model_dump(mode="json")
-                for index, question in enumerate(state.get("questions", []))
-            ],
+            "follow_ups": _merge_items_by_question_id(
+                state.get("follow_ups", []),
+                fallback_follow_ups,
+                target_question_ids,
+            ),
             "llm_usages": usages,
             "node_warnings": [{"node": "jy_driller", "message": str(exc)}],
         }
+    follow_ups = [item.model_dump(mode="json") for item in result.follow_ups]
     return {
-        "follow_ups": [item.model_dump(mode="json") for item in result.follow_ups],
+        "follow_ups": _merge_items_by_question_id(
+            state.get("follow_ups", []),
+            follow_ups,
+            target_question_ids,
+        ),
         "llm_usages": llm_usages,
     }
 
 
 async def reviewer_node(state: AgentState) -> dict[str, Any]:
+    target_question_ids = _target_question_ids(state)
+    questions = state.get("questions", [])
+    scoped_questions = _questions_for_targets(questions, target_question_ids)
+    scoped_question_ids = [
+        _question_id(question, index)
+        for index, question in enumerate(scoped_questions)
+    ]
+    scoped_answers = _items_for_question_ids(state.get("answers", []), scoped_question_ids)
+    scoped_follow_ups = _items_for_question_ids(state.get("follow_ups", []), scoped_question_ids)
+    if target_question_ids and not scoped_questions:
+        return {
+            "reviews": state.get("reviews", []),
+            "llm_usages": [],
+            "node_warnings": [
+                {
+                    "node": "jy_reviewer",
+                    "message": "부분 재생성 대상 질문을 찾지 못해 기존 리뷰를 유지했습니다.",
+                }
+            ],
+        }
     try:
         result, llm_usages = await _call_structured_output(
             node_name="jy_reviewer",
@@ -349,25 +613,35 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
             user_prompt=prompts.REVIEWER_USER_PROMPT.format(
                 target_job=state.get("target_job"),
                 recruitment_criteria=_json(_recruitment_context(state)),
-                questions=_json(state.get("questions", [])),
-                answers=_json(state.get("answers", [])),
-                follow_ups=_json(state.get("follow_ups", [])),
+                questions=_json(scoped_questions),
+                answers=_json(scoped_answers),
+                follow_ups=_json(scoped_follow_ups),
             ),
             response_model=ReviewerOutput,
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("JY reviewer failed; using fallback reviews: %s", exc)
         usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
+        fallback_reviews = [
+            _fallback_review(_question_id(question, index)).model_dump(mode="json")
+            for index, question in enumerate(scoped_questions)
+        ]
         return {
-            "reviews": [
-                _fallback_review(_question_id(question, index)).model_dump(mode="json")
-                for index, question in enumerate(state.get("questions", []))
-            ],
+            "reviews": _merge_items_by_question_id(
+                state.get("reviews", []),
+                fallback_reviews,
+                target_question_ids,
+            ),
             "llm_usages": usages,
             "node_warnings": [{"node": "jy_reviewer", "message": str(exc)}],
         }
+    reviews = [review.model_dump(mode="json") for review in result.reviews]
     return {
-        "reviews": [review.model_dump(mode="json") for review in result.reviews],
+        "reviews": _merge_items_by_question_id(
+            state.get("reviews", []),
+            reviews,
+            target_question_ids,
+        ),
         "llm_usages": llm_usages,
     }
 
@@ -483,12 +757,30 @@ async def scorer_node(state: AgentState) -> dict[str, Any]:
 
 def _retry_feedback(state: AgentState) -> str:
     summary = state.get("review_summary", {})
+    low_score_ids = {
+        str(item)
+        for item in (summary or {}).get("low_score_question_ids", [])
+        if item
+    }
+    reviews = state.get("reviews", [])
+    scores = state.get("scores", [])
+    if 0 < len(low_score_ids) <= 2:
+        reviews = [
+            review
+            for review in reviews
+            if str(review.get("question_id")) in low_score_ids
+        ]
+        scores = [
+            score
+            for score in scores
+            if str(score.get("question_id")) in low_score_ids
+        ]
     return _json(
         {
             "instruction": "낮은 점수 또는 미승인 질문의 문서 근거, 직무 관련성, 꼬리질문 연결성을 보완하세요.",
             "review_summary": summary,
-            "reviews": state.get("reviews", [])[:5],
-            "scores": state.get("scores", [])[:5],
+            "reviews": reviews[:5],
+            "scores": scores[:5],
         }
     )
 
