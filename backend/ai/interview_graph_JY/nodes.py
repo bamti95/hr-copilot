@@ -179,6 +179,48 @@ def _is_approved(review: dict[str, Any]) -> bool:
     return review.get("status") == "approved"
 
 
+def _select_question_candidates(
+    questions: list[dict[str, Any]],
+    *,
+    reviews_by_id: dict[str, dict[str, Any]] | None = None,
+    scores_by_id: dict[str, dict[str, Any]] | None = None,
+    limit: int = 5,
+) -> list[dict[str, Any]]:
+    reviews_by_id = reviews_by_id or {}
+    scores_by_id = scores_by_id or {}
+
+    unique: list[dict[str, Any]] = []
+    seen_texts: set[str] = set()
+    for question in questions:
+        text_key = " ".join(str(question.get("question_text") or "").split()).lower()
+        if not text_key or text_key in seen_texts:
+            continue
+        seen_texts.add(text_key)
+        unique.append(question)
+
+    ranked = sorted(
+        unique,
+        key=lambda question: (
+            _is_approved(reviews_by_id.get(str(question.get("id")), {})),
+            scores_by_id.get(str(question.get("id")), {}).get("score", 0),
+            _is_risk_question(question),
+            bool(question.get("document_evidence")),
+        ),
+        reverse=True,
+    )
+
+    selected: list[dict[str, Any]] = []
+    risk_question = next((question for question in ranked if _is_risk_question(question)), None)
+    if risk_question:
+        selected.append(risk_question)
+    for question in ranked:
+        if len(selected) >= limit:
+            break
+        if question not in selected:
+            selected.append(question)
+    return selected
+
+
 def _merge_document_text(state: AgentState) -> tuple[str, bool]:
     sections = [
         "[Session]",
@@ -463,6 +505,17 @@ async def questioner_node(state: AgentState) -> dict[str, Any]:
     else:
         update.update({"answers": [], "follow_ups": [], "reviews": [], "scores": []})
     return update
+
+
+async def selector_lite_node(state: AgentState) -> dict[str, Any]:
+    """
+    비싼 Predictor/Driller/Reviewer 호출 전에 최종 후보 규모로 먼저 줄인다.
+    최종 selector는 리뷰/점수를 반영해 다시 정렬한다.
+    """
+    return {
+        "questions": _select_question_candidates(state.get("questions", []), limit=5),
+        "llm_usages": [],
+    }
 
 
 async def predictor_node(state: AgentState) -> dict[str, Any]:
@@ -814,37 +867,14 @@ async def increment_retry_for_driller_node(state: AgentState) -> dict[str, Any]:
 async def selector_node(state: AgentState) -> dict[str, Any]:
     reviews_by_id = {str(item.get("question_id")): item for item in state.get("reviews", [])}
     scores_by_id = {str(item.get("question_id")): item for item in state.get("scores", [])}
-
-    unique: list[dict[str, Any]] = []
-    seen_texts: set[str] = set()
-    for question in state.get("questions", []):
-        text_key = " ".join(str(question.get("question_text") or "").split()).lower()
-        if not text_key or text_key in seen_texts:
-            continue
-        seen_texts.add(text_key)
-        unique.append(question)
-
-    ranked = sorted(
-        unique,
-        key=lambda question: (
-            _is_approved(reviews_by_id.get(str(question.get("id")), {})),
-            scores_by_id.get(str(question.get("id")), {}).get("score", 0),
-            _is_risk_question(question),
-            bool(question.get("document_evidence")),
+    return {
+        "questions": _select_question_candidates(
+            state.get("questions", []),
+            reviews_by_id=reviews_by_id,
+            scores_by_id=scores_by_id,
+            limit=5,
         ),
-        reverse=True,
-    )
-
-    selected: list[dict[str, Any]] = []
-    risk_question = next((question for question in ranked if _is_risk_question(question)), None)
-    if risk_question:
-        selected.append(risk_question)
-    for question in ranked:
-        if len(selected) >= 5:
-            break
-        if question not in selected:
-            selected.append(question)
-    return {"questions": selected}
+    }
 
 
 async def final_formatter_node(state: AgentState) -> dict[str, Any]:
@@ -911,7 +941,7 @@ async def final_formatter_node(state: AgentState) -> dict[str, Any]:
         questions=items,
         generation_metadata={
             "pipeline": "jy",
-            "graph": "build_state -> analyzer -> questioner -> predictor -> driller -> reviewer -> scorer -> selector -> final_formatter",
+            "graph": "build_state -> analyzer -> questioner -> selector_lite -> predictor -> driller -> reviewer -> scorer -> selector -> final_formatter",
             "total_candidate_questions": len(state.get("questions", [])),
             "selected_question_count": len(items),
             "retry_count": state.get("retry_count", 0),

@@ -22,6 +22,7 @@ from ai.interview_graph_JY.nodes import (
     questioner_node,
     reviewer_node,
     scorer_node,
+    selector_lite_node,
     selector_node,
 )
 from ai.interview_graph_JY.router import route_after_review
@@ -49,13 +50,15 @@ def _build_graph() -> Any:
     graph.add_node("scorer", scorer_node)
     graph.add_node("retry_questioner", increment_retry_for_questioner_node)
     graph.add_node("retry_driller", increment_retry_for_driller_node)
+    graph.add_node("selector_lite", selector_lite_node)
     graph.add_node("selector", selector_node)
     graph.add_node("final_formatter", final_formatter_node)
 
     graph.add_edge(START, "build_state")
     graph.add_edge("build_state", "analyzer")
     graph.add_edge("analyzer", "questioner")
-    graph.add_edge("questioner", "predictor")
+    graph.add_edge("questioner", "selector_lite")
+    graph.add_edge("selector_lite", "predictor")
     graph.add_edge("predictor", "driller")
     graph.add_edge("driller", "reviewer")
     graph.add_edge("reviewer", "scorer")
