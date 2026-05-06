@@ -261,7 +261,7 @@ export function InterviewSessionBoard({
                       {formatDateTime(row.createdAt)}
                     </td>
                     <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap text-sm text-[var(--muted)]">
-                      {row.createdBy ?? "-"}
+                      {row.createdName ?? "-"}
                     </td>
                     <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
                       <div className="flex flex-wrap gap-2">

@@ -3,16 +3,23 @@ import { DashboardOverview } from "./components/DashboardOverview";
 import { useDashboardData } from "./hooks/useDashboardData";
 
 export default function DashboardPage() {
-  const { metrics, activities } = useDashboardData();
+  const { data, isLoading, error, reload } = useDashboardData();
 
   return (
     <>
       <PageIntro
-        eyebrow="Manager Workspace"
-        title="HR Copilot Dashboard"
-        description="요구사항 정의서를 기준으로 통합 계정, 지원자, 문서, 프롬프트, 인터뷰 운영을 한 화면에서 시작하는 템플릿입니다."
+        eyebrow="HR Workspace"
+        title="대시보드"
+        description="오늘 확인해야 할 지원자, 문서 분석, 면접 질문 생성, 검토 필요 업무를 한 화면에서 확인합니다."
       />
-      <DashboardOverview metrics={metrics} activities={activities} />
+      <DashboardOverview
+        data={data}
+        isLoading={isLoading}
+        error={error}
+        onRefresh={() => {
+          void reload();
+        }}
+      />
     </>
   );
 }

@@ -29,6 +29,7 @@ interface InterviewSessionPageState {
   targetJob?: string;
   promptProfileId?: number;
   openCreate?: boolean;
+  openDetailSessionId?: number;
 }
 
 const emptyForm: InterviewSessionFormState = {
@@ -195,7 +196,12 @@ export function useInterviewSessionData() {
     }
 
     const state = (location.state ?? {}) as InterviewSessionPageState;
-    if (!state.openCreate && !state.candidateId && !state.targetJob) {
+    if (
+      !state.openCreate &&
+      !state.candidateId &&
+      !state.targetJob &&
+      !state.openDetailSessionId
+    ) {
       return;
     }
 
@@ -226,6 +232,27 @@ export function useInterviewSessionData() {
     if (state.openCreate) {
       setFormMode("create");
       setEditingSessionId(null);
+    }
+
+    if (state.openDetailSessionId) {
+      const sessionId = state.openDetailSessionId;
+      const openDetail = async () => {
+        try {
+          setDetailModalLoading(true);
+          setErrorMessage("");
+          const detail = await fetchInterviewSessionDetail(sessionId);
+          setSelectedDetail(detail);
+          setDetailModalOpen(true);
+        } catch (error) {
+          setErrorMessage(
+            getErrorMessage(error, "세션 상세 정보를 불러오지 못했습니다."),
+          );
+        } finally {
+          setDetailModalLoading(false);
+        }
+      };
+
+      void openDetail();
     }
 
     void navigate(location.pathname, { replace: true, state: null });

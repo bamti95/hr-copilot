@@ -36,6 +36,7 @@ class SessionResponse(SessionSchemaBase):
     prompt_profile_id: int | None = None
     created_at: datetime
     created_by: int | None = None
+    created_name: str | None = None
     deleted_at: datetime | None = None
     deleted_by: int | None = None
     question_generation_status: str = "NOT_REQUESTED"

@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.candidate import Candidate
 from models.interview_session import InterviewSession
+from models.manager import Manager
 from repositories.base_repository import BaseRepository
 
 
@@ -72,10 +73,15 @@ class SessionRepository(BaseRepository[InterviewSession]):
             select(
                 InterviewSession,
                 Candidate.name.label("candidate_name"),
+                Manager.name.label("created_name"),
             )
             .join(
                 Candidate,
                 InterviewSession.candidate_id == Candidate.id,
+            )
+            .outerjoin(
+                Manager,
+                InterviewSession.created_by == Manager.id,
             )
             .where(
                 InterviewSession.deleted_at.is_(None),
@@ -214,8 +220,9 @@ class SessionRepository(BaseRepository[InterviewSession]):
         if row is None:
             return None
 
-        session, candidate_name = row
+        session, candidate_name, created_name = row
         setattr(session, "candidate_name", candidate_name)
+        setattr(session, "created_name", created_name)
         return session
 
     async def count_list(
@@ -249,7 +256,8 @@ class SessionRepository(BaseRepository[InterviewSession]):
         result = await self.db.execute(stmt)
 
         sessions: list[InterviewSession] = []
-        for session, candidate_name in result.all():
+        for session, candidate_name, created_name in result.all():
             setattr(session, "candidate_name", candidate_name)
+            setattr(session, "created_name", created_name)
             sessions.append(session)
         return sessions

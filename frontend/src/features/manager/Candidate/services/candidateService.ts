@@ -33,6 +33,7 @@ interface CandidateApiResponse {
   apply_status: CandidateResponse["applyStatus"];
   created_at: string;
   created_by: number | null;
+  created_name: string | null;
   updated_at: string;
   deleted_at: string | null;
   deleted_by: number | null;
@@ -117,6 +118,7 @@ function mapCandidate(response: CandidateApiResponse): CandidateResponse {
     applyStatus: response.apply_status,
     createdAt: response.created_at,
     createdBy: response.created_by,
+    createdName: response.created_name,
     updatedAt: response.updated_at,
     deletedAt: response.deleted_at,
     deletedBy: response.deleted_by,

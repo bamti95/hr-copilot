@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
 MODEL_PRICING: dict[str, dict[str, float]] = {
+    "gpt-5-mini": {"input_per_1m": 0.25, "output_per_1m": 2.00},
     "gpt-4o-mini": {"input_per_1m": 0.15, "output_per_1m": 0.60},
     "gpt-4o": {"input_per_1m": 2.50, "output_per_1m": 10.00},
 }

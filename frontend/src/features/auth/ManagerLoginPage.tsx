@@ -22,7 +22,7 @@ export default function ManagerLoginPage() {
     ?.pathname;
 
   if (isAuthenticated) {
-    return <Navigate to={from ?? "/manager/managers"} replace />;
+    return <Navigate to={from ?? "/manager/dashboard"} replace />;
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -35,7 +35,7 @@ export default function ManagerLoginPage() {
         password,
       });
 
-      navigate(from ?? "/manager/managers", { replace: true });
+      navigate(from ?? "/manager/dashboard", { replace: true });
     } catch (error: any) {
       setErrorMessage(
         error?.response?.data?.detail ??

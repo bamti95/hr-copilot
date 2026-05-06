@@ -25,6 +25,7 @@ interface SessionApiResponse {
   prompt_profile_id: number | null;
   created_at: string;
   created_by: number | null;
+  created_name: string | null;
   deleted_at: string | null;
   deleted_by: number | null;
   question_generation_status: InterviewQuestionGenerationStatus;
@@ -152,6 +153,7 @@ function mapSession(response: SessionApiResponse): InterviewSessionResponse {
     promptProfileId: response.prompt_profile_id,
     createdAt: response.created_at,
     createdBy: response.created_by,
+    createdName: response.created_name,
     deletedAt: response.deleted_at,
     deletedBy: response.deleted_by,
     questionGenerationStatus: response.question_generation_status,
