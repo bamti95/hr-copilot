@@ -46,7 +46,6 @@ def _build_graph() -> Any:
     graph.add_node("questioner", questioner_node)
     graph.add_node("predictor", predictor_node)
     graph.add_node("driller", driller_node)
-    graph.add_node("driller_retry_run", driller_node)
     graph.add_node("reviewer", reviewer_node)
     graph.add_node("scorer", scorer_node)
     graph.add_node("retry_questioner", increment_retry_for_questioner_node)
@@ -60,8 +59,8 @@ def _build_graph() -> Any:
     graph.add_edge("analyzer", "questioner")
     graph.add_edge("questioner", "selector_lite")
     graph.add_edge("selector_lite", "predictor")
-    graph.add_edge("selector_lite", "driller")
-    graph.add_edge(["predictor", "driller"], "reviewer")
+    graph.add_edge("predictor", "driller")
+    graph.add_edge("driller", "reviewer")
     graph.add_edge("reviewer", "scorer")
     graph.add_conditional_edges(
         "scorer",
@@ -73,8 +72,7 @@ def _build_graph() -> Any:
         },
     )
     graph.add_edge("retry_questioner", "questioner")
-    graph.add_edge("retry_driller", "driller_retry_run")
-    graph.add_edge("driller_retry_run", "reviewer")
+    graph.add_edge("retry_driller", "driller")
     graph.add_edge("selector", "final_formatter")
     graph.add_edge("final_formatter", END)
     return graph.compile()

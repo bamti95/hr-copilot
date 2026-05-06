@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from typing import Any, TypeVar
@@ -594,22 +595,82 @@ async def driller_node(state: AgentState) -> dict[str, Any]:
             ],
         }
     try:
-        result, llm_usages = await _call_structured_output(
-            node_name="jy_driller",
-            system_prompt=prompts.DRILLER_SYSTEM_PROMPT,
-            user_prompt=prompts.DRILLER_USER_PROMPT.format(
-                questions=_json(scoped_questions),
-                answers=_json(scoped_answers),
-                document_analysis=_json(
-                    {
-                        "document_analysis": _compact_document_analysis(
-                            state.get("document_analysis", {})
-                        ),
-                        "retry_feedback": state.get("retry_feedback"),
-                    }
+        document_analysis = _json(
+            {
+                "document_analysis": _compact_document_analysis(
+                    state.get("document_analysis", {})
                 ),
-            ),
-            response_model=DrillerOutput,
+                "retry_feedback": state.get("retry_feedback"),
+            }
+        )
+        answer_by_question_id = {
+            str(answer.get("question_id")): answer
+            for answer in scoped_answers
+            if answer.get("question_id")
+        }
+
+        async def call_single_driller(
+            question: dict[str, Any],
+            question_id: str,
+        ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+            answer = answer_by_question_id.get(question_id) or _fallback_answer(
+                question_id
+            ).model_dump(mode="json")
+            try:
+                result, usages = await _call_structured_output(
+                    node_name="jy_driller",
+                    system_prompt=prompts.DRILLER_SYSTEM_PROMPT,
+                    user_prompt=prompts.DRILLER_USER_PROMPT.format(
+                        questions=_json([{**question, "id": question_id}]),
+                        answers=_json([answer]),
+                        document_analysis=document_analysis,
+                    ),
+                    response_model=DrillerOutput,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "JY driller failed for question_id=%s; using fallback follow-up: %s",
+                    question_id,
+                    exc,
+                )
+                usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
+                return (
+                    [_fallback_follow_up(question_id).model_dump(mode="json")],
+                    usages,
+                    [
+                        {
+                            "node": "jy_driller",
+                            "message": f"{question_id}: {exc}",
+                        }
+                    ],
+                )
+
+            follow_ups = [item.model_dump(mode="json") for item in result.follow_ups]
+            follow_up = _find_by_question_id(follow_ups, question_id)
+            if not follow_up and follow_ups:
+                follow_up = {**follow_ups[0], "question_id": question_id}
+            if not follow_up:
+                return (
+                    [_fallback_follow_up(question_id).model_dump(mode="json")],
+                    usages,
+                    [
+                        {
+                            "node": "jy_driller",
+                            "message": f"{question_id}: Driller가 꼬리질문을 반환하지 않아 fallback을 사용했습니다.",
+                        }
+                    ],
+                )
+            return ([follow_up], usages, [])
+
+        driller_results = await asyncio.gather(
+            *(
+                call_single_driller(question, question_id)
+                for question, question_id in zip(
+                    scoped_questions,
+                    scoped_question_ids,
+                    strict=False,
+                )
+            )
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("JY driller failed; using fallback follow-ups: %s", exc)
@@ -627,7 +688,21 @@ async def driller_node(state: AgentState) -> dict[str, Any]:
             "llm_usages": usages,
             "node_warnings": [{"node": "jy_driller", "message": str(exc)}],
         }
-    follow_ups = [item.model_dump(mode="json") for item in result.follow_ups]
+    follow_ups = [
+        follow_up
+        for result_follow_ups, _, _ in driller_results
+        for follow_up in result_follow_ups
+    ]
+    llm_usages = [
+        usage
+        for _, result_usages, _ in driller_results
+        for usage in result_usages
+    ]
+    warnings = [
+        warning
+        for _, _, result_warnings in driller_results
+        for warning in result_warnings
+    ]
     return {
         "follow_ups": _merge_items_by_question_id(
             state.get("follow_ups", []),
@@ -635,6 +710,7 @@ async def driller_node(state: AgentState) -> dict[str, Any]:
             target_question_ids,
         ),
         "llm_usages": llm_usages,
+        "node_warnings": warnings,
     }
 
 
@@ -941,8 +1017,8 @@ async def final_formatter_node(state: AgentState) -> dict[str, Any]:
         questions=items,
         generation_metadata={
             "pipeline": "jy",
-            "graph": "build_state -> analyzer -> questioner -> selector_lite -> (predictor || driller) -> reviewer -> scorer -> selector -> final_formatter",
-            "driller_mode": "question_and_document_first_with_optional_predicted_answer",
+            "graph": "build_state -> analyzer -> questioner -> selector_lite -> predictor -> driller -> reviewer -> scorer -> selector -> final_formatter",
+            "driller_execution": "question_level_parallel_after_predictor",
             "total_candidate_questions": len(state.get("questions", [])),
             "selected_question_count": len(items),
             "retry_count": state.get("retry_count", 0),
