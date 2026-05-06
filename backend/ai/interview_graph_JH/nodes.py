@@ -1130,6 +1130,62 @@ def _must_ask_focus_areas(verification_profile: dict[str, Any] | None) -> set[st
     return focus_areas
 
 
+def _must_ask_points(verification_profile: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not verification_profile:
+        return []
+    points = verification_profile.get("must_verify_points") or []
+    return [
+        point
+        for point in points
+        if isinstance(point, dict) and point.get("must_ask")
+    ]
+
+
+def _must_ask_signal_hints(signal_type: str) -> tuple[str, ...]:
+    mapping = {
+        "return_to_work_readiness": ("공백기", "복귀", "산출물", "준비", "재현 가능한"),
+        "gap_without_artifact": ("공백기", "산출물", "없다면", "검증", "준비"),
+        "metric_ownership": ("측정", "기여", "수치", "성과", "분리"),
+        "career_transition_evidence": ("전환", "보완", "준비", "실행 근거"),
+        "transition_reason_present": ("전환", "이유", "실행 근거", "보완"),
+        "transition_reason_missing": ("전환", "왜", "준비", "증거"),
+        "learning_without_strong_artifact": ("학습", "검증", "산출물", "프로젝트"),
+    }
+    return mapping.get(signal_type, ())
+
+
+def _question_matches_must_ask_point(question: QuestionSet, point: dict[str, Any]) -> bool:
+    if _focus_area_key(question) != str(point.get("dimension") or "").strip().lower():
+        return False
+
+    question_text = " ".join(
+        [
+            str(question.get("question_text") or ""),
+            str(question.get("generation_basis") or ""),
+            " ".join(_list_from_value(question.get("document_evidence"))),
+        ]
+    ).lower()
+    point_evidence = str(point.get("evidence") or "")
+    point_tokens = {
+        token
+        for token in re.sub(r"[^0-9a-zA-Z가-힣\s]", " ", point_evidence.lower()).split()
+        if len(token) >= 2
+    }
+    question_tokens = _evidence_signature_tokens(question) | _question_signature_tokens(question)
+
+    if point_tokens:
+        overlap = len(point_tokens & question_tokens) / len(point_tokens | question_tokens)
+        if overlap >= 0.2:
+            return True
+
+    if _metric_tokens_from_text(point_evidence) & _metric_tokens_from_text(question_text):
+        return True
+
+    signal_type = str(point.get("signal_type") or "")
+    hints = _must_ask_signal_hints(signal_type)
+    return bool(hints and all(hint.lower() in question_text for hint in hints[:2]))
+
+
 def _focus_area_cap(question: QuestionSet, requested_count: int) -> int:
     if requested_count < 5:
         return requested_count
@@ -1150,6 +1206,9 @@ def _can_add_question(
     seen_categories: set[str],
     ranked_count: int,
     requested_count: int,
+    *,
+    allow_seen_category: bool = False,
+    allow_focus_cap: bool = False,
 ) -> bool:
     if requested_count >= 5 and _is_people_focus(question) and any(
         _is_people_focus(item) for item in selected
@@ -1157,7 +1216,7 @@ def _can_add_question(
         return False
 
     focus_area = _focus_area_key(question)
-    if focus_area:
+    if focus_area and not allow_focus_cap:
         current_focus_count = len(
             [item for item in selected if _focus_area_key(item) == focus_area]
         )
@@ -1165,7 +1224,11 @@ def _can_add_question(
             return False
 
     category = str(question.get("category") or "")
-    if category in seen_categories and ranked_count >= requested_count + 2:
+    if (
+        not allow_seen_category
+        and category in seen_categories
+        and ranked_count >= requested_count + 2
+    ):
         return False
 
     return not _is_near_duplicate_question(question, selected)
@@ -1181,6 +1244,7 @@ def select_top_questions(
     )
     ranked = sorted(eligible, key=_selection_key, reverse=True)
     must_ask_focus_areas = _must_ask_focus_areas(verification_profile)
+    must_ask_points = _must_ask_points(verification_profile)
 
     selected: list[QuestionSet] = []
     seen_categories: set[str] = set()
@@ -1209,11 +1273,33 @@ def select_top_questions(
             seen_categories.add(str(question.get("category") or ""))
             break
 
-    # Protect high-priority must-ask dimensions so a duplicated performance
-    # question cannot push out a stronger career-context question such as
-    # return-to-work readiness.
+    # Protect concrete must-ask verification points first so a duplicated
+    # technical/performance question cannot push out a real must-check item.
+    for point in must_ask_points:
+        for question in ranked:
+            if str(question.get("id")) in selected_ids:
+                continue
+            if not _question_matches_must_ask_point(question, point):
+                continue
+            if not _can_add_question(
+                question,
+                selected,
+                seen_categories,
+                len(ranked),
+                requested_count,
+            ):
+                continue
+            selected.append(question)
+            selected_ids.add(str(question.get("id")))
+            seen_categories.add(str(question.get("category") or ""))
+            break
+
+    # If a must-ask focus area still has no representative, protect one slot
+    # for that axis before the general ranking fills the set.
     for focus_area in ("performance_ownership", "career_context", "growth_adaptability"):
         if focus_area not in must_ask_focus_areas:
+            continue
+        if any(_focus_area_key(item) == focus_area for item in selected):
             continue
         for question in ranked:
             if str(question.get("id")) in selected_ids:
@@ -1249,6 +1335,25 @@ def select_top_questions(
         seen_categories.add(str(question.get("category") or ""))
         if len(selected) >= requested_count:
             break
+
+    if len(selected) < requested_count:
+        for question in ranked:
+            if str(question.get("id")) in selected_ids:
+                continue
+            if not _can_add_question(
+                question,
+                selected,
+                seen_categories,
+                len(ranked),
+                requested_count,
+                allow_seen_category=True,
+            ):
+                continue
+            selected.append(question)
+            selected_ids.add(str(question.get("id")))
+            seen_categories.add(str(question.get("category") or ""))
+            if len(selected) >= requested_count:
+                break
 
     if len(selected) < requested_count:
         for question in ranked:
