@@ -39,6 +39,7 @@ class CandidateResponse(BaseModel):
     apply_status: str
     created_at: datetime
     created_by: int | None = None
+    created_name: str | None = None
     updated_at: datetime
     deleted_at: datetime | None = None
     deleted_by: int | None = None

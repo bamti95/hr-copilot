@@ -57,6 +57,7 @@ export interface InterviewSessionResponse {
   promptProfileId: number | null;
   createdAt: string;
   createdBy: number | null;
+  createdName: string | null;
   deletedAt: string | null;
   deletedBy: number | null;
   questionGenerationStatus: InterviewQuestionGenerationStatus;

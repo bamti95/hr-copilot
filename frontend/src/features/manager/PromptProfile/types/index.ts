@@ -16,6 +16,7 @@ export interface PromptProfileResponse {
   targetJob: string | null;
   createdAt: string;
   createdBy: number | null;
+  createdName: string | null;
   updatedAt: string;
   deletedAt: string | null;
   deletedBy: number | null;

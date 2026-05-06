@@ -224,7 +224,7 @@ export function CandidateBoard({
                   disabled={isLoading || data.items.length === 0}
                 />
               </th>
-              {["ID", "이름", "이메일", "전화번호", "생년월일", "지원 상태", "등록일", "액션"].map(
+              {["ID", "이름", "이메일", "전화번호", "생년월일", "지원 상태", "생성자", "등록일", "액션"].map(
                 (label) => (
                   <th
                     key={label}
@@ -267,6 +267,9 @@ export function CandidateBoard({
                   <StatusPill status={row.applyStatus} />
                 </td>
                 <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
+                  {row.createdName ?? "-"}
+                </td>
+                <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
                   {formatDateTime(row.createdAt)}
                 </td>
                 <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
@@ -294,7 +297,7 @@ export function CandidateBoard({
             {data.items.length === 0 ? (
               <tr>
                 <td
-                  colSpan={9}
+                  colSpan={10}
                   className="px-3 py-10 text-center text-sm text-[var(--muted)]"
                 >
                   조회된 지원자가 없습니다.

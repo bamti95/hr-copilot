@@ -119,7 +119,7 @@ export function PromptProfileBoard({
         <table className="w-full border-collapse">
           <thead className="bg-white/60">
             <tr>
-              {["ID", "프로필 키", "시스템 프롬프트", "스키마", "수정일", "액션"].map((label) => (
+              {["ID", "프로필 키", "시스템 프롬프트", "스키마", "생성자", "수정일", "액션"].map((label) => (
                 <th
                   key={label}
                   className="border-b border-[var(--line)] px-3 py-3 text-left text-[0.84rem] font-bold whitespace-nowrap text-[var(--muted)]"
@@ -150,6 +150,9 @@ export function PromptProfileBoard({
                 >
                   {row.outputSchema ? truncate(row.outputSchema, 40) : "—"}
                 </td>
+                <td className="border-b border-[var(--line)] px-3 py-3 align-top whitespace-nowrap text-sm text-[var(--text)]">
+                  {row.createdName ?? "-"}
+                </td>
                 <td className="border-b border-[var(--line)] px-3 py-3 align-top whitespace-nowrap text-sm">
                   {formatDateTime(row.updatedAt)}
                 </td>
@@ -178,7 +181,7 @@ export function PromptProfileBoard({
             {data.items.length === 0 ? (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-3 py-10 text-center text-sm text-[var(--muted)]"
                 >
                   {isLoading ? "불러오는 중…" : "등록된 프롬프트 프로필이 없습니다."}

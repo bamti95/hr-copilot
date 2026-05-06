@@ -138,6 +138,7 @@ export interface CandidateResponse {
   applyStatus: CandidateApplyStatus;
   createdAt: string;
   createdBy: number | null;
+  createdName: string | null;
   updatedAt: string;
   deletedAt: string | null;
   deletedBy: number | null;

@@ -16,6 +16,7 @@ interface PromptProfileApiResponse {
   target_job?: string | null;
   created_at: string;
   created_by: number | null;
+  created_name: string | null;
   updated_at: string;
   deleted_at: string | null;
   deleted_by: number | null;
@@ -40,6 +41,7 @@ function mapPromptProfile(response: PromptProfileApiResponse): PromptProfileResp
     targetJob: response.target_job ?? null,
     createdAt: response.created_at,
     createdBy: response.created_by,
+    createdName: response.created_name,
     updatedAt: response.updated_at,
     deletedAt: response.deleted_at,
     deletedBy: response.deleted_by,

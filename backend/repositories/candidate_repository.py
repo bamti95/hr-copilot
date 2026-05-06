@@ -1,6 +1,7 @@
 from sqlalchemy import distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from models.manager import Manager
 from models.interview_session import InterviewSession
 from models.candidate import Candidate
 from models.document import Document
@@ -17,12 +18,21 @@ class CandidateRepository(BaseRepository[Candidate]):
         super().__init__(db, Candidate)
 
     async def find_by_id_not_deleted(self, candidate_id: int) -> Candidate | None:
-        stmt = select(Candidate).where(
-            Candidate.id == candidate_id,
-            Candidate.deleted_at.is_(None),
+        stmt = (
+            select(Candidate, Manager.name.label("created_name"))
+            .outerjoin(Manager, Candidate.created_by == Manager.id)
+            .where(
+                Candidate.id == candidate_id,
+                Candidate.deleted_at.is_(None),
+            )
         )
         result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
+        row = result.one_or_none()
+        if row is None:
+            return None
+        candidate, created_name = row
+        setattr(candidate, "created_name", created_name)
+        return candidate
 
     async def find_by_id_any(self, candidate_id: int) -> Candidate | None:
         stmt = select(Candidate).where(Candidate.id == candidate_id)
@@ -140,14 +150,19 @@ class CandidateRepository(BaseRepository[Candidate]):
         conditions = self._list_conditions(apply_status, search, target_job)
         offset = (page - 1) * limit
         stmt = (
-            select(Candidate)
+            select(Candidate, Manager.name.label("created_name"))
+            .outerjoin(Manager, Candidate.created_by == Manager.id)
             .where(*conditions)
             .order_by(Candidate.id.desc())
             .offset(offset)
             .limit(limit)
         )
         result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+        candidates: list[Candidate] = []
+        for candidate, created_name in result.all():
+            setattr(candidate, "created_name", created_name)
+            candidates.append(candidate)
+        return candidates
 
     async def count_active_candidates(self) -> int:
         stmt = select(func.count(Candidate.id)).where(Candidate.deleted_at.is_(None))
