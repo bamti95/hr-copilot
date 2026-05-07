@@ -13,7 +13,7 @@ from schemas.auth import (
 )
 from services.auth.auth_service import AuthService
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["인증"])
 
 
 @router.post("/login", response_model=LoginResponse, summary="관리자 로그인")

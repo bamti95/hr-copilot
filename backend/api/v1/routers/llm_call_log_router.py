@@ -7,17 +7,13 @@ from models.manager import Manager
 from schemas.llm_call_log import LlmCallLogListResponse, LlmCallLogResponse
 from services.llm_call_log_service import LlmCallLogService
 
-router = APIRouter(tags=["llm-call-log"])
+router = APIRouter(tags=["AI 호출 로그 관리"])
 
 
-@router.get(
-    "/interview-sessions/{session_id}/llm-logs",
-    response_model=LlmCallLogListResponse,
-    include_in_schema=False,
-)
 @router.get(
     "/llm-logs/interview-sessions/{session_id}",
     response_model=LlmCallLogListResponse,
+    summary="면접 세션 LLM 호출 로그 목록 조회",
 )
 async def get_session_llm_logs(
     session_id: int,
@@ -29,13 +25,9 @@ async def get_session_llm_logs(
 
 
 @router.get(
-    "/interview-sessions/{session_id}/llm-logs/nodes/{node_name}",
-    response_model=LlmCallLogListResponse,
-    include_in_schema=False,
-)
-@router.get(
     "/llm-logs/interview-sessions/{session_id}/nodes/{node_name}",
     response_model=LlmCallLogListResponse,
+    summary="면접 세션 노드별 LLM 호출 로그 조회",
 )
 async def get_session_node_logs(
     session_id: int,
@@ -51,13 +43,9 @@ async def get_session_node_logs(
 
 
 @router.get(
-    "/interview-sessions/{session_id}/llm-logs/{log_id}",
-    response_model=LlmCallLogResponse,
-    include_in_schema=False,
-)
-@router.get(
     "/llm-logs/interview-sessions/{session_id}/logs/{log_id}",
     response_model=LlmCallLogResponse,
+    summary="면접 세션 LLM 호출 로그 상세 조회",
 )
 async def get_session_llm_log_detail(
     session_id: int,

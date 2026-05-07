@@ -18,7 +18,7 @@ from schemas.session import (
 )
 from services.session_service import SessionService, get_session_service
 
-router = APIRouter(prefix="/interview-sessions", tags=["interview-sessions"])
+router = APIRouter(prefix="/interview-sessions", tags=["면접 세션 관리"])
 logger = logging.getLogger(__name__)
 
 
@@ -70,7 +70,11 @@ async def _create_session_core(
     )
 
 
-@router.get("", response_model=SessionListResponse)
+@router.get(
+    "",
+    response_model=SessionListResponse,
+    summary="면접 세션 목록 조회",
+)
 async def list_sessions(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
@@ -94,6 +98,7 @@ async def list_sessions(
 @router.get(
     "/{session_id}/question-generation",
     response_model=SessionQuestionGenerationResponse,
+    summary="면접 세션 질문 생성 상태 조회",
 )
 async def get_question_generation_status(
     session_id: int,
@@ -107,7 +112,11 @@ async def get_question_generation_status(
     )
 
 
-@router.get("/{session_id}", response_model=SessionDetailSingleResponse)
+@router.get(
+    "/{session_id}",
+    response_model=SessionDetailSingleResponse,
+    summary="면접 세션 상세 조회",
+)
 async def get_session(
     session_id: int,
     _: Manager = Depends(get_current_active_manager),
@@ -120,7 +129,12 @@ async def get_session(
     )
 
 
-@router.post("", response_model=SessionSingleResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=SessionSingleResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="면접 세션 생성",
+)
 async def create_session(
     request_body: SessionCreateRequest,
     background_tasks: BackgroundTasks,
@@ -137,7 +151,12 @@ async def create_session(
     )
 
 
-@router.post("/pipeline/jh", response_model=SessionSingleResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/pipeline/jh",
+    response_model=SessionSingleResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="면접 세션 생성 - JH 그래프",
+)
 async def create_session_jh(
     request_body: SessionCreateRequest,
     background_tasks: BackgroundTasks,
@@ -154,7 +173,12 @@ async def create_session_jh(
     )
 
 
-@router.post("/pipeline/hy", response_model=SessionSingleResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/pipeline/hy",
+    response_model=SessionSingleResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="면접 세션 생성 - HY 그래프",
+)
 async def create_session_hy(
     request_body: SessionCreateRequest,
     background_tasks: BackgroundTasks,
@@ -171,7 +195,12 @@ async def create_session_hy(
     )
 
 
-@router.post("/pipeline/jy", response_model=SessionSingleResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/pipeline/jy",
+    response_model=SessionSingleResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="면접 세션 생성 - JY 그래프",
+)
 async def create_session_jy(
     request_body: SessionCreateRequest,
     background_tasks: BackgroundTasks,
@@ -188,7 +217,11 @@ async def create_session_jy(
     )
 
 
-@router.put("/{session_id}", response_model=SessionSingleResponse)
+@router.put(
+    "/{session_id}",
+    response_model=SessionSingleResponse,
+    summary="면접 세션 수정",
+)
 async def update_session(
     session_id: int,
     request_body: SessionUpdateRequest,
@@ -205,7 +238,11 @@ async def update_session(
     )
 
 
-@router.delete("/{session_id}", response_model=SessionDeleteResultResponse)
+@router.delete(
+    "/{session_id}",
+    response_model=SessionDeleteResultResponse,
+    summary="면접 세션 삭제",
+)
 async def delete_session(
     session_id: int,
     current_manager: Manager = Depends(get_current_active_manager),
@@ -221,7 +258,11 @@ async def delete_session(
     )
 
 
-@router.post("/{session_id}/generate-questions", response_model=SessionTriggerResponse)
+@router.post(
+    "/{session_id}/generate-questions",
+    response_model=SessionTriggerResponse,
+    summary="면접 세션 질문 생성 실행",
+)
 async def generate_questions(
     session_id: int,
     request_body: SessionGenerateQuestionsRequest,

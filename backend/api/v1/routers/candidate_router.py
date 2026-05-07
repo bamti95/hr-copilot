@@ -27,10 +27,13 @@ from schemas.candidate import (
 )
 from services.candidate_service import CandidateService
 
-router = APIRouter(prefix="/candidates", tags=["candidate"])
+router = APIRouter(prefix="/candidates", tags=["지원자 관리"])
 
 
-@router.get("", response_model=CandidateListResponse)
+@router.get("",
+            response_model=CandidateListResponse,
+            summary="지원자 목록 조회",
+)
 async def list_candidates(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
@@ -50,7 +53,10 @@ async def list_candidates(
     )
 
 
-@router.get("/statistics", response_model=CandidateStatisticsResponse)
+@router.get("/statistics",
+            response_model=CandidateStatisticsResponse,
+            summary="지원자 통계 조회",
+            )
 async def get_candidate_statistics(
     _: Manager = Depends(get_current_active_manager),
     db: AsyncSession = Depends(get_db),
@@ -58,7 +64,9 @@ async def get_candidate_statistics(
     return await CandidateService.get_statistics(db=db)
 
 
-@router.get("/sample-folders", response_model=CandidateSampleFolderListResponse)
+@router.get("/sample-folders",
+            response_model=CandidateSampleFolderListResponse,
+            summary="지원자 샘플 폴더 목록 조회",)
 async def list_candidate_sample_folders(
     _: Manager = Depends(get_current_active_manager),
 ) -> CandidateSampleFolderListResponse:
@@ -69,6 +77,7 @@ async def list_candidate_sample_folders(
     "/bulk-import",
     response_model=CandidateBulkImportResponse,
     status_code=status.HTTP_201_CREATED,
+    summary="가상 지원자 대량 등록"
 )
 async def bulk_import_candidates(
     request_body: CandidateBulkImportRequest,
@@ -82,7 +91,9 @@ async def bulk_import_candidates(
     )
 
 
-@router.get("/{candidate_id}", response_model=CandidateDetailResponse)
+@router.get("/{candidate_id}",
+            response_model=CandidateDetailResponse,
+            summary="지원자 상세 조회")
 async def get_candidate(
     candidate_id: int,
     _: Manager = Depends(get_current_active_manager),
@@ -94,6 +105,7 @@ async def get_candidate(
 @router.get(
     "/{candidate_id}/documents/{document_id}",
     response_model=CandidateDocumentDetailResponse,
+    summary="지원자 문서 상세 조회"
 )
 async def get_candidate_document(
     candidate_id: int,
@@ -108,7 +120,10 @@ async def get_candidate_document(
     )
 
 
-@router.post("", response_model=CandidateResponse, status_code=status.HTTP_201_CREATED)
+@router.post("",
+             response_model=CandidateResponse,
+             status_code=status.HTTP_201_CREATED,
+             summary="지원자 등록")
 async def create_candidate(
     request_body: CandidateCreateRequest,
     current_manager: Manager = Depends(get_current_active_manager),
@@ -121,7 +136,9 @@ async def create_candidate(
     )
 
 
-@router.put("/{candidate_id}", response_model=CandidateResponse)
+@router.put("/{candidate_id}",
+            response_model=CandidateResponse,
+            summary="지원자 수정")
 async def update_candidate(
     candidate_id: int,
     request_body: CandidateUpdateRequest,
@@ -135,7 +152,9 @@ async def update_candidate(
     )
 
 
-@router.patch("/{candidate_id}/status", response_model=CandidateStatusPatchResponse)
+@router.patch("/{candidate_id}/status",
+              response_model=CandidateStatusPatchResponse,
+              summary="지원자 지원 상태 변경")
 async def patch_candidate_status(
     candidate_id: int,
     request_body: CandidateStatusPatchRequest,
@@ -153,6 +172,7 @@ async def patch_candidate_status(
     "/{candidate_id}/documents",
     response_model=CandidateDocumentUploadResponse,
     status_code=status.HTTP_201_CREATED,
+    summary="지원자 문서 업로드"
 )
 async def upload_candidate_documents(
     candidate_id: int,
@@ -180,7 +200,8 @@ async def upload_candidate_documents(
     return response
 
 
-@router.get("/{candidate_id}/documents/{document_id}/download")
+@router.get("/{candidate_id}/documents/{document_id}/download",
+            summary="지원자 문서 다운로드")
 async def download_candidate_document(
     candidate_id: int,
     document_id: int,
@@ -197,6 +218,7 @@ async def download_candidate_document(
 @router.delete(
     "/{candidate_id}/documents/{document_id}",
     response_model=CandidateDocumentDeleteResponse,
+    summary="지원자 문서 삭제"
 )
 async def delete_candidate_document(
     candidate_id: int,
@@ -212,7 +234,9 @@ async def delete_candidate_document(
     )
 
 
-@router.put("/{candidate_id}/documents/{document_id}", response_model=CandidateDocumentResponse)
+@router.put("/{candidate_id}/documents/{document_id}",
+            response_model=CandidateDocumentResponse,
+            summary="지원자 문서 교체")
 async def replace_candidate_document(
     candidate_id: int,
     document_id: int,
@@ -237,7 +261,9 @@ async def replace_candidate_document(
     return response
 
 
-@router.delete("/{candidate_id}", response_model=CandidateDeleteResponse)
+@router.delete("/{candidate_id}",
+               response_model=CandidateDeleteResponse,
+               summary="지원자 삭제")
 async def delete_candidate(
     candidate_id: int,
     current_manager: Manager = Depends(get_current_active_manager),

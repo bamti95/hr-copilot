@@ -7,10 +7,10 @@ from models.manager import Manager
 from schemas.manager_dashboard import ManagerDashboardSummaryResponse
 from services.manager_dashboard_service import ManagerDashboardService
 
-router = APIRouter(prefix="/manager/dashboard", tags=["manager-dashboard"])
+router = APIRouter(prefix="/manager/dashboard", tags=["HR 매니저 대시보드 요약"])
 
 
-@router.get("/summary", response_model=ManagerDashboardSummaryResponse)
+@router.get("/summary", response_model=ManagerDashboardSummaryResponse, summary="매니저 대시보드 요약")
 async def get_manager_dashboard_summary(
     _: Manager = Depends(get_current_active_manager),
     db: AsyncSession = Depends(get_db),

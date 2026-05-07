@@ -7,10 +7,12 @@ from models.manager import Manager
 from schemas.llm_usage import LlmUsageSummaryResponse
 from services.llm_usage_service import LlmUsageService
 
-router = APIRouter(prefix="/llm-usage", tags=["llm-usage"])
+router = APIRouter(prefix="/llm-usage", tags=["AI 사용량 관리"])
 
 
-@router.get("/summary", response_model=LlmUsageSummaryResponse)
+@router.get("/summary",
+            response_model=LlmUsageSummaryResponse,
+            summary="HR 매니저 대시보드 요약 조회")
 async def get_llm_usage_summary(
     limit: int = Query(20, ge=1, le=100),
     _: Manager = Depends(get_current_active_manager),

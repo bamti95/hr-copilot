@@ -13,10 +13,12 @@ from schemas.prompt_profile import (
 )
 from services.prompt_profile_service import PromptProfileService
 
-router = APIRouter(prefix="/prompt-profiles", tags=["prompt-profile"])
+router = APIRouter(prefix="/prompt-profiles", tags=["프롬프트 프로필 관리"])
 
 
-@router.get("", response_model=PromptProfileListResponse)
+@router.get("",
+            response_model=PromptProfileListResponse,
+            summary="프롬프트 프로필 목록 조회")
 async def list_prompt_profiles(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
@@ -34,7 +36,9 @@ async def list_prompt_profiles(
     )
 
 
-@router.get("/{profile_id}", response_model=PromptProfileResponse)
+@router.get("/{profile_id}",
+            response_model=PromptProfileResponse,
+            summary="프롬프트 프로필 상세 조회")
 async def get_prompt_profile(
     profile_id: int,
     _: Manager = Depends(get_current_active_manager),
@@ -43,7 +47,10 @@ async def get_prompt_profile(
     return await PromptProfileService.get_profile(db=db, profile_id=profile_id)
 
 
-@router.post("", response_model=PromptProfileResponse, status_code=status.HTTP_201_CREATED)
+@router.post("",
+             response_model=PromptProfileResponse,
+             status_code=status.HTTP_201_CREATED,
+             summary="프롬프트 프로필 생성")
 async def create_prompt_profile(
     request_body: PromptProfileCreateRequest,
     current_manager: Manager = Depends(get_current_active_manager),
@@ -56,7 +63,9 @@ async def create_prompt_profile(
     )
 
 
-@router.put("/{profile_id}", response_model=PromptProfileResponse)
+@router.put("/{profile_id}",
+            response_model=PromptProfileResponse,
+            summary="프롬프트 프로필 수정")
 async def update_prompt_profile(
     profile_id: int,
     request_body: PromptProfileUpdateRequest,
@@ -70,7 +79,9 @@ async def update_prompt_profile(
     )
 
 
-@router.delete("/{profile_id}", response_model=PromptProfileDeleteResponse)
+@router.delete("/{profile_id}",
+               response_model=PromptProfileDeleteResponse,
+               summary="프롬프트 프로필 논리 삭제")
 async def delete_prompt_profile(
     profile_id: int,
     current_manager: Manager = Depends(get_current_active_manager),

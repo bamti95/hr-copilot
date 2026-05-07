@@ -13,7 +13,7 @@ from schemas.manager import (
 )
 from services.manager_service import ManagerService
 
-router = APIRouter(prefix="/managers", tags=["manager"])
+router = APIRouter(prefix="/managers", tags=["HR 매니저 관리"])
 
 
 @router.post("", response_model=ManagerResponse, status_code=status.HTTP_201_CREATED)
