@@ -2,11 +2,11 @@
 
 from typing import Annotated, Any, Literal
 
-from pydantic import Field
+from pydantic import AliasChoices, Field, field_validator
 
 from ai.interview_graph.schemas import (
-    DrillerOutput,
-    FollowUpQuestion,
+    DrillerOutput as DrillerOutputBase,
+    FollowUpQuestion as FollowUpQuestionBase,
     GraphBaseModel,
     InterviewQuestionItem,
     PredictedAnswer,
@@ -20,6 +20,8 @@ from ai.interview_graph.schemas import (
 
 ShortText = Annotated[str, Field(max_length=120)]
 TagText = Annotated[str, Field(max_length=40)]
+# Driller 꼬리질문 본문·근거 공통 상한 (프롬프트·스키마와 맞출 것)
+FOLLOW_UP_TEXT_MAX = 120
 
 
 class DocumentEvidence(GraphBaseModel):
@@ -69,6 +71,31 @@ class QuestionCandidate(GraphBaseModel):
 
 class QuestionerOutput(GraphBaseModel):
     questions: list[QuestionCandidate] = Field(max_length=8)
+
+
+class FollowUpQuestion(FollowUpQuestionBase):
+    """꼬리질문은 면접에서 바로 읽을 수 있도록 짧게 유지합니다."""
+
+    follow_up_question: str = Field(max_length=FOLLOW_UP_TEXT_MAX)
+    follow_up_basis: str = Field(
+        max_length=FOLLOW_UP_TEXT_MAX,
+        validation_alias=AliasChoices(
+            "follow_up_basis",
+            "probing_target",
+            "expected_signal",
+        ),
+    )
+
+    @field_validator("follow_up_question", "follow_up_basis", mode="before")
+    @classmethod
+    def _trim_follow_up_text(cls, value: object) -> object:
+        if isinstance(value, str) and len(value) > FOLLOW_UP_TEXT_MAX:
+            return value[:FOLLOW_UP_TEXT_MAX].rstrip()
+        return value
+
+
+class DrillerOutput(DrillerOutputBase):
+    follow_ups: list[FollowUpQuestion]
 
 
 class QuestionGenerationResponse(GraphBaseModel):
