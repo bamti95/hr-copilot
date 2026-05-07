@@ -4,7 +4,10 @@ import { getErrorMessage } from "../../../../utils/getErrorMessage";
 import { getJobPositionLabel } from "../../common/candidateJobPosition";
 import { InterviewSessionQuestionGenerationView } from "./InterviewSessionQuestionGenerationView";
 import { triggerInterviewQuestionGeneration } from "../services/interviewSessionService";
-import type { InterviewSessionDetailResponse } from "../types";
+import type {
+  InterviewSessionDetailResponse,
+  InterviewSessionGraphPipeline,
+} from "../types";
 
 interface InterviewSessionDetailModalProps {
   open: boolean;
@@ -63,6 +66,8 @@ export function InterviewSessionDetailModal({
   const [isQuestionActionPending, setIsQuestionActionPending] = useState(false);
   const [isQuestionGenerationBusy, setIsQuestionGenerationBusy] = useState(false);
   const [questionActionError, setQuestionActionError] = useState("");
+  const [graphPipeline, setGraphPipeline] =
+    useState<InterviewSessionGraphPipeline>("default");
 
   const context = useMemo(() => {
     if (!detail) {
@@ -100,6 +105,7 @@ export function InterviewSessionDetailModal({
       await triggerInterviewQuestionGeneration(detail.id, {
         triggerType: "REGENERATE_SELECTED",
         targetQuestionIds: selectedQuestionIds,
+        graphPipeline,
       });
       setSelectedQuestionIds([]);
       setQuestionRefreshKey((current) => current + 1);
@@ -192,6 +198,7 @@ export function InterviewSessionDetailModal({
                 sessionId={detail.id}
                 compact
                 selectable
+                graphPipeline={graphPipeline}
                 selectedQuestionIds={selectedQuestionIds}
                 refreshKey={questionRefreshKey}
                 onBusyChange={setIsQuestionGenerationBusy}
@@ -215,7 +222,21 @@ export function InterviewSessionDetailModal({
                 세션 삭제
               </button>
 
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <select
+                  className="h-11 rounded-2xl border border-[var(--line)] bg-[var(--panel-strong)] px-3 text-sm font-semibold text-[var(--text)] outline-none transition focus:border-[var(--primary)]"
+                  value={graphPipeline}
+                  onChange={(event) =>
+                    setGraphPipeline(event.target.value as InterviewSessionGraphPipeline)
+                  }
+                  disabled={isSaving || isQuestionActionPending || isQuestionGenerationBusy}
+                  aria-label="Graph pipeline"
+                >
+                  <option value="default">Default</option>
+                  <option value="jh">JH</option>
+                  <option value="hy">HY</option>
+                  <option value="jy">JY</option>
+                </select>
                 <button
                   type="button"
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--panel-strong)] px-5 text-sm font-semibold text-[var(--text)] transition hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-50"
@@ -232,7 +253,7 @@ export function InterviewSessionDetailModal({
                   ) : (
                     <RefreshCcw className="h-4 w-4" />
                   )}
-                  질문 재생성
+                  선택 질문 재생성
                 </button>
                 <button
                   type="button"
