@@ -5,10 +5,9 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
-from ai.interview_graph.llm_usage import (
-    StructuredOutputCallError,
-    call_structured_output_with_usage,
-)
+from ai.interview_graph.llm_usage import StructuredOutputCallError
+from ai.interview_graph_JY.jy_structured_output import call_structured_output_with_model
+from ai.interview_graph_JY.model_routing import resolve_model
 from ai.interview_graph_JY.schemas import (
     DocumentAnalysisOutput,
     DrillerOutput,
@@ -57,11 +56,12 @@ async def _call_structured_output(
     user_prompt: str,
     response_model: type[T],
 ) -> tuple[T, list[dict[str, Any]]]:
-    return await call_structured_output_with_usage(
+    return await call_structured_output_with_model(
         node_name=node_name,
         system_prompt=system_prompt,
         user_prompt=user_prompt,
         response_model=response_model,
+        model_name=resolve_model(node_name),
     )
 
 
