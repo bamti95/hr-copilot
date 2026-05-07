@@ -20,6 +20,9 @@ import type {
   InterviewQuestionGenerationStatusResponse,
 } from "../types";
 
+import { formatDateTime } from "../../common/formatDateTime";
+
+
 interface InterviewSessionQuestionGenerationViewProps {
   sessionId: number;
   compact?: boolean;
@@ -38,10 +41,6 @@ const SUCCESS_STATUSES = new Set<InterviewQuestionGenerationStatus>([
   "COMPLETED",
   "PARTIAL_COMPLETED",
 ]);
-
-function formatDateTime(value: string | null) {
-  return value ? value.replace("T", " ").slice(0, 16) : "-";
-}
 
 function getGenerationStatusStyle(status: InterviewQuestionGenerationStatus) {
   if (status === "COMPLETED") {
