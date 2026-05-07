@@ -95,6 +95,7 @@ class SessionDeleteResultResponse(BaseModel):
 class SessionGenerateQuestionsRequest(BaseModel):
     trigger_type: str = Field(default="MANUAL", min_length=1, max_length=50)
     target_question_ids: list[str] = Field(default_factory=list)
+    graph_impl: str = Field(default="default", max_length=20)
 
     model_config = ConfigDict(str_strip_whitespace=True)
 

@@ -407,7 +407,7 @@ async def run_interview_question_graph(
                 llm_usages, saved_usage_count, has_llm_usages = collect_llm_usage_update(
                     node_update,
                     saved_usage_count,
-                    cumulative=True,
+                    cumulative=False,
                 )
                 if has_llm_usages:
                     collected_llm_usages.extend(llm_usages)

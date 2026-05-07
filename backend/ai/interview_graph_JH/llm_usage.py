@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+from datetime import datetime, timezone
 from typing import Any, TypeVar
 
 from pydantic import BaseModel
@@ -79,17 +80,18 @@ async def call_structured_output_with_usage(
     model_name = get_openai_model()
     usages: list[dict[str, Any]] = []
     last_error: Exception | None = None
-    request_payload = {
-        "model": model_name,
-        "input": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        "response_model": response_model.__name__,
-    }
-
     for _ in range(2):
         started_at = time.perf_counter()
+        started_datetime = datetime.now(timezone.utc)
+        request_payload = {
+            "node": node_name,
+            "model": model_name,
+            "input": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "response_model": response_model.__name__,
+        }
         try:
             response = await asyncio.wait_for(
                 client.responses.parse(
@@ -99,6 +101,7 @@ async def call_structured_output_with_usage(
                 ),
                 timeout=settings.OPENAI_TIMEOUT_SECONDS,
             )
+            ended_datetime = datetime.now(timezone.utc)
             elapsed_ms = int((time.perf_counter() - started_at) * 1000)
             usage = getattr(response, "usage", None) or getattr(
                 response,
@@ -133,10 +136,13 @@ async def call_structured_output_with_usage(
                     "request_json": request_payload,
                     "output_json": _safe_json(parsed),
                     "response_json": _safe_json(response),
+                    "started_at": started_datetime,
+                    "ended_at": ended_datetime,
                 }
             )
             return parsed, usages
         except Exception as exc:  # noqa: BLE001
+            ended_datetime = datetime.now(timezone.utc)
             elapsed_ms = int((time.perf_counter() - started_at) * 1000)
             last_error = exc
             usages.append(
@@ -151,10 +157,13 @@ async def call_structured_output_with_usage(
                     "elapsed_ms": elapsed_ms,
                     "error_message": str(exc),
                     "request_json": request_payload,
+                    "output_json": None,
                     "response_json": {
                         "error_type": exc.__class__.__name__,
                         "message": str(exc),
                     },
+                    "started_at": started_datetime,
+                    "ended_at": ended_datetime,
                 }
             )
             logger.warning(

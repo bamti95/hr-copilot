@@ -46,6 +46,7 @@ export interface InterviewSessionFormState {
   targetJob: string;
   difficultyLevel: string;
   promptProfileId: string;
+  graphPipeline: InterviewSessionGraphPipeline;
 }
 
 export interface InterviewSessionResponse {
@@ -132,6 +133,7 @@ export type InterviewSessionListResponse =
 export interface InterviewQuestionGenerationTriggerRequest {
   triggerType?: string;
   targetQuestionIds?: string[];
+  graphPipeline?: InterviewSessionGraphPipeline;
 }
 
 export interface InterviewSessionDetailResponse extends InterviewSessionResponse {

@@ -14,19 +14,19 @@ import {
 } from "../services/interviewSessionService";
 import type {
   InterviewGeneratedQuestion,
+  InterviewSessionGraphPipeline,
   InterviewQuestionGenerationStatus,
-  InterviewQuestionGenerationProgressStep,
   InterviewQuestionReviewStatus,
   InterviewQuestionGenerationStatusResponse,
 } from "../types";
 
 import { formatDateTime } from "../../common/formatDateTime";
 
-
 interface InterviewSessionQuestionGenerationViewProps {
   sessionId: number;
   compact?: boolean;
   selectable?: boolean;
+  graphPipeline?: InterviewSessionGraphPipeline;
   selectedQuestionIds?: string[];
   refreshKey?: number;
   onBusyChange?: (isBusy: boolean) => void;
@@ -36,10 +36,6 @@ interface InterviewSessionQuestionGenerationViewProps {
 const RUNNING_STATUSES = new Set<InterviewQuestionGenerationStatus>([
   "QUEUED",
   "PROCESSING",
-]);
-const SUCCESS_STATUSES = new Set<InterviewQuestionGenerationStatus>([
-  "COMPLETED",
-  "PARTIAL_COMPLETED",
 ]);
 
 function getGenerationStatusStyle(status: InterviewQuestionGenerationStatus) {
@@ -61,10 +57,10 @@ function getGenerationStatusStyle(status: InterviewQuestionGenerationStatus) {
 function getGenerationStatusLabel(status: InterviewQuestionGenerationStatus) {
   const labels: Record<InterviewQuestionGenerationStatus, string> = {
     NOT_REQUESTED: "생성 전",
-    QUEUED: "생성 대기 중",
+    QUEUED: "요청 접수",
     PROCESSING: "생성 중",
     COMPLETED: "생성 완료",
-    PARTIAL_COMPLETED: "일부 완료",
+    PARTIAL_COMPLETED: "확인 필요",
     FAILED: "생성 실패",
   };
   return labels[status] ?? status;
@@ -72,21 +68,21 @@ function getGenerationStatusLabel(status: InterviewQuestionGenerationStatus) {
 
 function getGenerationStatusMessage(status: InterviewQuestionGenerationStatus) {
   if (status === "QUEUED") {
-    return "질문 생성 작업이 대기열에 등록되었습니다. 곧 생성이 시작됩니다.";
+    return "면접 질문 생성 요청이 접수되었습니다. 잠시 후 자동으로 생성이 시작됩니다.";
   }
   if (status === "PROCESSING") {
-    return "질문 생성이 진행 중입니다. 완료되면 결과가 자동으로 갱신됩니다.";
+    return "지원자 자료를 바탕으로 면접 질문을 생성하고 있습니다. 완료되면 결과가 자동으로 갱신됩니다.";
   }
   if (status === "COMPLETED") {
-    return "질문 생성이 완료되었습니다.";
+    return "면접 질문 생성이 완료되었습니다.";
   }
   if (status === "PARTIAL_COMPLETED") {
-    return "질문 일부가 생성되었습니다. 실패한 항목은 오류 내용을 확인해 주세요.";
+    return "일부 질문은 생성되었지만 검토가 필요합니다. 아래 결과를 확인해 주세요.";
   }
   if (status === "FAILED") {
-    return "질문 생성에 실패했습니다. 오류 내용을 확인한 뒤 다시 생성할 수 있습니다.";
+    return "면접 질문 생성에 실패했습니다. 오류 내용을 확인한 뒤 다시 생성할 수 있습니다.";
   }
-  return "아직 질문 생성 작업이 요청되지 않았습니다.";
+  return "아직 면접 질문 생성 요청 전입니다.";
 }
 
 function getReviewStatusLabel(status: InterviewQuestionReviewStatus) {
@@ -106,46 +102,6 @@ function getReviewStatusStyle(status: InterviewQuestionReviewStatus) {
     return "bg-amber-50 text-amber-700";
   }
   return "bg-rose-50 text-rose-700";
-}
-
-function getNodeStatusLabel(status: InterviewQuestionGenerationProgressStep["status"]) {
-  const labels: Record<InterviewQuestionGenerationProgressStep["status"], string> = {
-    PENDING: "대기",
-    PROCESSING: "진행 중",
-    COMPLETED: "완료",
-    FAILED: "실패",
-  };
-  return labels[status];
-}
-
-function getNodeStatusStyle(status: InterviewQuestionGenerationProgressStep["status"]) {
-  if (status === "COMPLETED") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-800";
-  }
-  if (status === "PROCESSING") {
-    return "border-sky-200 bg-sky-50 text-sky-800";
-  }
-  if (status === "FAILED") {
-    return "border-rose-200 bg-rose-50 text-rose-700";
-  }
-  return "border-slate-200 bg-slate-50 text-slate-600";
-}
-
-function NodeStatusIcon({
-  status,
-}: {
-  status: InterviewQuestionGenerationProgressStep["status"];
-}) {
-  if (status === "PROCESSING") {
-    return <LoaderCircle className="h-4 w-4 animate-spin" />;
-  }
-  if (status === "COMPLETED") {
-    return <CheckCircle2 className="h-4 w-4" />;
-  }
-  if (status === "FAILED") {
-    return <AlertTriangle className="h-4 w-4" />;
-  }
-  return <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />;
 }
 
 function truncateText(value: string, maxLength = 320) {
@@ -300,6 +256,7 @@ export function InterviewSessionQuestionGenerationView({
   sessionId,
   compact = false,
   selectable = false,
+  graphPipeline = "default",
   selectedQuestionIds = [],
   refreshKey = 0,
   onBusyChange,
@@ -314,19 +271,49 @@ export function InterviewSessionQuestionGenerationView({
   const [errorMessage, setErrorMessage] = useState("");
 
   const isRunning = data ? RUNNING_STATUSES.has(data.status) : false;
-  const generationProgress = useMemo(() => {
+  const showFullRegenerateButton =
+    !compact ||
+    !data ||
+    data.status === "NOT_REQUESTED" ||
+    data.status === "FAILED" ||
+    data.questions.length === 0;
+  const generationOverview = useMemo(() => {
     const status = data?.status ?? "NOT_REQUESTED";
-    const completed = SUCCESS_STATUSES.has(status) ? 1 : 0;
-    const running = RUNNING_STATUSES.has(status) ? 1 : 0;
-    const failed = status === "FAILED" ? 1 : 0;
+    const questionCount = data?.questions.length ?? 0;
+    const approvedCount =
+      data?.questions.filter((question) => question.review.status === "approved")
+        .length ?? 0;
 
-    return {
-      completed,
-      running,
-      failed,
-      total: status === "NOT_REQUESTED" ? 0 : 1,
-    };
-  }, [data?.status]);
+    return [
+      {
+        label: "진행 상태",
+        value: getGenerationStatusLabel(status),
+        tone:
+          status === "FAILED"
+            ? "text-rose-600"
+            : status === "PARTIAL_COMPLETED"
+              ? "text-amber-600"
+              : RUNNING_STATUSES.has(status)
+                ? "text-sky-700"
+                : "text-slate-900",
+      },
+      {
+        label: "생성된 질문",
+        value: `${questionCount}개`,
+        tone: "text-slate-900",
+      },
+      {
+        label: "승인된 질문",
+        value: `${approvedCount}개`,
+        tone: "text-emerald-700",
+      },
+      {
+        label: "완료 시각",
+        value: formatDateTime(data?.completedAt ?? null),
+        tone: "text-slate-900",
+      },
+    ];
+  }, [data]);
 
   const loadStatus = useCallback(
     async (options?: { quiet?: boolean }) => {
@@ -380,7 +367,10 @@ export function InterviewSessionQuestionGenerationView({
     try {
       setIsTriggering(true);
       setErrorMessage("");
-      await triggerInterviewQuestionGeneration(sessionId, { triggerType: "MANUAL" });
+      await triggerInterviewQuestionGeneration(sessionId, {
+        triggerType: "MANUAL",
+        graphPipeline,
+      });
       onSelectedQuestionIdsChange?.([]);
       await loadStatus({ quiet: true });
     } catch (error) {
@@ -418,16 +408,6 @@ export function InterviewSessionQuestionGenerationView({
       rejected: questions.filter((question) => question.review.status === "rejected").length,
     };
   }, [data]);
-  const visibleProgress = useMemo(
-    () =>
-      (data?.progress ?? []).filter(
-        (step) =>
-          !step.key.startsWith("retry_") ||
-          step.status !== "PENDING" ||
-          step.attempt > 0,
-      ),
-    [data?.progress],
-  );
 
   return (
     <section
@@ -441,7 +421,7 @@ export function InterviewSessionQuestionGenerationView({
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-cyan-800">
-              LangGraph Result
+              면접 질문
             </span>
             {data ? (
               <span
@@ -457,7 +437,7 @@ export function InterviewSessionQuestionGenerationView({
             생성된 면접 질문
           </h2>
           <p className="mt-2 break-words text-sm leading-6 text-[var(--muted)] [overflow-wrap:anywhere]">
-            LangGraph 멀티 에이전트가 만든 질문, 예상 답변, 꼬리 질문, 근거와 점수를 확인합니다.
+            지원자 자료를 바탕으로 생성된 질문과 예상 답변, 꼬리 질문, 검토 결과를 확인합니다.
           </p>
         </div>
 
@@ -471,19 +451,21 @@ export function InterviewSessionQuestionGenerationView({
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
             새로고침
           </button>
-          <button
-            type="button"
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => void handleTriggerGeneration()}
-            disabled={isTriggering || isRunning}
-          >
-            {isTriggering || isRunning ? (
-              <LoaderCircle className="h-4 w-4 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4" />
-            )}
-            전체 재생성
-          </button>
+          {showFullRegenerateButton ? (
+            <button
+              type="button"
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => void handleTriggerGeneration()}
+              disabled={isTriggering || isRunning}
+            >
+              {isTriggering || isRunning ? (
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              전체 재생성
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -505,31 +487,17 @@ export function InterviewSessionQuestionGenerationView({
       ) : null}
 
       {data ? (
-        <div className="mt-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 md:grid-cols-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-              완료
-            </p>
-            <p className="mt-1 text-base font-semibold text-slate-900">
-              {generationProgress.completed} / {generationProgress.total}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-              생성 중
-            </p>
-            <p className="mt-1 text-base font-semibold text-amber-600">
-              {generationProgress.running}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-              실패
-            </p>
-            <p className="mt-1 text-base font-semibold text-rose-600">
-              {generationProgress.failed}
-            </p>
-          </div>
+        <div className="mt-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 md:grid-cols-4">
+          {generationOverview.map((item) => (
+            <div key={item.label}>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                {item.label}
+              </p>
+              <p className={`mt-1 text-base font-semibold ${item.tone}`}>
+                {item.value}
+              </p>
+            </div>
+          ))}
         </div>
       ) : null}
 
@@ -567,58 +535,10 @@ export function InterviewSessionQuestionGenerationView({
         </div>
       ) : null}
 
-      {visibleProgress.length ? (
-        <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-900">
-                LangGraph 노드 진행 상태
-              </p>
-              <p className="mt-1 break-words text-xs text-slate-500 [overflow-wrap:anywhere]">
-                생성 작업이 각 에이전트 노드를 통과한 상태입니다.
-              </p>
-            </div>
-            <span className="text-xs font-semibold text-slate-500">
-              {visibleProgress.filter((step) => step.status === "COMPLETED").length} /{" "}
-              {visibleProgress.length}
-            </span>
-          </div>
-
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {visibleProgress.map((step) => (
-              <div
-                key={step.key}
-                className={`rounded-2xl border px-4 py-3 ${getNodeStatusStyle(
-                  step.status,
-                )}`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <NodeStatusIcon status={step.status} />
-                    <span className="truncate text-sm font-bold">{step.label}</span>
-                  </div>
-                  <span className="shrink-0 text-xs font-bold">
-                    {getNodeStatusLabel(step.status)}
-                  </span>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 break-words text-xs opacity-80 [overflow-wrap:anywhere]">
-                  <span>시작 {formatDateTime(step.startedAt)}</span>
-                  <span>완료 {formatDateTime(step.completedAt)}</span>
-                  {step.attempt > 1 ? <span>{step.attempt}회 실행</span> : null}
-                </div>
-                {step.error ? (
-                  <p className="mt-2 text-xs font-medium text-rose-700">{step.error}</p>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
       <div className="mt-5 grid gap-3 md:grid-cols-5">
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel-strong)] p-4">
           <div className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
-            Questions
+            질문 수
           </div>
           <div className="mt-2 text-xl font-bold text-[var(--text)]">
             {data?.questions.length ?? 0}
@@ -657,25 +577,6 @@ export function InterviewSessionQuestionGenerationView({
           </div>
         </div>
       </div>
-
-      {data?.generationSource ? (
-        <details className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-bold text-slate-800">
-            백엔드 생성 함수 추적
-            <ChevronDown className="h-4 w-4 text-slate-500" />
-          </summary>
-          <dl className="mt-4 grid gap-2 text-xs leading-5 text-slate-700">
-            {Object.entries(data.generationSource).map(([key, value]) => (
-              <div key={key} className="grid gap-1 md:grid-cols-[160px_1fr]">
-                <dt className="font-bold uppercase tracking-[0.08em] text-slate-500">
-                  {key}
-                </dt>
-                <dd className="break-words font-mono">{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </details>
-      ) : null}
 
       {data?.error ? (
         <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">

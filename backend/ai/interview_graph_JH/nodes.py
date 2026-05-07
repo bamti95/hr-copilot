@@ -1435,7 +1435,7 @@ def prepare_context_node(state: AgentState) -> AgentState:
 
 async def verification_point_extractor_node(state: AgentState) -> AgentState:
     if state.get("verification_profile"):
-        return state
+        return {**state, "llm_usages": []}
 
     errors = list(state.get("errors") or [])
     raw_outputs = dict(state.get("raw_outputs") or {})
@@ -1465,7 +1465,7 @@ async def verification_point_extractor_node(state: AgentState) -> AgentState:
             "verification_profile": merged,
             "errors": errors,
             "raw_outputs": raw_outputs,
-            "llm_usages": list(state.get("llm_usages") or []) + exc.usages,
+            "llm_usages": exc.usages,
         }
     except Exception as exc:  # noqa: BLE001
         errors.append(f"verification_point_extractor 호출 실패: {exc}")
@@ -1493,7 +1493,7 @@ async def verification_point_extractor_node(state: AgentState) -> AgentState:
         "verification_profile": merged_output,
         "errors": errors,
         "raw_outputs": raw_outputs,
-        "llm_usages": list(state.get("llm_usages") or []) + usages,
+        "llm_usages": usages,
     }
 
 
@@ -1539,12 +1539,18 @@ async def questioner_node(state: AgentState) -> AgentState:
             **state,
             "errors": errors,
             "raw_outputs": raw_outputs,
-            "llm_usages": list(state.get("llm_usages") or []) + exc.usages,
+            "llm_usages": exc.usages,
             "status": "failed",
         }
     except Exception as exc:  # noqa: BLE001
         errors.append(f"questioner 호출 실패: {exc}")
-        return {**state, "errors": errors, "raw_outputs": raw_outputs, "status": "failed"}
+        return {
+            **state,
+            "errors": errors,
+            "raw_outputs": raw_outputs,
+            "llm_usages": [],
+            "status": "failed",
+        }
 
     raw_outputs["questioner"] = {
         "mode": mode,
@@ -1562,7 +1568,7 @@ async def questioner_node(state: AgentState) -> AgentState:
         "retry_count": retry_count,
         "errors": errors,
         "raw_outputs": raw_outputs,
-        "llm_usages": list(state.get("llm_usages") or []) + usages,
+        "llm_usages": usages,
         "status": "pending",
     }
 
@@ -1573,7 +1579,7 @@ async def predictor_node(state: AgentState) -> AgentState:
     questions = deepcopy(state.get("questions") or [])
     targets = [question for question in questions if not question.get("predicted_answer")]
     if not targets:
-        return state
+        return {**state, "llm_usages": []}
 
     prompt = PREDICTOR_USER_PROMPT.format(
         candidate_context=state.get("candidate_context") or _candidate_context(state),
@@ -1592,11 +1598,11 @@ async def predictor_node(state: AgentState) -> AgentState:
             **state,
             "errors": errors,
             "raw_outputs": raw_outputs,
-            "llm_usages": list(state.get("llm_usages") or []) + exc.usages,
+            "llm_usages": exc.usages,
         }
     except Exception as exc:  # noqa: BLE001
         errors.append(f"predictor 호출 실패: {exc}")
-        return {**state, "errors": errors, "raw_outputs": raw_outputs}
+        return {**state, "errors": errors, "raw_outputs": raw_outputs, "llm_usages": []}
 
     raw_outputs["predictor"] = {"output": output.model_dump(mode="json")}
 
@@ -1625,7 +1631,7 @@ async def predictor_node(state: AgentState) -> AgentState:
         "questions": questions,
         "errors": errors,
         "raw_outputs": raw_outputs,
-        "llm_usages": list(state.get("llm_usages") or []) + usages,
+        "llm_usages": usages,
     }
 
 
@@ -1635,7 +1641,7 @@ async def driller_node(state: AgentState) -> AgentState:
     questions = deepcopy(state.get("questions") or [])
     targets = [question for question in questions if not question.get("follow_up_questions")]
     if not targets:
-        return state
+        return {**state, "llm_usages": []}
 
     prompt = DRILLER_USER_PROMPT.format(
         job_posting=state.get("job_posting") or "",
@@ -1655,11 +1661,11 @@ async def driller_node(state: AgentState) -> AgentState:
             **state,
             "errors": errors,
             "raw_outputs": raw_outputs,
-            "llm_usages": list(state.get("llm_usages") or []) + exc.usages,
+            "llm_usages": exc.usages,
         }
     except Exception as exc:  # noqa: BLE001
         errors.append(f"driller 호출 실패: {exc}")
-        return {**state, "errors": errors, "raw_outputs": raw_outputs}
+        return {**state, "errors": errors, "raw_outputs": raw_outputs, "llm_usages": []}
 
     raw_outputs["driller"] = {"output": output.model_dump(mode="json")}
 
@@ -1684,7 +1690,7 @@ async def driller_node(state: AgentState) -> AgentState:
         "questions": questions,
         "errors": errors,
         "raw_outputs": raw_outputs,
-        "llm_usages": list(state.get("llm_usages") or []) + usages,
+        "llm_usages": usages,
     }
 
 
@@ -1708,6 +1714,7 @@ async def reviewer_node(state: AgentState) -> AgentState:
             "questions": questions,
             "errors": errors,
             "raw_outputs": raw_outputs,
+            "llm_usages": [],
         }
 
     prompt = REVIEWER_USER_PROMPT.format(
@@ -1778,7 +1785,7 @@ async def reviewer_node(state: AgentState) -> AgentState:
         "is_all_approved": all(q.get("review_status") == "approved" for q in selected),
         "errors": errors,
         "raw_outputs": raw_outputs,
-        "llm_usages": list(state.get("llm_usages") or []) + usages,
+        "llm_usages": usages,
     }
 
 

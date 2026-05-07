@@ -37,6 +37,7 @@ const emptyForm: InterviewSessionFormState = {
   targetJob: "",
   difficultyLevel: "",
   promptProfileId: "",
+  graphPipeline: "default",
 };
 
 export function useInterviewSessionData() {
@@ -293,6 +294,7 @@ export function useInterviewSessionData() {
       targetJob: session.targetJob,
       difficultyLevel: session.difficultyLevel ?? "",
       promptProfileId: session.promptProfileId ? String(session.promptProfileId) : "",
+      graphPipeline: "default",
     });
   };
 
@@ -407,6 +409,7 @@ export function useInterviewSessionData() {
           targetJob: form.targetJob.trim(),
           difficultyLevel: form.difficultyLevel.trim() || null,
           promptProfileId: Number(form.promptProfileId),
+          graphPipeline: form.graphPipeline,
         });
         savedSessionId = created.id;
       } else if (editingSessionId) {

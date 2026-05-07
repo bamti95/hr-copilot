@@ -208,6 +208,7 @@ class SessionService:
             entity.id,
             actor_id,
             request.target_question_ids,
+            request.graph_impl,
         )
 
         return SessionTriggerData(

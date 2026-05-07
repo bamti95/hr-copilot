@@ -72,6 +72,13 @@ function renderPromptProfileLabel(profile: InterviewSessionPromptProfileOption) 
   return `${profile.profileKey} (${getJobPositionLabel(profile.targetJob)})`;
 }
 
+const GRAPH_PIPELINE_OPTIONS = [
+  { value: "default", label: "Default" },
+  { value: "jh", label: "JH" },
+  { value: "hy", label: "HY" },
+  { value: "jy", label: "JY" },
+] as const;
+
 export function InterviewSessionBoard({
   data,
   candidateOptions,
@@ -409,6 +416,29 @@ export function InterviewSessionBoard({
                 </span>
               ) : null}
             </label>
+
+            {formMode === "create" ? (
+              <label className="text-sm font-medium text-[var(--text)]">
+                Graph pipeline
+                <select
+                  className={`${inputClassName} mt-2`}
+                  value={form.graphPipeline}
+                  onChange={(event) =>
+                    onFormChange(
+                      "graphPipeline",
+                      event.target.value as typeof form.graphPipeline,
+                    )
+                  }
+                  disabled={isSaving}
+                >
+                  {GRAPH_PIPELINE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
 
             <label className="text-sm font-medium text-[var(--text)] md:col-span-2">
               목표 직무

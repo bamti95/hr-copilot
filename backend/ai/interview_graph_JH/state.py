@@ -11,7 +11,8 @@ internal graph state small and explicit so each node has one clear job:
 
 from __future__ import annotations
 
-from typing import Any, Literal, TypedDict
+import operator
+from typing import Annotated, Any, Literal, TypedDict
 
 
 HumanAction = Literal[
@@ -86,6 +87,28 @@ class QuestionSet(TypedDict, total=False):
     rewrite_feedback: str
 
 
+class LlmUsageState(TypedDict, total=False):
+    node: str
+    model_name: str
+    run_id: str
+    parent_run_id: str
+    trace_id: str
+    run_type: str
+    execution_order: int
+    request_json: dict[str, Any]
+    output_json: dict[str, Any] | None
+    response_json: dict[str, Any] | None
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+    estimated_cost: float
+    call_status: str
+    elapsed_ms: int
+    error_message: str
+    started_at: Any
+    ended_at: Any
+
+
 class AgentState(TypedDict, total=False):
     session_id: int
     candidate_id: int
@@ -123,4 +146,5 @@ class AgentState(TypedDict, total=False):
 
     errors: list[str]
     raw_outputs: dict[str, Any]
+    llm_usages: Annotated[list[LlmUsageState], operator.add]
     response: Any
