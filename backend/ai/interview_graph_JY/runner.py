@@ -32,6 +32,11 @@ from schemas.session_generation import CandidateInterviewPrepInput
 
 logger = logging.getLogger(__name__)
 
+# LangGraph super-step(노드 실행) 단위 timeout (초).
+# 외곽 서비스 레이어에서 전체 파이프라인 timeout을 별도로 감싸지만,
+# LangGraph 내부에서도 노드 단위 무한 대기 방지를 위해 설정한다.
+GRAPH_STEP_TIMEOUT_SECONDS: float = 180.0
+
 
 @lru_cache(maxsize=1)
 def _build_graph() -> Any:
@@ -77,7 +82,9 @@ def _build_graph() -> Any:
     graph.add_edge("retry_driller", "driller")
     graph.add_edge("selector", "final_formatter")
     graph.add_edge("final_formatter", END)
-    return graph.compile()
+    compiled = graph.compile()
+    compiled.step_timeout = GRAPH_STEP_TIMEOUT_SECONDS
+    return compiled
 
 
 def _initial_state(payload: CandidateInterviewPrepInput) -> AgentState:

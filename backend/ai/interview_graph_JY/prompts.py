@@ -63,6 +63,9 @@ QUESTIONER_USER_PROMPT = """
 [재생성 대상 질문 ID]
 {target_question_ids}
 
+[재생성 대상 질문 상세(질문/가이드/리뷰/점수 근거)]
+{target_question_context}
+
 [지원자 문맥]
 {candidate_context}
 

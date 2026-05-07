@@ -447,6 +447,46 @@ async def questioner_node(state: AgentState) -> dict[str, Any]:
             f"- 재생성 대상 ID 수에 맞춰 질문은 정확히 {len(target_question_ids)}개 생성하세요."
         )
 
+    target_context: dict[str, Any] = {}
+    if is_partial_regeneration:
+        questions_by_id = {
+            str(item.get("id")): item for item in (state.get("questions", []) or []) if item.get("id")
+        }
+        reviews_by_id = {
+            str(item.get("question_id")): item
+            for item in (state.get("reviews", []) or [])
+            if item.get("question_id")
+        }
+        scores_by_id = {
+            str(item.get("question_id")): item
+            for item in (state.get("scores", []) or [])
+            if item.get("question_id")
+        }
+        answers_by_id = {
+            str(item.get("question_id")): item
+            for item in (state.get("answers", []) or [])
+            if item.get("question_id")
+        }
+        follow_ups_by_id = {
+            str(item.get("question_id")): item
+            for item in (state.get("follow_ups", []) or [])
+            if item.get("question_id")
+        }
+        for qid in target_question_ids:
+            question = questions_by_id.get(str(qid)) or {}
+            target_context[str(qid)] = {
+                "question": _compact_question(question) if question else {},
+                "answer": answers_by_id.get(str(qid), {}),
+                "follow_up": follow_ups_by_id.get(str(qid), {}),
+                "review": reviews_by_id.get(str(qid), {}),
+                "score": scores_by_id.get(str(qid), {}),
+                "instruction": (
+                    "아래 review/recommended_revision 및 score/score_reason에서 지적된 문제를 해결하도록 "
+                    "question_text, generation_basis, document_evidence, evaluation_guide를 함께 보완하세요. "
+                    "특히 평가 가이드는 실제 채점이 가능하도록 관찰 가능한 기준/시그널 중심으로 구체화하세요."
+                ),
+            }
+
     profile_prompt = (state.get("prompt_profile") or {}).get("system_prompt")
     system_prompt = prompts.QUESTIONER_SYSTEM_PROMPT
     if profile_prompt:
@@ -462,6 +502,7 @@ async def questioner_node(state: AgentState) -> dict[str, Any]:
             human_action=human_action,
             additional_instruction=state.get("additional_instruction"),
             target_question_ids=target_question_ids,
+            target_question_context=_json(target_context),
             candidate_context=state.get("candidate_context", ""),
             document_analysis=_json(
                 _compact_document_analysis(state.get("document_analysis", {}))
