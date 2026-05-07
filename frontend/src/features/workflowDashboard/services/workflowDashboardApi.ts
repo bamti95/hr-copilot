@@ -262,7 +262,7 @@ export async function fetchSessionLlmLogs(
   sessionId: number,
 ): Promise<LlmCallLogListResponse> {
   const response = await api.get<LlmCallLogListApiResponse>(
-    `/interview-sessions/${sessionId}/llm-logs`,
+    `/llm-logs/interview-sessions/${sessionId}`,
   );
 
   return {

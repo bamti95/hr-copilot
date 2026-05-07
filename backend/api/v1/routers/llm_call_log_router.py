@@ -7,14 +7,16 @@ from models.manager import Manager
 from schemas.llm_call_log import LlmCallLogListResponse, LlmCallLogResponse
 from services.llm_call_log_service import LlmCallLogService
 
-router = APIRouter(
-    prefix="/interview-sessions",
-    tags=["llm-call-log"],
-)
+router = APIRouter(tags=["llm-call-log"])
 
 
 @router.get(
-    "/{session_id}/llm-logs",
+    "/interview-sessions/{session_id}/llm-logs",
+    response_model=LlmCallLogListResponse,
+    include_in_schema=False,
+)
+@router.get(
+    "/llm-logs/interview-sessions/{session_id}",
     response_model=LlmCallLogListResponse,
 )
 async def get_session_llm_logs(
@@ -27,7 +29,12 @@ async def get_session_llm_logs(
 
 
 @router.get(
-    "/{session_id}/llm-logs/nodes/{node_name}",
+    "/interview-sessions/{session_id}/llm-logs/nodes/{node_name}",
+    response_model=LlmCallLogListResponse,
+    include_in_schema=False,
+)
+@router.get(
+    "/llm-logs/interview-sessions/{session_id}/nodes/{node_name}",
     response_model=LlmCallLogListResponse,
 )
 async def get_session_node_logs(
@@ -44,7 +51,12 @@ async def get_session_node_logs(
 
 
 @router.get(
-    "/{session_id}/llm-logs/{log_id}",
+    "/interview-sessions/{session_id}/llm-logs/{log_id}",
+    response_model=LlmCallLogResponse,
+    include_in_schema=False,
+)
+@router.get(
+    "/llm-logs/interview-sessions/{session_id}/logs/{log_id}",
     response_model=LlmCallLogResponse,
 )
 async def get_session_llm_log_detail(
