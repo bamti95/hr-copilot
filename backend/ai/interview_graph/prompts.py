@@ -79,11 +79,11 @@ Analyzer 결과를 바탕으로 실제 면접에서 사용할 수 있는 질문 
 
 각 질문은 다음 항목을 포함해야 합니다:
 - question_text
-- generation_basis
-- document_evidence
-- evaluation_guide
-- risk_tags
-- competency_tags
+- generation_basis: 질문 생성 근거를 1문장, 120자 이내로 작성합니다.
+- document_evidence: 질문당 최대 2개, 각 항목은 80자 이내의 짧은 근거로 작성합니다.
+- evaluation_guide: 면접관이 확인할 핵심 체크포인트를 160자 이내로 작성합니다.
+- risk_tags: 최대 3개만 작성합니다.
+- competency_tags: 최대 3개만 작성합니다.
 """
 
 QUESTIONER_USER_PROMPT = """
@@ -96,6 +96,8 @@ QUESTIONER_USER_PROMPT = """
 - 기존 질문과 중복되지 않게 작성하세요.
 - 전체 생성일 때는 경험 검증 2개 이상, 리스크 검증 2개 이상, 기술 역량/직무 역량 합산 2개 이상을 포함하세요.
 - 재생성 요청이 있는 경우 해당 질문의 문제점을 개선한 새 질문을 생성하세요.
+- generation_basis, document_evidence, evaluation_guide는 장문 설명이 아니라 downstream 노드가 참고할 압축 근거만 작성하세요.
+- risk_tags와 competency_tags는 각각 최대 3개까지 작성하세요.
 
 대상 직무: {target_job}
 난이도: {difficulty_level}

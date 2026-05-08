@@ -65,6 +65,41 @@ QUESTION_CATEGORY_ALIASES = {
     "기타": "기타",
 }
 
+QUESTION_GENERATION_BASIS_MAX_CHARS = 120
+QUESTION_DOCUMENT_EVIDENCE_MAX_ITEMS = 2
+QUESTION_DOCUMENT_EVIDENCE_MAX_CHARS = 80
+QUESTION_EVALUATION_GUIDE_MAX_CHARS = 160
+QUESTION_TAG_MAX_ITEMS = 3
+
+
+def _clip_compact_text(value: Any, max_chars: int) -> str:
+    text = " ".join(str(value or "").split())
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars].rstrip()
+
+
+def _normalize_limited_text_list(
+    value: Any,
+    *,
+    max_items: int,
+    max_chars: int | None = None,
+) -> list[str]:
+    if value is None:
+        return []
+    raw_items = value if isinstance(value, list) else [value]
+    items: list[str] = []
+    for item in raw_items:
+        text = " ".join(str(item or "").split())
+        if not text:
+            continue
+        if max_chars is not None:
+            text = _clip_compact_text(text, max_chars)
+        items.append(text)
+        if len(items) >= max_items:
+            break
+    return items
+
 
 def normalize_question_category(value: Any) -> str:
     raw = str(value or "").strip()
@@ -81,16 +116,49 @@ class QuestionCandidate(GraphBaseModel):
     id: str
     category: QuestionCategory
     question_text: str
-    generation_basis: str
-    document_evidence: list[str] = Field(default_factory=list)
-    evaluation_guide: str
-    risk_tags: list[str] = Field(default_factory=list)
-    competency_tags: list[str] = Field(default_factory=list)
+    generation_basis: str = Field(max_length=QUESTION_GENERATION_BASIS_MAX_CHARS)
+    document_evidence: list[str] = Field(
+        default_factory=list,
+        max_length=QUESTION_DOCUMENT_EVIDENCE_MAX_ITEMS,
+    )
+    evaluation_guide: str = Field(max_length=QUESTION_EVALUATION_GUIDE_MAX_CHARS)
+    risk_tags: list[str] = Field(default_factory=list, max_length=QUESTION_TAG_MAX_ITEMS)
+    competency_tags: list[str] = Field(
+        default_factory=list,
+        max_length=QUESTION_TAG_MAX_ITEMS,
+    )
 
     @field_validator("category", mode="before")
     @classmethod
     def normalize_category(cls, value: Any) -> str:
         return normalize_question_category(value)
+
+    @field_validator("generation_basis", mode="before")
+    @classmethod
+    def compact_generation_basis(cls, value: Any) -> str:
+        return _clip_compact_text(value, QUESTION_GENERATION_BASIS_MAX_CHARS)
+
+    @field_validator("document_evidence", mode="before")
+    @classmethod
+    def compact_document_evidence(cls, value: Any) -> list[str]:
+        return _normalize_limited_text_list(
+            value,
+            max_items=QUESTION_DOCUMENT_EVIDENCE_MAX_ITEMS,
+            max_chars=QUESTION_DOCUMENT_EVIDENCE_MAX_CHARS,
+        )
+
+    @field_validator("evaluation_guide", mode="before")
+    @classmethod
+    def compact_evaluation_guide(cls, value: Any) -> str:
+        return _clip_compact_text(value, QUESTION_EVALUATION_GUIDE_MAX_CHARS)
+
+    @field_validator("risk_tags", "competency_tags", mode="before")
+    @classmethod
+    def compact_tags(cls, value: Any) -> list[str]:
+        return _normalize_limited_text_list(
+            value,
+            max_items=QUESTION_TAG_MAX_ITEMS,
+        )
 
 
 class QuestionerOutput(GraphBaseModel):
@@ -212,9 +280,9 @@ class InterviewQuestionItem(GraphBaseModel):
     id: str
     category: QuestionCategory
     question_text: str
-    generation_basis: str
-    document_evidence: list[str]
-    evaluation_guide: str
+    generation_basis: str = Field(max_length=QUESTION_GENERATION_BASIS_MAX_CHARS)
+    document_evidence: list[str] = Field(max_length=QUESTION_DOCUMENT_EVIDENCE_MAX_ITEMS)
+    evaluation_guide: str = Field(max_length=QUESTION_EVALUATION_GUIDE_MAX_CHARS)
 
     predicted_answer: str
     predicted_answer_basis: str
@@ -222,8 +290,8 @@ class InterviewQuestionItem(GraphBaseModel):
     follow_up_question: str
     follow_up_basis: str
 
-    risk_tags: list[str]
-    competency_tags: list[str]
+    risk_tags: list[str] = Field(max_length=QUESTION_TAG_MAX_ITEMS)
+    competency_tags: list[str] = Field(max_length=QUESTION_TAG_MAX_ITEMS)
 
     review: ReviewResult
 
@@ -234,6 +302,33 @@ class InterviewQuestionItem(GraphBaseModel):
     @classmethod
     def normalize_category(cls, value: Any) -> str:
         return normalize_question_category(value)
+
+    @field_validator("generation_basis", mode="before")
+    @classmethod
+    def compact_generation_basis(cls, value: Any) -> str:
+        return _clip_compact_text(value, QUESTION_GENERATION_BASIS_MAX_CHARS)
+
+    @field_validator("document_evidence", mode="before")
+    @classmethod
+    def compact_document_evidence(cls, value: Any) -> list[str]:
+        return _normalize_limited_text_list(
+            value,
+            max_items=QUESTION_DOCUMENT_EVIDENCE_MAX_ITEMS,
+            max_chars=QUESTION_DOCUMENT_EVIDENCE_MAX_CHARS,
+        )
+
+    @field_validator("evaluation_guide", mode="before")
+    @classmethod
+    def compact_evaluation_guide(cls, value: Any) -> str:
+        return _clip_compact_text(value, QUESTION_EVALUATION_GUIDE_MAX_CHARS)
+
+    @field_validator("risk_tags", "competency_tags", mode="before")
+    @classmethod
+    def compact_tags(cls, value: Any) -> list[str]:
+        return _normalize_limited_text_list(
+            value,
+            max_items=QUESTION_TAG_MAX_ITEMS,
+        )
 
 
 class QuestionGenerationResponse(GraphBaseModel):
