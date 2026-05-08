@@ -232,7 +232,13 @@ class SessionService:
 
         # Reconcile inconsistent state:
         # - Sometimes questions are already stored, but session status/progress remains QUEUED/PROCESSING.
-        if entity.question_generation_status in {"QUEUED", "PROCESSING"} and questions:
+        # - For selected regeneration, existing questions are present before the new job finishes,
+        #   so question existence alone must not be treated as completion.
+        if (
+            entity.question_generation_status in {"QUEUED", "PROCESSING"}
+            and questions
+            and self._can_infer_generation_completed_from_progress(entity)
+        ):
             inferred_status = self._infer_question_generation_final_status(questions)
             await self.session_repo.mark_question_generation_completed(
                 entity,
@@ -343,6 +349,17 @@ class SessionService:
                 completed_like += 1
 
         return "COMPLETED" if completed_like >= 4 else "PARTIAL_COMPLETED"
+
+    @staticmethod
+    def _can_infer_generation_completed_from_progress(entity) -> bool:
+        progress = entity.question_generation_progress or []
+        if not progress:
+            return True
+        return any(
+            step.get("key") == "final_formatter"
+            and step.get("status") in {"COMPLETED", "FAILED"}
+            for step in progress
+        )
 
     @staticmethod
     def _is_stale_question_generation(entity) -> bool:

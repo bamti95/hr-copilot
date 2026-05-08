@@ -31,7 +31,9 @@ export function ManagerSidebar({ isOpen, onClose }: ManagerSidebarProps) {
               HR
             </div>
             <div>
-              <p className="m-0 text-[1.05rem] font-bold text-white">HR Copilot</p>
+              <p className="m-0 text-[1.05rem] font-bold text-white">
+                HR Copilot
+              </p>
               <span className="text-[0.75rem] uppercase tracking-[0.14em] text-white/50">
                 Manager Workspace
               </span>
@@ -56,7 +58,8 @@ export function ManagerSidebar({ isOpen, onClose }: ManagerSidebarProps) {
 
             <nav className="flex flex-col gap-2">
               {managerNavItems.map((item) => {
-                const isActive = location.pathname === item.path;
+                // const isActive = location.pathname === item.path;
+                const isActive = location.pathname.startsWith(item.path);
 
                 return (
                   <NavLink
@@ -120,7 +123,9 @@ export function ManagerSidebar({ isOpen, onClose }: ManagerSidebarProps) {
           <div className="rounded-[20px] border border-white/10 bg-white/6 p-4 shadow-inner">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-linear-to-br from-[#3e6fff] to-[#6aa6ff] text-sm font-bold text-white">
-                {(manager?.name ?? manager?.loginId ?? "M").slice(0, 1).toUpperCase()}
+                {(manager?.name ?? manager?.loginId ?? "M")
+                  .slice(0, 1)
+                  .toUpperCase()}
               </div>
 
               <div className="min-w-0">

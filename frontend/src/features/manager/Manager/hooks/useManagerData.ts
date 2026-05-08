@@ -6,7 +6,7 @@ export function useManagerData() {
   const [search, setSearch] = useState("");
 
   const data = useMemo(
-    () => fetchManagerList({ page, size: 5, keyword }),
+    () => fetchManagerList({ page, size: 5, keyword: search }),
     [page, search],
   );
 

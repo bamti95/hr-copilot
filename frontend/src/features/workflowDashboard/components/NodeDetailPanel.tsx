@@ -205,7 +205,16 @@ function LlmUsageSummary({ items }: { items: unknown[] }) {
   const usages = items.filter(isRecord);
   if (usages.length === 0) return null;
 
-  const totals = usages.reduce(
+  type LlmUsageTotals = {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    elapsedMs: number;
+    estimatedCost: number;
+    failedCalls: number;
+  };
+
+  const totals = usages.reduce<LlmUsageTotals>(
     (acc, usage) => {
       acc.inputTokens += toNumber(usage.input_tokens);
       acc.outputTokens += toNumber(usage.output_tokens);
