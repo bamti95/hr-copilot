@@ -61,10 +61,14 @@ class WorkflowState(TypedDict, total=False):
     reviews: list[dict[str, Any]]
     scores: list[dict[str, Any]]
     review_summary: dict[str, Any]
+    selector_lite_candidate_count: int
+    selector_lite_selected_count: int
 
 
 class ControlState(TypedDict, total=False):
     retry_feedback: str | None
+    retry_scope: str | None
+    dirty_question_ids: list[str]
     retry_count: int
     max_retry_count: int
     questioner_retry_count: int

@@ -24,32 +24,73 @@ class DocumentAnalysisOutput(GraphBaseModel):
     questionable_points: list[str] = Field(default_factory=list)
 
 
+QuestionCategory = Literal[
+    "기술 역량",
+    "직무 역량",
+    "경험 검증",
+    "리스크 검증",
+    "조직 적합성",
+    "지원 동기",
+    "커뮤니케이션",
+    "기타",
+]
+
+QUESTION_CATEGORY_ALIASES = {
+    "TECH": "기술 역량",
+    "기술": "기술 역량",
+    "기술역량": "기술 역량",
+    "기술_역량": "기술 역량",
+    "JOB_SKILL": "직무 역량",
+    "직무": "직무 역량",
+    "직무역량": "직무 역량",
+    "직무_역량": "직무 역량",
+    "EXPERIENCE": "경험 검증",
+    "경험": "경험 검증",
+    "경험검증": "경험 검증",
+    "경험_검증": "경험 검증",
+    "RISK": "리스크 검증",
+    "리스크": "리스크 검증",
+    "리스크검증": "리스크 검증",
+    "리스크_검증": "리스크 검증",
+    "CULTURE_FIT": "조직 적합성",
+    "조직적합성": "조직 적합성",
+    "조직_적합성": "조직 적합성",
+    "문화_적합성": "조직 적합성",
+    "MOTIVATION": "지원 동기",
+    "지원동기": "지원 동기",
+    "지원_동기": "지원 동기",
+    "COMMUNICATION": "커뮤니케이션",
+    "의사소통": "커뮤니케이션",
+    "OTHER": "기타",
+    "기타": "기타",
+}
+
+
+def normalize_question_category(value: Any) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return "기타"
+    key = raw.upper().replace(" ", "_")
+    return QUESTION_CATEGORY_ALIASES.get(
+        raw,
+        QUESTION_CATEGORY_ALIASES.get(key, raw),
+    )
+
+
 class QuestionCandidate(GraphBaseModel):
     id: str
-    category: Literal[
-        "TECH",
-        "JOB_SKILL",
-        "EXPERIENCE",
-        "RISK",
-        "CULTURE_FIT",
-        "MOTIVATION",
-        "COMMUNICATION",
-        "OTHER",
-        "기술",
-        "직무_역량",
-        "경험",
-        "리스크",
-        "조직_적합성",
-        "지원_동기",
-        "커뮤니케이션",
-        "기타",
-    ]
+    category: QuestionCategory
     question_text: str
     generation_basis: str
     document_evidence: list[str] = Field(default_factory=list)
     evaluation_guide: str
     risk_tags: list[str] = Field(default_factory=list)
     competency_tags: list[str] = Field(default_factory=list)
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def normalize_category(cls, value: Any) -> str:
+        return normalize_question_category(value)
 
 
 class QuestionerOutput(GraphBaseModel):
@@ -169,7 +210,7 @@ class ScorerOutput(GraphBaseModel):
 
 class InterviewQuestionItem(GraphBaseModel):
     id: str
-    category: str
+    category: QuestionCategory
     question_text: str
     generation_basis: str
     document_evidence: list[str]
@@ -188,6 +229,11 @@ class InterviewQuestionItem(GraphBaseModel):
 
     score: int
     score_reason: str
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def normalize_category(cls, value: Any) -> str:
+        return normalize_question_category(value)
 
 
 class QuestionGenerationResponse(GraphBaseModel):

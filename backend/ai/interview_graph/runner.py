@@ -242,6 +242,8 @@ async def run_interview_question_graph(
             "additional_instruction": getattr(payload, "additional_instruction", None),
             "human_action": getattr(payload, "human_action", None),
             "target_question_ids": getattr(payload, "target_question_ids", []),
+            "dirty_question_ids": [],
+            "retry_scope": None,
             "questions": getattr(payload, "existing_questions", []),
             "retry_count": 0,
             "max_retry_count": 3,

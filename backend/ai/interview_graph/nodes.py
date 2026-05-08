@@ -22,6 +22,7 @@ from ai.interview_graph.schemas import (
     ReviewResult,
     ReviewerOutput,
     ScoreResult,
+    normalize_question_category,
 )
 from ai.interview_graph.state import AgentState
 
@@ -51,7 +52,7 @@ QUESTION_REWRITE_FLAGS = {
     "보완_필요",
     "재작성_권장",
 }
-RISK_CATEGORIES = {"RISK", "리스크"}
+RISK_CATEGORIES = {"리스크 검증"}
 LOW_SCORE_THRESHOLD = 80
 PARTIAL_RETRY_MAX_LOW_SCORE_COUNT = 2
 REVIEW_SCORE_BASE = {
@@ -182,6 +183,76 @@ def _question_id(question: dict[str, Any], index: int) -> str:
 
 def _find_by_question_id(items: list[dict[str, Any]], question_id: str) -> dict[str, Any]:
     return next((item for item in items if item.get("question_id") == question_id), {})
+
+
+def _filter_questions_by_ids(
+    questions: list[dict[str, Any]],
+    question_ids: list[str],
+) -> list[dict[str, Any]]:
+    target_ids = {str(question_id) for question_id in question_ids if question_id}
+    if not target_ids:
+        return questions
+    return [
+        question
+        for index, question in enumerate(questions)
+        if _question_id(question, index) in target_ids
+    ]
+
+
+def _filter_items_by_question_ids(
+    items: list[dict[str, Any]],
+    question_ids: list[str],
+) -> list[dict[str, Any]]:
+    target_ids = {str(question_id) for question_id in question_ids if question_id}
+    if not target_ids:
+        return items
+    return [
+        item
+        for item in items
+        if str(item.get("question_id") or "") in target_ids
+    ]
+
+
+def _merge_items_by_question_id(
+    existing_items: list[dict[str, Any]],
+    new_items: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if not existing_items:
+        return new_items
+    if not new_items:
+        return existing_items
+
+    new_by_id = {
+        str(item.get("question_id")): item
+        for item in new_items
+        if item.get("question_id")
+    }
+    merged = [
+        new_by_id.pop(str(item.get("question_id")), item)
+        for item in existing_items
+    ]
+    merged.extend(new_by_id.values())
+    return merged
+
+
+def _partial_retry_question_ids(state: AgentState) -> list[str]:
+    if state.get("retry_scope") != "question":
+        return []
+    return [
+        str(question_id)
+        for question_id in state.get("dirty_question_ids", [])
+        if question_id
+    ]
+
+
+def _partial_driller_retry_question_ids(state: AgentState) -> list[str]:
+    if state.get("retry_scope") not in {"question", "driller"}:
+        return []
+    return [
+        str(question_id)
+        for question_id in state.get("dirty_question_ids", [])
+        if question_id
+    ]
 
 
 def _replace_questions_by_id(
@@ -484,7 +555,7 @@ async def questioner_node(state: AgentState) -> AgentState:
     existing_questions = state.get("questions", [])
     target_question_ids = state.get("target_question_ids", [])
     human_action = state.get("human_action")
-    question_count_instruction = "- 질문은 정확히 8개 생성하세요."
+    question_count_instruction = "- 질문은 정확히 10개 생성하세요."
     if human_action == "regenerate_question" and target_question_ids:
         question_count_instruction = (
             f"- 재생성 대상 질문 ID 개수에 맞춰 질문은 정확히 {len(target_question_ids)}개 생성하세요."
@@ -523,7 +594,13 @@ async def questioner_node(state: AgentState) -> AgentState:
 
     normalized_questions = []
     for index, question in enumerate(new_questions):
-        normalized_questions.append({**question, "id": _question_id(question, index)})
+        normalized_questions.append(
+            {
+                **question,
+                "id": _question_id(question, index),
+                "category": normalize_question_category(question.get("category")),
+            }
+        )
 
     if human_action == "regenerate_question" and target_question_ids and existing_questions:
         questions = _replace_questions_by_id(
@@ -537,6 +614,8 @@ async def questioner_node(state: AgentState) -> AgentState:
     return {
         **state,
         "questions": questions,
+        "dirty_question_ids": target_question_ids if target_question_ids else [],
+        "retry_scope": "question" if target_question_ids else None,
         "target_question_ids": [],
         "human_action": None,
         "llm_usages": llm_usages,
@@ -548,9 +627,12 @@ async def selector_lite_node(state: AgentState) -> AgentState:
     후속 노드의 처리량을 줄이기 위해 질문 후보 중 5개를 먼저 고른다.
     리뷰/점수 없이 문서 근거, 리스크 검증 질문, 카테고리 다양성을 기준으로 선별한다.
     """
-    selected = _select_question_candidates(state.get("questions", []), limit=5)
+    candidate_questions = state.get("questions", [])
+    selected = _select_question_candidates(candidate_questions, limit=5)
     return {
         "questions": selected,
+        "selector_lite_candidate_count": len(candidate_questions),
+        "selector_lite_selected_count": len(selected),
     }
 
 # 예상 답변 생성 노드 - predictor_node
@@ -563,6 +645,18 @@ async def predictor_node(state: AgentState) -> AgentState:
     - 리스크 포인트
     - 검증
     '''
+    dirty_question_ids = _partial_retry_question_ids(state)
+    existing_answers = state.get("answers", [])
+    questions_for_llm = _filter_questions_by_ids(
+        state.get("questions", []),
+        dirty_question_ids,
+    )
+    if dirty_question_ids and not questions_for_llm:
+        return {
+            "answers": existing_answers,
+            "llm_usages": [],
+        }
+
     try:
         result, llm_usages = await _call_structured_output(
             node_name="predictor",
@@ -573,7 +667,7 @@ async def predictor_node(state: AgentState) -> AgentState:
                     PREDICTOR_DOCUMENT_CHARS,
                 ),
                 document_analysis=_json(state.get("document_analysis", {})),
-                questions=_json(state.get("questions", [])),
+                questions=_json(questions_for_llm),
             ),
             response_model=PredictorOutput,
         )
@@ -584,10 +678,11 @@ async def predictor_node(state: AgentState) -> AgentState:
             _compact_predicted_answer(
                 _fallback_answer(_question_id(question, index)).model_dump(mode="json")
             )
-            for index, question in enumerate(state.get("questions", []))
+            for index, question in enumerate(questions_for_llm)
         ]
+        answers = _merge_items_by_question_id(existing_answers, fallback_answers)
         return {
-            "answers": fallback_answers,
+            "answers": answers,
             "llm_usages": llm_usages,
             "node_warnings": [
                 {
@@ -598,11 +693,13 @@ async def predictor_node(state: AgentState) -> AgentState:
             ],
         }
 
+    new_answers = [
+        _compact_predicted_answer(answer.model_dump(mode="json"))
+        for answer in result.answers
+    ]
+    answers = _merge_items_by_question_id(existing_answers, new_answers)
     return {
-        "answers": [
-            _compact_predicted_answer(answer.model_dump(mode="json"))
-            for answer in result.answers
-        ],
+        "answers": answers,
         "llm_usages": llm_usages,
     }
 
@@ -619,13 +716,29 @@ async def driller_node(state: AgentState) -> AgentState:
     1. 꼬리 질문들
     2. 꼬리 질문 타입(역할검증, 경험검증등)
     '''
+    dirty_question_ids = _partial_driller_retry_question_ids(state)
+    existing_follow_ups = state.get("follow_ups", [])
+    questions_for_llm = _filter_questions_by_ids(
+        state.get("questions", []),
+        dirty_question_ids,
+    )
+    answers_for_llm = _filter_items_by_question_ids(
+        state.get("answers", []),
+        dirty_question_ids,
+    )
+    if dirty_question_ids and not questions_for_llm:
+        return {
+            "follow_ups": existing_follow_ups,
+            "llm_usages": [],
+        }
+
     try:
         result, llm_usages = await _call_structured_output(
             node_name="driller",
             system_prompt=prompts.DRILLER_SYSTEM_PROMPT,
             user_prompt=prompts.DRILLER_USER_PROMPT.format(
-                questions=_json(state.get("questions", [])),
-                answers=_json(state.get("answers", [])),
+                questions=_json(questions_for_llm),
+                answers=_json(answers_for_llm),
                 document_analysis=_json(
                     {
                         "analysis": state.get("document_analysis", {}),
@@ -640,10 +753,11 @@ async def driller_node(state: AgentState) -> AgentState:
         llm_usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
         fallback_follow_ups = [
             _fallback_follow_up(_question_id(question, index)).model_dump(mode="json")
-            for index, question in enumerate(state.get("questions", []))
+            for index, question in enumerate(questions_for_llm)
         ]
+        follow_ups = _merge_items_by_question_id(existing_follow_ups, fallback_follow_ups)
         return {
-            "follow_ups": fallback_follow_ups,
+            "follow_ups": follow_ups,
             "llm_usages": llm_usages,
             "node_warnings": [
                 {
@@ -654,11 +768,13 @@ async def driller_node(state: AgentState) -> AgentState:
             ],
         }
 
+    new_follow_ups = [
+        follow_up.model_dump(mode="json")
+        for follow_up in result.follow_ups
+    ]
+    follow_ups = _merge_items_by_question_id(existing_follow_ups, new_follow_ups)
     return {
-        "follow_ups": [
-            follow_up.model_dump(mode="json")
-            for follow_up in result.follow_ups
-        ],
+        "follow_ups": follow_ups,
         "llm_usages": llm_usages,
     }
 
@@ -677,6 +793,26 @@ async def reviewer_node(state: AgentState) -> AgentState:
     - reason
     - 수정 권장사항
     '''
+    dirty_question_ids = _partial_driller_retry_question_ids(state)
+    existing_reviews = state.get("reviews", [])
+    questions_for_llm = _filter_questions_by_ids(
+        state.get("questions", []),
+        dirty_question_ids,
+    )
+    answers_for_llm = _filter_items_by_question_ids(
+        state.get("answers", []),
+        dirty_question_ids,
+    )
+    follow_ups_for_llm = _filter_items_by_question_ids(
+        state.get("follow_ups", []),
+        dirty_question_ids,
+    )
+    if dirty_question_ids and not questions_for_llm:
+        return {
+            "reviews": existing_reviews,
+            "llm_usages": [],
+        }
+
     try:
         result, llm_usages = await _call_structured_output(
             node_name="reviewer",
@@ -684,9 +820,9 @@ async def reviewer_node(state: AgentState) -> AgentState:
             user_prompt=prompts.REVIEWER_USER_PROMPT.format(
                 target_job=state.get("target_job"),
                 recruitment_criteria=_json(_build_recruitment_context(state)),
-                questions=_json(state.get("questions", [])),
-                answers=_json(state.get("answers", [])),
-                follow_ups=_json(state.get("follow_ups", [])),
+                questions=_json(questions_for_llm),
+                answers=_json(answers_for_llm),
+                follow_ups=_json(follow_ups_for_llm),
             ),
             response_model=ReviewerOutput,
         )
@@ -695,10 +831,11 @@ async def reviewer_node(state: AgentState) -> AgentState:
         llm_usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
         fallback_reviews = [
             _fallback_review(_question_id(question, index)).model_dump(mode="json")
-            for index, question in enumerate(state.get("questions", []))
+            for index, question in enumerate(questions_for_llm)
         ]
+        reviews = _merge_items_by_question_id(existing_reviews, fallback_reviews)
         return {
-            "reviews": fallback_reviews,
+            "reviews": reviews,
             "llm_usages": llm_usages,
             "node_warnings": [
                 {
@@ -709,8 +846,10 @@ async def reviewer_node(state: AgentState) -> AgentState:
             ],
         }
 
+    new_reviews = [review.model_dump(mode="json") for review in result.reviews]
+    reviews = _merge_items_by_question_id(existing_reviews, new_reviews)
     return {
-        "reviews": [review.model_dump(mode="json") for review in result.reviews],
+        "reviews": reviews,
         "llm_usages": llm_usages,
     }
 
@@ -931,6 +1070,8 @@ async def increment_retry_for_questioner_node(state: AgentState) -> AgentState:
         "retry_count": state.get("retry_count", 0) + 1,
         "questioner_retry_count": state.get("questioner_retry_count", 0) + 1,
         "target_question_ids": target_question_ids,
+        "dirty_question_ids": target_question_ids,
+        "retry_scope": "question" if target_question_ids else "full",
         "human_action": human_action,
         "additional_instruction": additional_instruction,
         "retry_feedback": _build_retry_feedback(state),
@@ -943,9 +1084,17 @@ retry_count를 증가시키고,
 driller 재실행을 위한 피드백을 생성한다.
 """
 async def increment_retry_for_driller_node(state: AgentState) -> AgentState:
+    summary = state.get("review_summary", {})
+    follow_up_issue_question_ids = [
+        str(question_id)
+        for question_id in summary.get("follow_up_issue_question_ids", [])
+        if question_id
+    ]
     return {
         "retry_count": state.get("retry_count", 0) + 1,
         "driller_retry_count": state.get("driller_retry_count", 0) + 1,
+        "dirty_question_ids": follow_up_issue_question_ids,
+        "retry_scope": "driller" if follow_up_issue_question_ids else "full",
         "retry_feedback": _build_retry_feedback(state),
     }
 
@@ -1048,29 +1197,82 @@ async def final_formatter_node(state: AgentState) -> AgentState:
     )
     has_extracted_text = _has_extracted_text(state)
     approved_count = sum(1 for item in items if item.review.status == "approved")
-    is_partial = (
-        not has_extracted_text
-        or len(items) < 5
-        or approved_count < 5
-        or state.get("retry_count", 0) >= state.get("max_retry_count", 3)
-        or bool(state.get("node_warnings"))
+    needs_revision_count = sum(
+        1 for item in items if item.review.status == "needs_revision"
     )
+    rejected_count = sum(1 for item in items if item.review.status == "rejected")
+    score_values = [int(item.score or 0) for item in items]
+    avg_score = round(sum(score_values) / len(score_values), 2) if score_values else 0
+    category_distribution = _count_values([str(item.category) for item in items])
+    category_coverage = {
+        "unique_category_count": len(category_distribution),
+        "has_risk": any(str(item.category) in RISK_CATEGORIES for item in items),
+        "has_experience": any(str(item.category) == "경험 검증" for item in items),
+        "has_skill": any(
+            str(item.category) in {"기술 역량", "직무 역량"} for item in items
+        ),
+    }
+
+    partial_reasons: list[str] = []
+    if not has_extracted_text:
+        partial_reasons.append("NO_EXTRACTED_TEXT")
+    if len(items) < 5:
+        partial_reasons.append("INSUFFICIENT_QUESTIONS")
+    if state.get("node_warnings"):
+        partial_reasons.append("NODE_WARNINGS")
+
+    is_incomplete = bool(partial_reasons)
+    if is_incomplete:
+        quality_status = "low_quality"
+    elif approved_count >= 5:
+        quality_status = "approved"
+    elif rejected_count > 0 or avg_score < LOW_SCORE_THRESHOLD:
+        quality_status = "low_quality"
+    else:
+        quality_status = "review_required"
+
+    completion_status = "incomplete" if is_incomplete else "complete"
+    status = "partial_completed" if is_incomplete else "completed"
 
     response = QuestionGenerationResponse(
         session_id=state.get("session_id"),
         candidate_id=state.get("candidate_id"),
         target_job=state.get("target_job"),
         difficulty_level=state.get("difficulty_level"),
-        status="partial_completed" if is_partial else "completed",
+        status=status,
         analysis_summary=analysis,
         questions=items,
         generation_metadata={
-            "total_candidate_questions": len(state.get("questions", [])),
+            "total_candidate_questions": state.get(
+                "selector_lite_candidate_count",
+                len(state.get("questions", [])),
+            ),
             "selected_question_count": len(items),
+            "selector_lite_candidate_count": state.get(
+                "selector_lite_candidate_count",
+                len(state.get("questions", [])),
+            ),
+            "selector_lite_selected_count": state.get(
+                "selector_lite_selected_count",
+                len(items),
+            ),
             "retry_count": state.get("retry_count", 0),
+            "retry_scope": state.get("retry_scope"),
+            "dirty_question_ids": state.get("dirty_question_ids", []),
             "questioner_retry_count": state.get("questioner_retry_count", 0),
             "driller_retry_count": state.get("driller_retry_count", 0),
             "router_decision": "selector",
+            "completion_status": completion_status,
+            "quality_status": quality_status,
+            "partial_reasons": partial_reasons,
+            "approved_count": approved_count,
+            "needs_revision_count": needs_revision_count,
+            "rejected_count": rejected_count,
+            "avg_score": avg_score,
+            "category_distribution": category_distribution,
+            "category_coverage": category_coverage,
+            "retry_limit_reached": state.get("retry_count", 0)
+            >= state.get("max_retry_count", 3),
             "is_all_approved": bool(items) and approved_count == len(items),
             "review_summary": state.get("review_summary", {}),
             "node_warnings": state.get("node_warnings", []),
