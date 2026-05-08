@@ -21,6 +21,7 @@ from ai.interview_graph_JY.schemas import (
     ReviewResult,
     ReviewerOutput,
     ScoreResult,
+    normalize_jy_question_category,
 )
 from ai.interview_graph_JY import prompts
 from ai.interview_graph_JY.router import route_after_review
@@ -45,7 +46,6 @@ QUESTION_EVIDENCE_LIMIT = 2
 QUESTION_EVIDENCE_CHARS = 140
 QUESTION_EVALUATION_GUIDE_CHARS = 180
 QUESTION_TAG_LIMIT = 4
-
 DRILLER_CONCURRENCY = 3
 
 
@@ -127,7 +127,9 @@ def _compact_document_analysis(analysis: dict[str, Any]) -> dict[str, Any]:
         compact
         for compact in (
             _compact_document_evidence(item)
-            for item in list(analysis.get("document_evidence") or [])[:ANALYZER_EVIDENCE_LIMIT]
+            for item in list(analysis.get("document_evidence") or [])[
+                :ANALYZER_EVIDENCE_LIMIT
+            ]
         )
         if compact.get("quote") or compact.get("reason")
     ]
@@ -152,8 +154,11 @@ def _compact_document_analysis(analysis: dict[str, Any]) -> dict[str, Any]:
 def _compact_question(question: dict[str, Any]) -> dict[str, Any]:
     return {
         **question,
+        "category": normalize_jy_question_category(question.get("category")),
         "question_text": _truncate(question.get("question_text"), QUESTION_TEXT_CHARS),
-        "generation_basis": _truncate(question.get("generation_basis"), QUESTION_BASIS_CHARS),
+        "generation_basis": _truncate(
+            question.get("generation_basis"), QUESTION_BASIS_CHARS
+        ),
         "document_evidence": _truncate_list(
             question.get("document_evidence", []),
             limit=QUESTION_EVIDENCE_LIMIT,
@@ -177,11 +182,126 @@ def _compact_question(question: dict[str, Any]) -> dict[str, Any]:
 
 
 def _is_risk_question(question: dict[str, Any]) -> bool:
-    return question.get("category") in {"RISK", "리스크"} or bool(question.get("risk_tags"))
+    return normalize_jy_question_category(question.get("category")) in {
+        "RISK",
+        "리스크",
+    } or bool(question.get("risk_tags"))
 
 
 def _is_approved(review: dict[str, Any]) -> bool:
     return review.get("status") == "approved"
+
+
+def _question_text_key(question: dict[str, Any]) -> str:
+    return " ".join(str(question.get("question_text") or "").split()).lower()
+
+
+def _local_question_quality_issues(
+    question: dict[str, Any],
+    existing_questions: list[dict[str, Any]],
+) -> list[str]:
+    issues: list[str] = []
+    if not _has_text(question.get("question_text")):
+        issues.append("QUESTION_TEXT_MISSING")
+    if not _has_items(question.get("document_evidence")):
+        issues.append("EVIDENCE_TOO_WEAK")
+    if not _has_text(question.get("evaluation_guide")):
+        issues.append("EVALUATION_GUIDE_TOO_WEAK")
+    if not _has_items(question.get("competency_tags")):
+        issues.append("LOW_JOB_RELEVANCE")
+
+    text_key = _question_text_key(question)
+    if text_key and any(
+        _question_text_key(existing) == text_key for existing in existing_questions
+    ):
+        issues.append("DUPLICATE_RISK")
+    return sorted(set(issues))
+
+
+def _filter_regenerated_questions_by_local_quality(
+    generated: list[dict[str, Any]],
+    current: list[dict[str, Any]],
+    target_question_ids: list[str],
+) -> tuple[list[dict[str, Any]], list[str], list[dict[str, Any]]]:
+    accepted: list[dict[str, Any]] = []
+    blocked_ids: list[str] = []
+    warnings: list[dict[str, Any]] = []
+    comparison_questions = list(current)
+
+    for question_id, question in zip(target_question_ids, generated, strict=False):
+        candidate = {**question, "id": question_id}
+        issues = _local_question_quality_issues(
+            candidate, comparison_questions + accepted
+        )
+        if issues:
+            blocked_ids.append(question_id)
+            warnings.append(
+                {
+                    "node": "jy_questioner",
+                    "message": (
+                        f"{question_id}: 로컬 품질 게이트 실패로 재생성 결과를 폐기했습니다 "
+                        f"({', '.join(issues)})."
+                    ),
+                    "quality_flags": issues,
+                }
+            )
+            continue
+        accepted.append(candidate)
+    return accepted, blocked_ids, warnings
+
+
+def _finalize_regenerated_reviews(
+    reviews: list[dict[str, Any]],
+    scoped_questions: list[dict[str, Any]],
+    all_questions: list[dict[str, Any]],
+    target_question_ids: list[str],
+) -> list[dict[str, Any]]:
+    if not target_question_ids:
+        return reviews
+
+    target_set = set(target_question_ids)
+    reviews_by_id = {
+        str(review.get("question_id")): review
+        for review in reviews
+        if review.get("question_id")
+    }
+    finalized: list[dict[str, Any]] = [
+        review
+        for review in reviews
+        if str(review.get("question_id") or "") not in target_set
+    ]
+
+    for question in scoped_questions:
+        question_id = str(question.get("id") or "")
+        if question_id not in target_set:
+            continue
+
+        comparison_questions = [
+            item for item in all_questions if str(item.get("id") or "") != question_id
+        ]
+        local_issues = _local_question_quality_issues(question, comparison_questions)
+        review = reviews_by_id.get(question_id)
+        if review and review.get("status") == "rejected":
+            finalized.append(review)
+            continue
+        if local_issues:
+            finalized.append(
+                review
+                or _fallback_review(question_id).model_dump(mode="json")
+            )
+            continue
+
+        finalized.append(
+            {
+                **(review or {}),
+                "question_id": question_id,
+                "status": "approved",
+                "reason": "재생성 질문이 로컬 필수 품질 기준을 통과해 사용 가능으로 확정했습니다.",
+                "reject_reason": "",
+                "recommended_revision": "",
+            }
+        )
+    return finalized
 
 
 def _select_question_candidates(
@@ -197,7 +317,7 @@ def _select_question_candidates(
     unique: list[dict[str, Any]] = []
     seen_texts: set[str] = set()
     for question in questions:
-        text_key = " ".join(str(question.get("question_text") or "").split()).lower()
+        text_key = _question_text_key(question)
         if not text_key or text_key in seen_texts:
             continue
         seen_texts.add(text_key)
@@ -215,7 +335,9 @@ def _select_question_candidates(
     )
 
     selected: list[dict[str, Any]] = []
-    risk_question = next((question for question in ranked if _is_risk_question(question)), None)
+    risk_question = next(
+        (question for question in ranked if _is_risk_question(question)), None
+    )
     if risk_question:
         selected.append(risk_question)
     for question in ranked:
@@ -279,10 +401,14 @@ def _replace_questions_by_id(
         return replacements or current
     replacement_by_id = {
         question_id: {**replacement, "id": question_id}
-        for question_id, replacement in zip(target_question_ids, replacements, strict=False)
+        for question_id, replacement in zip(
+            target_question_ids, replacements, strict=False
+        )
     }
     seen_ids = {str(question.get("id")) for question in current}
-    merged = [replacement_by_id.get(str(question.get("id")), question) for question in current]
+    merged = [
+        replacement_by_id.get(str(question.get("id")), question) for question in current
+    ]
     merged.extend(
         replacement
         for question_id, replacement in replacement_by_id.items()
@@ -359,7 +485,9 @@ def _merge_items_by_question_id(
     return merged
 
 
-def _find_by_question_id(items: list[dict[str, Any]], question_id: str) -> dict[str, Any]:
+def _find_by_question_id(
+    items: list[dict[str, Any]], question_id: str
+) -> dict[str, Any]:
     return next((item for item in items if item.get("question_id") == question_id), {})
 
 
@@ -438,19 +566,21 @@ async def analyzer_node(state: AgentState) -> dict[str, Any]:
 async def questioner_node(state: AgentState) -> dict[str, Any]:
     target_question_ids = _target_question_ids(state)
     human_action = state.get("human_action")
-    is_partial_regeneration = human_action == "regenerate_question" and bool(target_question_ids)
+    is_partial_regeneration = human_action == "regenerate_question" and bool(
+        target_question_ids
+    )
     question_count_instruction = "- 최종 후보 질문은 8개 생성하세요."
     expected_question_count = QUESTION_COUNT
     if is_partial_regeneration:
         expected_question_count = len(target_question_ids)
-        question_count_instruction = (
-            f"- 재생성 대상 ID 수에 맞춰 질문은 정확히 {len(target_question_ids)}개 생성하세요."
-        )
+        question_count_instruction = f"- 재생성 대상 ID 수에 맞춰 질문은 정확히 {len(target_question_ids)}개 생성하세요."
 
     target_context: dict[str, Any] = {}
     if is_partial_regeneration:
         questions_by_id = {
-            str(item.get("id")): item for item in (state.get("questions", []) or []) if item.get("id")
+            str(item.get("id")): item
+            for item in (state.get("questions", []) or [])
+            if item.get("id")
         }
         reviews_by_id = {
             str(item.get("question_id")): item
@@ -531,14 +661,33 @@ async def questioner_node(state: AgentState) -> dict[str, Any]:
         )
         for index, question in enumerate(result.questions[:expected_question_count])
     ]
+    blocked_regeneration_question_ids: list[str] = []
+    local_quality_warnings: list[dict[str, Any]] = []
     if is_partial_regeneration:
-        questions = _replace_questions_by_id(state.get("questions", []), generated, target_question_ids)
+        generated, blocked_regeneration_question_ids, local_quality_warnings = (
+            _filter_regenerated_questions_by_local_quality(
+                generated,
+                state.get("questions", []),
+                target_question_ids,
+            )
+        )
+        questions = _replace_questions_by_id(
+            state.get("questions", []), generated, target_question_ids
+        )
     else:
         questions = generated
+    active_target_question_ids = [
+        question_id
+        for question_id in target_question_ids
+        if question_id not in set(blocked_regeneration_question_ids)
+    ]
     update = {
         "questions": questions,
         "human_action": None,
-        "target_question_ids": target_question_ids if is_partial_regeneration else [],
+        "target_question_ids": active_target_question_ids
+        if is_partial_regeneration
+        else [],
+        "blocked_regeneration_question_ids": blocked_regeneration_question_ids,
         "llm_usages": llm_usages,
     }
     if is_partial_regeneration:
@@ -550,6 +699,13 @@ async def questioner_node(state: AgentState) -> dict[str, Any]:
                 "scores": state.get("scores", []),
             }
         )
+        if local_quality_warnings:
+            update["node_warnings"] = local_quality_warnings
+        if blocked_regeneration_question_ids:
+            update["questioner_retry_count"] = state.get(
+                "max_questioner_retry_count",
+                1,
+            )
     else:
         update.update({"answers": [], "follow_ups": [], "reviews": [], "scores": []})
     return update
@@ -568,6 +724,11 @@ async def selector_lite_node(state: AgentState) -> dict[str, Any]:
 
 async def predictor_node(state: AgentState) -> dict[str, Any]:
     target_question_ids = _target_question_ids(state)
+    if state.get("blocked_regeneration_question_ids") and not target_question_ids:
+        return {
+            "answers": state.get("answers", []),
+            "llm_usages": [],
+        }
     questions = state.get("questions", [])
     scoped_questions = _questions_for_targets(questions, target_question_ids)
     if target_question_ids and not scoped_questions:
@@ -586,7 +747,9 @@ async def predictor_node(state: AgentState) -> dict[str, Any]:
             node_name="jy_predictor",
             system_prompt=prompts.PREDICTOR_SYSTEM_PROMPT,
             user_prompt=prompts.PREDICTOR_USER_PROMPT.format(
-                candidate_context=_clip(state.get("candidate_context", ""), PREDICTOR_DOCUMENT_CHARS),
+                candidate_context=_clip(
+                    state.get("candidate_context", ""), PREDICTOR_DOCUMENT_CHARS
+                ),
                 document_analysis=_json(
                     _compact_document_analysis(state.get("document_analysis", {}))
                 ),
@@ -623,13 +786,19 @@ async def predictor_node(state: AgentState) -> dict[str, Any]:
 
 async def driller_node(state: AgentState) -> dict[str, Any]:
     target_question_ids = _target_question_ids(state)
+    if state.get("blocked_regeneration_question_ids") and not target_question_ids:
+        return {
+            "follow_ups": state.get("follow_ups", []),
+            "llm_usages": [],
+        }
     questions = state.get("questions", [])
     scoped_questions = _questions_for_targets(questions, target_question_ids)
     scoped_question_ids = [
-        _question_id(question, index)
-        for index, question in enumerate(scoped_questions)
+        _question_id(question, index) for index, question in enumerate(scoped_questions)
     ]
-    scoped_answers = _items_for_question_ids(state.get("answers", []), scoped_question_ids)
+    scoped_answers = _items_for_question_ids(
+        state.get("answers", []), scoped_question_ids
+    )
     if target_question_ids and not scoped_questions:
         return {
             "follow_ups": state.get("follow_ups", []),
@@ -682,7 +851,9 @@ async def driller_node(state: AgentState) -> dict[str, Any]:
                         question_id,
                         exc,
                     )
-                    usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
+                    usages = (
+                        exc.usages if isinstance(exc, StructuredOutputCallError) else []
+                    )
                     return (
                         [_fallback_follow_up(question_id).model_dump(mode="json")],
                         usages,
@@ -694,7 +865,9 @@ async def driller_node(state: AgentState) -> dict[str, Any]:
                         ],
                     )
 
-                follow_ups = [item.model_dump(mode="json") for item in result.follow_ups]
+                follow_ups = [
+                    item.model_dump(mode="json") for item in result.follow_ups
+                ]
                 follow_up = _find_by_question_id(follow_ups, question_id)
                 if not follow_up and follow_ups:
                     follow_up = {**follow_ups[0], "question_id": question_id}
@@ -743,9 +916,7 @@ async def driller_node(state: AgentState) -> dict[str, Any]:
         for follow_up in result_follow_ups
     ]
     llm_usages = [
-        usage
-        for _, result_usages, _ in driller_results
-        for usage in result_usages
+        usage for _, result_usages, _ in driller_results for usage in result_usages
     ]
     warnings = [
         warning
@@ -765,14 +936,22 @@ async def driller_node(state: AgentState) -> dict[str, Any]:
 
 async def reviewer_node(state: AgentState) -> dict[str, Any]:
     target_question_ids = _target_question_ids(state)
+    if state.get("blocked_regeneration_question_ids") and not target_question_ids:
+        return {
+            "reviews": state.get("reviews", []),
+            "llm_usages": [],
+        }
     questions = state.get("questions", [])
     scoped_questions = _questions_for_targets(questions, target_question_ids)
     scoped_question_ids = [
-        _question_id(question, index)
-        for index, question in enumerate(scoped_questions)
+        _question_id(question, index) for index, question in enumerate(scoped_questions)
     ]
-    scoped_answers = _items_for_question_ids(state.get("answers", []), scoped_question_ids)
-    scoped_follow_ups = _items_for_question_ids(state.get("follow_ups", []), scoped_question_ids)
+    scoped_answers = _items_for_question_ids(
+        state.get("answers", []), scoped_question_ids
+    )
+    scoped_follow_ups = _items_for_question_ids(
+        state.get("follow_ups", []), scoped_question_ids
+    )
     if target_question_ids and not scoped_questions:
         return {
             "reviews": state.get("reviews", []),
@@ -804,6 +983,12 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
             _fallback_review(_question_id(question, index)).model_dump(mode="json")
             for index, question in enumerate(scoped_questions)
         ]
+        fallback_reviews = _finalize_regenerated_reviews(
+            fallback_reviews,
+            scoped_questions,
+            questions,
+            target_question_ids,
+        )
         return {
             "reviews": _merge_items_by_question_id(
                 state.get("reviews", []),
@@ -813,7 +998,12 @@ async def reviewer_node(state: AgentState) -> dict[str, Any]:
             "llm_usages": usages,
             "node_warnings": [{"node": "jy_reviewer", "message": str(exc)}],
         }
-    reviews = [review.model_dump(mode="json") for review in result.reviews]
+    reviews = _finalize_regenerated_reviews(
+        [review.model_dump(mode="json") for review in result.reviews],
+        scoped_questions,
+        questions,
+        target_question_ids,
+    )
     return {
         "reviews": _merge_items_by_question_id(
             state.get("reviews", []),
@@ -888,9 +1078,15 @@ def _score_question(
 
 async def scorer_node(state: AgentState) -> dict[str, Any]:
     questions = list(state.get("questions", []))
-    reviews_by_id = {str(item.get("question_id")): item for item in state.get("reviews", [])}
-    answers_by_id = {str(item.get("question_id")): item for item in state.get("answers", [])}
-    follow_ups_by_id = {str(item.get("question_id")): item for item in state.get("follow_ups", [])}
+    reviews_by_id = {
+        str(item.get("question_id")): item for item in state.get("reviews", [])
+    }
+    answers_by_id = {
+        str(item.get("question_id")): item for item in state.get("answers", [])
+    }
+    follow_ups_by_id = {
+        str(item.get("question_id")): item for item in state.get("follow_ups", [])
+    }
 
     seen_texts: dict[str, str] = {}
     duplicate_ids: set[str] = set()
@@ -914,10 +1110,20 @@ async def scorer_node(state: AgentState) -> dict[str, Any]:
         ).model_dump(mode="json")
         for index, question in enumerate(questions)
     ]
-    approved_count = sum(1 for review in state.get("reviews", []) if _is_approved(review))
-    low_score_ids = [str(score["question_id"]) for score in scores if score["score"] < LOW_SCORE_THRESHOLD]
-    quality_issues = sorted({flag for score in scores for flag in score.get("quality_flags", [])})
-    avg_score = round(sum(score["score"] for score in scores) / len(scores), 2) if scores else 0
+    approved_count = sum(
+        1 for review in state.get("reviews", []) if _is_approved(review)
+    )
+    low_score_ids = [
+        str(score["question_id"])
+        for score in scores
+        if score["score"] < LOW_SCORE_THRESHOLD
+    ]
+    quality_issues = sorted(
+        {flag for score in scores for flag in score.get("quality_flags", [])}
+    )
+    avg_score = (
+        round(sum(score["score"] for score in scores) / len(scores), 2) if scores else 0
+    )
     review_summary = {
         "approved_count": approved_count,
         "low_score_count": len(low_score_ids),
@@ -946,9 +1152,7 @@ async def scorer_node(state: AgentState) -> dict[str, Any]:
 def _retry_feedback(state: AgentState) -> str:
     summary = state.get("review_summary", {})
     low_score_ids = [
-        str(item)
-        for item in (summary or {}).get("low_score_question_ids", [])
-        if item
+        str(item) for item in (summary or {}).get("low_score_question_ids", []) if item
     ][:QUESTIONER_RETRY_TARGET_LIMIT]
     low_score_id_set = set(low_score_ids)
     reviews = state.get("reviews", [])
@@ -981,9 +1185,7 @@ def _retry_target_question_ids(state: AgentState) -> list[str]:
     """
     summary = state.get("review_summary", {}) or {}
     low_score_ids = [
-        str(item)
-        for item in (summary.get("low_score_question_ids", []) or [])
-        if item
+        str(item) for item in (summary.get("low_score_question_ids", []) or []) if item
     ]
     target_ids = [qid for qid in low_score_ids if qid][:QUESTIONER_RETRY_TARGET_LIMIT]
     if target_ids:
@@ -1043,8 +1245,12 @@ async def increment_retry_for_driller_node(state: AgentState) -> dict[str, Any]:
 
 
 async def selector_node(state: AgentState) -> dict[str, Any]:
-    reviews_by_id = {str(item.get("question_id")): item for item in state.get("reviews", [])}
-    scores_by_id = {str(item.get("question_id")): item for item in state.get("scores", [])}
+    reviews_by_id = {
+        str(item.get("question_id")): item for item in state.get("reviews", [])
+    }
+    scores_by_id = {
+        str(item.get("question_id")): item for item in state.get("scores", [])
+    }
     return {
         "questions": _select_question_candidates(
             state.get("questions", []),
@@ -1070,7 +1276,8 @@ async def final_formatter_node(state: AgentState) -> dict[str, Any]:
             _find_by_question_id(answers, question_id) or _fallback_answer(question_id)
         )
         follow_up = FollowUpQuestion.model_validate(
-            _find_by_question_id(follow_ups, question_id) or _fallback_follow_up(question_id)
+            _find_by_question_id(follow_ups, question_id)
+            or _fallback_follow_up(question_id)
         )
         review = ReviewResult.model_validate(
             _find_by_question_id(reviews, question_id) or _fallback_review(question_id)

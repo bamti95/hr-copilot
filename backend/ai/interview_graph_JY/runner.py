@@ -36,6 +36,16 @@ logger = logging.getLogger(__name__)
 # 외곽 서비스 레이어에서 전체 파이프라인 timeout을 별도로 감싸지만,
 # LangGraph 내부에서도 노드 단위 무한 대기 방지를 위해 설정한다.
 GRAPH_STEP_TIMEOUT_SECONDS: float = 180.0
+FAILED_RESPONSE_RISK_MAX_LENGTH = 120
+
+
+def _short_error_message(error: Exception) -> str:
+    text = str(error).strip()
+    if not text:
+        return error.__class__.__name__
+    if len(text) <= FAILED_RESPONSE_RISK_MAX_LENGTH:
+        return text
+    return f"{text[: FAILED_RESPONSE_RISK_MAX_LENGTH - 3].rstrip()}..."
 
 
 @lru_cache(maxsize=1)
@@ -111,6 +121,7 @@ def _initial_state(payload: CandidateInterviewPrepInput) -> AgentState:
         "additional_instruction": getattr(payload, "additional_instruction", None),
         "human_action": getattr(payload, "human_action", None),
         "target_question_ids": list(getattr(payload, "target_question_ids", []) or []),
+        "blocked_regeneration_question_ids": [],
         "questions": list(getattr(payload, "existing_questions", []) or []),
         "retry_count": 0,
         "max_retry_count": 2,
@@ -128,6 +139,7 @@ def _failed_response(
     error: Exception,
 ) -> QuestionGenerationResponse:
     logger.exception("interview_graph_JY 실행 실패: %s", error)
+    error_message = str(error)
     return QuestionGenerationResponse(
         session_id=payload.session.session_id,
         candidate_id=payload.candidate.candidate_id,
@@ -136,7 +148,7 @@ def _failed_response(
         status="failed",
         analysis_summary=DocumentAnalysisOutput(
             job_fit="JY 면접 질문 그래프 실행 중 오류가 발생했습니다.",
-            risks=[str(error)],
+            risks=[_short_error_message(error)],
         ),
         questions=[],
         generation_metadata={
@@ -145,7 +157,7 @@ def _failed_response(
             "selected_question_count": 0,
             "retry_count": 0,
             "is_all_approved": False,
-            "error": str(error),
+            "error": error_message,
         },
     )
 

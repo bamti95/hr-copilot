@@ -50,6 +50,7 @@ class AgentState(TypedDict, total=False):
     additional_instruction: str | None
     human_action: str | None
     target_question_ids: list[str]
+    blocked_regeneration_question_ids: list[str]
 
     candidate_context: str
     document_analysis: dict[str, Any]
