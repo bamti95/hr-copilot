@@ -1,0 +1,1897 @@
+[
+  {
+    "job_code": "HR",
+    "job_display_name": "HR_인사",
+    "candidate_index": 1,
+    "candidate_name": "이수진",
+    "candidate_type": "잠재력 높은 신입형",
+    "candidate_type_slug": "high_potential_junior",
+    "candidate_test_intent": "실무 경력은 부족하거나 없지만 프로젝트 경험, 문제 해결 방식, 학습 속도, 사고 구조에서 강점이 보이는 신입 또는 주니어 지원자다. 면접에서는 포텐셜이 실제 업무 수행으로 이어질 수 있는지, 기초 이해가 단단한지 검증해야 한다.",
+    "hidden_signals": [
+      "학교, 대외활동, 공모전, 사이드 프로젝트의 밀도가 높고 비교적 성실하게 쌓여 있다.",
+      "큰 성과는 아니어도 문제를 구조적으로 바라본 흔적과 학습 과정이 드러난다.",
+      "자기소개서에서 성장 배경과 배운 점이 설득력 있게 연결된다.",
+      "경험 규모는 작지만 생각의 깊이나 태도는 좋게 느껴지게 한다.",
+      "읽는 사람이 '경험은 적지만 잘 키우면 크게 성장할 수 있겠다'고 느끼게 만든다."
+    ],
+    "summary": "조직과 사람이 함께 성장하는 환경에 관심이 많은 신입 HR 지원자입니다. 대학 시절 인사제도 분석과 채용 체험 프로젝트를 경험했으며, 다양한 팀 프로젝트에서 문제를 논리적으로 분석하는 역량을 키웠습니다. 직접 설계해본 소규모 평가제도에서 데이터 기반으로 개선 방안을 제안한 경험이 있습니다. 적극적으로 배우고 협업하는 태도로 HR 커리어의 기반을 쌓아가고 있습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_01_이수진_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_01_이수진_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_01_이수진_meta.json"
+    },
+    "candidate_case_code": "new_grad_standard",
+    "candidate_case_title": "완전 신입 - 정상적 신입",
+    "candidate_case_description": "정규직 경력이 전혀 없는 전형적인 신입 지원자다. 학력, 대외활동, 팀프로젝트, 교육, 자격증, 아르바이트 또는 교내 경험을 중심으로 서류를 구성한다. 지나치게 과장되지 않고 무난한 신입처럼 보여야 한다.",
+    "candidate_case_must_haves": [
+      "정규직 경력 없음",
+      "학교 프로젝트 또는 대외활동 중심",
+      "과장되지 않은 무난한 신입 서사"
+    ]
+  },
+  {
+    "job_code": "HR",
+    "job_display_name": "HR_인사",
+    "candidate_index": 2,
+    "candidate_name": "신예린",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "일찍 결혼과 출산을 경험하며 경력 시작이 늦어진 신입 인사 지원자입니다. 최근 HR 분야의 변화와 실무 역량 개발에 꾸준히 투자하며, 실제 현업에서의 실질적 문제 해결이 가능한 인재를 목표로 하고 있습니다. 기업의 조직문화와 구성원 경험 향상에 관심이 많으며, 제도와 사람 사이의 연결고리를 고민해 왔습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_02_신예린_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_02_신예린_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_02_신예린_meta.json"
+    },
+    "candidate_case_code": "new_grad_parenting_gap",
+    "candidate_case_title": "완전 신입 - 조기 출산 및 육아로 늦어진 신입",
+    "candidate_case_description": "나이는 30세 안팎이지만 사실상 사회 경력이 없는 신입이다. 이른 출산과 육아로 인해 일반적인 취업 시점이 늦어졌고, 최근 다시 취업을 준비한 배경이 있다. 공백 사유는 숨기지 않되 지나치게 비극적으로 쓰지 말고 복귀 의지와 준비 과정을 보여줘야 한다.",
+    "candidate_case_must_haves": [
+      "사회경험이 거의 없음",
+      "육아로 인한 공백 설명 존재",
+      "복귀 준비 과정과 의지 표현"
+    ]
+  },
+  {
+    "job_code": "HR",
+    "job_display_name": "HR_인사",
+    "candidate_index": 3,
+    "candidate_name": "이도윤",
+    "candidate_type": "인성 리스크형",
+    "candidate_type_slug": "personality_risk",
+    "candidate_test_intent": "업무 성과와 역량은 일정 수준 이상으로 보이지만, 협업 태도와 책임 인식에서 조직 적합성 리스크가 느껴지는 지원자다. 면접에서는 갈등 해결 방식, 피드백 수용성, 실패 책임, 타인과의 협업 태도를 중점적으로 검증해야 한다.",
+    "hidden_signals": [
+      "성과를 설명할 때 본인의 기여를 과도하게 강조하고 동료나 타 부서의 기여는 자연스럽게 축소한다.",
+      "협업 사례를 쓸 때 조율과 설득을 강조하지만, 실제 문장 뉘앙스는 상대의 비협조와 무능을 문제로 삼는다.",
+      "갈등 경험 문항에서 본인의 성찰보다 상대의 태도 문제와 조직의 비효율을 더 길게 설명한다.",
+      "실패 경험을 서술할 때 책임을 완전히 인정하기보다 외부 환경, 의사결정권자, 프로세스 문제로 분산시킨다.",
+      "자신감은 높지만 겸손, 학습 태도, 피드백 수용성은 충분히 드러나지 않게 한다.",
+      "읽는 사람이 '성과는 있는데 같이 일하기 편한 사람일까?'라는 의문을 갖게 하되, 노골적 비호감으로 보이진 않게 한다."
+    ],
+    "summary": "총 3회의 인사(HR) 인턴십에서 채용 운영, 조직문화 개선, HR 데이터 분석 등 다양한 실무를 경험했습니다. 주요 실적 중심의 업무 수행에 집중하며, 빠른 의사결정과 구조화된 문제 해결에 강점을 가지고 있습니다. 실제 입사 후 성과 지표 향상에 기여한 경험이 여러 번 있어 본인 주도적 HR 기획 및 실행에 자신이 있습니다. 높은 목표의식과 추진력을 기반으로 인사 영역에서 탁월한 퍼포먼스를 내기 위해 준비되어 있습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_03_이도윤_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_03_이도윤_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_03_이도윤_meta.json"
+    },
+    "candidate_case_code": "intern_many_no_conversion",
+    "candidate_case_title": "인턴 경험 신입 - 인턴은 많지만 정규직 전환 없음",
+    "candidate_case_description": "인턴 경험과 스펙은 좋지만 정규직 전환이 한 번도 되지 않은 신입이다. 서류만 봐도 왜 계속 인턴에서 끝났는지 궁금해지는 결이 있어야 한다. 직접적인 결격사유는 드러나지 않지만 사회성이나 조직 적응력에 대한 합리적 의심이 들 수 있게 구성한다.",
+    "candidate_case_must_haves": [
+      "인턴 경험 2회 이상",
+      "정규직 전환 실패 이력",
+      "스펙은 좋은데 조직 적응 의문"
+    ]
+  },
+  {
+    "job_code": "HR",
+    "job_display_name": "HR_인사",
+    "candidate_index": 4,
+    "candidate_name": "이수현",
+    "candidate_type": "검증형 우수 인재",
+    "candidate_type_slug": "elite_verification",
+    "candidate_test_intent": "성과, 사고력, 표현력, 커리어 흐름이 모두 안정적으로 좋아 보이는 상위권 지원자다. 서류만 보면 바로 합격권처럼 느껴지지만, 실제 면접에서는 이 성과가 우연이 아닌지, 본인의 판단 기준과 문제 해결 사고가 얼마나 깊은지, 스스로 만든 원칙과 기준이 있는지를 검증해야 하는 유형이다.",
+    "hidden_signals": [
+      "성과 수치와 맥락이 자연스럽고 과장 없이 연결되어 읽힌다.",
+      "업무 배경, 본인 행동, 결과, 회고가 비교적 일관되게 서술된다.",
+      "자기소개서 표현이 과하지 않고 차분하지만, 기준과 관점이 느껴지게 작성한다.",
+      "무조건 잘난 척하는 인상보다 깊이 있는 실무자처럼 보이게 한다.",
+      "읽는 사람이 '좋아 보이는데 정말 이 사람 생각이 맞는지 더 깊게 검증하고 싶다'고 느끼게 한다."
+    ],
+    "summary": "HR 직무를 목표로 본교 및 외부 다양한 인턴십과 대외 경험을 폭넓게 쌓아왔습니다. 현장 이해도와 데이터 기반 업무 분석력, 그리고 구성원 중심의 사고를 바탕으로 조직 내 실질적 변화와 성과를 추구합니다. 성실함과 깊이 있는 성찰을 강점으로, 문제의 본질을 파악하고 원칙에 따라 판단하는 것을 중시합니다. 빠르게 변화하는 조직 환경에서도 차분하게 소통하며 본인의 기준을 지키고자 노력해왔습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_04_이수현_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_04_이수현_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_04_이수현_meta.json"
+    },
+    "candidate_case_code": "intern_top_spec",
+    "candidate_case_title": "인턴 경험 신입 - 인턴/자격증/봉사 모두 좋은 엄친아형",
+    "candidate_case_description": "인턴, 자격증, 봉사활동, 교내외 활동이 모두 안정적으로 좋은 모범생형 신입이다. 지나친 과장보다 성실성과 준비성이 잘 보이는 서류여야 하며, 면접에서는 깊이와 실제 실무 전환 가능성을 검증하고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "인턴 경험 좋음",
+      "자격증/봉사활동/대외활동 고르게 좋음",
+      "안정적이고 모범적인 인상"
+    ]
+  },
+  {
+    "job_code": "HR",
+    "job_display_name": "HR_인사",
+    "candidate_index": 5,
+    "candidate_name": "정혜원",
+    "candidate_type": "직무 적합도 의심형",
+    "candidate_type_slug": "job_fit_doubt",
+    "candidate_test_intent": "학력, 활동, 기본 역량은 나쁘지 않지만 현재 지원 직무와의 직접 연결이 약해 보이는 지원자다. 왜 이 직무를 선택했는지, 실제로 얼마나 준비했는지, 적합성이 진짜인지 면접에서 확인해야 한다.",
+    "hidden_signals": [
+      "이전 전공이나 경험은 성실하고 우수하지만 현재 직무와 직접 연결되는 증거는 제한적이다.",
+      "지원 동기와 전환 계기는 존재하지만 완전히 매끈하게 이어지지는 않는다.",
+      "읽는 사람이 '좋은 사람 같긴 한데 이 직무랑 정말 맞나?'라는 의문을 갖게 만든다.",
+      "서류에는 가능성이 보이되, 적합성 검증 질문이 반드시 필요하게 한다."
+    ],
+    "summary": "화학공학을 전공하며 높은 학점과 다양한 연구 경험을 쌓은 신입 지원자입니다. 전공과는 다르지만, 학부 시절부터 인사 및 조직문화에 흥미를 느껴 관련 역량을 꾸준히 개발했습니다. 실제 현업 경험은 부족하지만 커뮤니케이션과 데이터 정리에 강점을 가지고 있으며, HR 직무의 큰 흐름을 이해하고자 관련 프로젝트와 교육에 참여하였습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_05_정혜원_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_05_정혜원_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_05_정혜원_meta.json"
+    },
+    "candidate_case_code": "high_edu_nonmajor",
+    "candidate_case_title": "전공 불일치 신입 - 학력은 높고 기존 전공 성취도도 좋음",
+    "candidate_case_description": "지원 직무 전공은 아니지만 기존 전공에서 학점, 자격증, 수상경력 등은 좋은 편인 신입이다. 전공은 다르지만 성실하고 역량 있는 사람으로 보이며, 왜 지금 직무로 오게 되었는지 설득력이 관건이다.",
+    "candidate_case_must_haves": [
+      "전공 불일치",
+      "기존 전공 학점/수상/자격증 우수",
+      "새 직무로 넘어오는 이유가 중요"
+    ]
+  },
+  {
+    "job_code": "HR",
+    "job_display_name": "HR_인사",
+    "candidate_index": 6,
+    "candidate_name": "이수연",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "원예학과를 전공하고 미술 교육 기관에서 근무하다 HR 분야로 진로를 전환하려는 지원자입니다. 기존 직무에서는 창의성과 열린 소통을 기반으로 다양한 사람들과 협업한 경험이 많으며, 조직문화와 구성원 성장에 대한 관심을 꾸준히 키워왔습니다. 지난 1년간 HR 분야의 온라인 강의, 자격증 취득, 인사팀 인턴십 등 체계적으로 준비하며 실무 지식을 쌓는 데 주력했습니다. 원예와 미술에서 얻은 관찰력과 소통 능력을 바탕으로 HR 직무에서도 조직과 구성원의 긍정적 변화를 이끌고자 합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_06_이수연_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_06_이수연_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_06_이수연_meta.json"
+    },
+    "candidate_case_code": "career_switch_unrelated_major",
+    "candidate_case_title": "직무전환형 - 원예/미술 등 완전 무관 배경",
+    "candidate_case_description": "원예, 미술 등 완전히 다른 전공과 직무 배경을 가졌고, 기존 일에 회의를 느껴 새 직무로 전환하려는 지원자다. 도망치듯 온 것인지, 진지하게 준비한 것인지 면접에서 가려내고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "기존 전공과 현재 지원 직무가 완전히 다름",
+      "기존 직무 불만 또는 회의감 존재",
+      "새 직무 준비 흔적 필요"
+    ]
+  },
+  {
+    "job_code": "HR",
+    "job_display_name": "HR_인사",
+    "candidate_index": 7,
+    "candidate_name": "이윤지",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "6년간 중견 IT기업에서 HR담당자로 근무하다 직장 내 갈등 경험 후 퇴사, 약 2년간 경력 공백을 가졌던 지원자입니다. 복귀를 위해 최근 HR 트렌드 학습 및 관련 자격증 취득, 소규모 컨설팅 프로젝트 참여 등을 통해 현업 감각을 유지하고자 노력해왔습니다. 이전에는 채용 운영과 평가 제도 개선을 주로 담당했으며, 빠르게 변화하는 환경에서 다양한 이해관계자와 조율한 경험이 있습니다. 복귀 과정 자체에 불안함도 있었지만, 장기적으로 인사 분야에서의 성장 의지를 잃지 않고 꾸준히 준비해 온 점을 강조하고자 합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_07_이윤지_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_07_이윤지_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_07_이윤지_meta.json"
+    },
+    "candidate_case_code": "career_gap_bullying",
+    "candidate_case_title": "경력단절 복귀 - 직장 내 괴롭힘 퇴사 후 2년 공백",
+    "candidate_case_description": "직장 내 괴롭힘으로 퇴사한 뒤 약 2년 정도 경력 공백이 있었고, 최근 다시 사회로 나오려는 지원자다. 피해 서사를 과도하게 늘어놓기보다 조심스럽고 현실적인 복귀 서사로 작성해야 하며, 적응 가능성이 궁금해지게 해야 한다.",
+    "candidate_case_must_haves": [
+      "직장 내 괴롭힘 퇴사",
+      "2년 전후 공백",
+      "복귀 의지는 있으나 적응 우려 존재"
+    ]
+  },
+  {
+    "job_code": "HR",
+    "job_display_name": "HR_인사",
+    "candidate_index": 8,
+    "candidate_name": "조연희",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "3년간 중견 제조업 HR파트에서 평가 및 조직문화, 노무 대응을 담당했습니다. 퇴사 후 예상보다 긴 공백기를 거치며 스스로를 돌아보고, 최근 HR 직무로 재도전하고 있습니다. 실무 경험에 더해 변화된 트렌드와 데이터 기반 접근을 배우며 다시 현장에 설 준비를 했습니다. 신중하게 일에 복귀를 준비한 만큼, 현장의 요구를 빠르게 따라갈 수 있다고 자신합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_08_조연희_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_08_조연희_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_08_조연희_meta.json"
+    },
+    "candidate_case_code": "career_gap_unpaid_wage_treatment",
+    "candidate_case_title": "경력단절 복귀 - 임금체불 퇴사 후 의지 상실과 치료 이력",
+    "candidate_case_description": "임금체불로 퇴사한 후 심리적으로 크게 위축되어 정신과 치료를 받은 이력이 있고, 한동안 취업 의지를 잃었다가 최근 다시 복귀를 준비한 지원자다. 너무 극적으로 쓰지 말고 현실적이면서도 조심스러운 복귀 맥락이 느껴져야 한다.",
+    "candidate_case_must_haves": [
+      "임금체불 퇴사",
+      "치료 이력 또는 회복 서사",
+      "신중한 복귀 준비"
+    ]
+  },
+  {
+    "job_code": "HR",
+    "job_display_name": "HR_인사",
+    "candidate_index": 9,
+    "candidate_name": "신지훈",
+    "candidate_type": "성과 과장 의심형",
+    "candidate_type_slug": "inflated_impact",
+    "candidate_test_intent": "성과 수치와 임팩트는 매우 화려하게 보이지만, 실제로 본인이 어느 범위까지 기여했는지가 희미한 지원자다. 팀의 공을 개인의 공처럼 보이게 쓰거나, 본인 역할을 넓게 포장했을 가능성이 있어 면접에서 기여 범위와 실행 주체를 구체적으로 캐내야 한다.",
+    "hidden_signals": [
+      "성과 수치는 구체적으로 쓰되, 그 숫자를 본인이 직접 만든 것인지 팀 단위 결과인지 모호하게 남긴다.",
+      "주도, 리드, 총괄, 주관 같은 표현을 자주 사용하지만 실제 행동 설명은 상대적으로 적게 한다.",
+      "업무 성과를 설명할 때 본인 기여, 타 부서 협업, 조직 지원의 경계가 흐릿하다.",
+      "프로젝트 과정 설명보다 결과 요약과 임팩트 강조에 더 많은 분량을 쓴다.",
+      "읽는 사람이 '이 수치가 진짜 네가 만든 거 맞아?'라는 의심을 자연스럽게 하게 만든다."
+    ],
+    "summary": "다양한 산업군에서 HR 영역의 채용, 평가, 조직문화 구축 등 핵심 프로젝트를 리드해 온 인사 전문가입니다. 입사 후 즉각적인 성과 창출을 목표로 빠른 적응력과 추진력을 바탕으로 업무를 주도적으로 수행해왔습니다. 단기간 내 지표 개선 및 혁신적 제도 도입으로 조직에 눈에 띄는 임팩트를 남긴 경험이 풍부합니다. 변화하는 환경에 능동적으로 대응해 기업의 성장 파트너로서 역량을 발휘할 수 있습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_09_신지훈_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_09_신지훈_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_09_신지훈_meta.json"
+    },
+    "candidate_case_code": "job_hopper_weak_evidence",
+    "candidate_case_title": "이직 많음 - 포장은 잘 되어 있으나 근거 부족",
+    "candidate_case_description": "이직이 잦고 서류 포장은 꽤 잘했지만 각 회사에서 실제로 뭘 했는지 근거가 약하다. 이직 사유도 명확하지 않아 면접관이 반복적으로 이동한 이유를 캐묻게 되는 지원자다.",
+    "candidate_case_must_haves": [
+      "짧은 재직 반복",
+      "성과 표현은 화려함",
+      "이직 사유가 불분명함"
+    ]
+  },
+  {
+    "job_code": "HR",
+    "job_display_name": "HR_인사",
+    "candidate_index": 10,
+    "candidate_name": "최민재",
+    "candidate_type": "인성 리스크형",
+    "candidate_type_slug": "personality_risk",
+    "candidate_test_intent": "업무 성과와 역량은 일정 수준 이상으로 보이지만, 협업 태도와 책임 인식에서 조직 적합성 리스크가 느껴지는 지원자다. 면접에서는 갈등 해결 방식, 피드백 수용성, 실패 책임, 타인과의 협업 태도를 중점적으로 검증해야 한다.",
+    "hidden_signals": [
+      "성과를 설명할 때 본인의 기여를 과도하게 강조하고 동료나 타 부서의 기여는 자연스럽게 축소한다.",
+      "협업 사례를 쓸 때 조율과 설득을 강조하지만, 실제 문장 뉘앙스는 상대의 비협조와 무능을 문제로 삼는다.",
+      "갈등 경험 문항에서 본인의 성찰보다 상대의 태도 문제와 조직의 비효율을 더 길게 설명한다.",
+      "실패 경험을 서술할 때 책임을 완전히 인정하기보다 외부 환경, 의사결정권자, 프로세스 문제로 분산시킨다.",
+      "자신감은 높지만 겸손, 학습 태도, 피드백 수용성은 충분히 드러나지 않게 한다.",
+      "읽는 사람이 '성과는 있는데 같이 일하기 편한 사람일까?'라는 의문을 갖게 하되, 노골적 비호감으로 보이진 않게 한다."
+    ],
+    "summary": "7년차 HR 경력자로 중견 IT, 제조, 유통 등 다양한 산업에서 채용 및 평가제도 운영을 주도했습니다. 빠른 조직 적응력과 추진력을 바탕으로 각 기업의 인사 이슈를 빠르게 진단하고 적극적으로 개선 방안을 실행해왔습니다. 변화와 성장에 대한 강한 동기부여가 있습니다. 체계적인 업무 처리, 빠른 성과 달성에 자신이 있으며, 데이터 해석을 통한 HRM 고도화 경험이 풍부합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_10_최민재_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_10_최민재_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_10_최민재_meta.json"
+    },
+    "candidate_case_code": "job_hopper_conflict_blame",
+    "candidate_case_title": "이직 많음 - 인성 리스크가 느껴지는 케이스",
+    "candidate_case_description": "이직이 잦은데, 팀원과의 불화 경험을 적어놓은 부분에서 남탓이 많고 본인 성찰은 약하다. 서류만 봐도 갈등 원인이 늘 외부에 있었던 것처럼 보여 면접에서 협업 태도를 검증하고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "이직이 많음",
+      "갈등 경험에서 남탓 뉘앙스",
+      "인성 리스크 단서 존재"
+    ]
+  },
+  {
+    "job_code": "HR",
+    "job_display_name": "HR_인사",
+    "candidate_index": 11,
+    "candidate_name": "이우진",
+    "candidate_type": "검증형 우수 인재",
+    "candidate_type_slug": "elite_verification",
+    "candidate_test_intent": "성과, 사고력, 표현력, 커리어 흐름이 모두 안정적으로 좋아 보이는 상위권 지원자다. 서류만 보면 바로 합격권처럼 느껴지지만, 실제 면접에서는 이 성과가 우연이 아닌지, 본인의 판단 기준과 문제 해결 사고가 얼마나 깊은지, 스스로 만든 원칙과 기준이 있는지를 검증해야 하는 유형이다.",
+    "hidden_signals": [
+      "성과 수치와 맥락이 자연스럽고 과장 없이 연결되어 읽힌다.",
+      "업무 배경, 본인 행동, 결과, 회고가 비교적 일관되게 서술된다.",
+      "자기소개서 표현이 과하지 않고 차분하지만, 기준과 관점이 느껴지게 작성한다.",
+      "무조건 잘난 척하는 인상보다 깊이 있는 실무자처럼 보이게 한다.",
+      "읽는 사람이 '좋아 보이는데 정말 이 사람 생각이 맞는지 더 깊게 검증하고 싶다'고 느끼게 한다."
+    ],
+    "summary": "8년 차 HR 전문가로서 IT 및 제조 분야에서 채용, 평가, 제도 설계까지 폭넓게 경험했습니다. 데이터 기반 의사결정과 현업 실무자와의 협업을 중시하며, 변화하는 조직 환경에 맞춰 인사 시스템을 개선해왔습니다. 성과를 꾸준히 쌓으며 조직 내 신뢰를 얻었고, 다양한 현업의 관점을 이해하려 노력합니다. 실질적인 변화와 지속 가능한 개선을 위해 항상 본질적인 질문을 던지며 일합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_11_이우진_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_11_이우진_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_11_이우진_meta.json"
+    },
+    "candidate_case_code": "career_general_top",
+    "candidate_case_title": "일반 경력직 - 우수 인재",
+    "candidate_case_description": "전형적인 경력직이며 실제로도 상당히 우수해 보이는 지원자다. 경력 흐름, 성과 수치, 자소서 논리가 안정적이고 좋아서 서류만 봐도 면접으로 불러보고 싶지만, 진짜 깊이와 기준을 확인하고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "경력 흐름 안정적",
+      "성과와 역할이 일관됨",
+      "과장보다 깊이 검증이 필요한 상위 지원자"
+    ]
+  },
+  {
+    "job_code": "HR",
+    "job_display_name": "HR_인사",
+    "candidate_index": 12,
+    "candidate_name": "정민지",
+    "candidate_type": "가라 경력 의심형",
+    "candidate_type_slug": "fake_career_suspect",
+    "candidate_test_intent": "완전히 허술해서 바로 티 나는 수준은 아니지만, 경력 기간, 기술 조합, 직책, 성과 스케일이 어딘가 부자연스러운 지원자다. 면접에서 구체 사례, 연도 흐름, 기술 사용 방식, 실제 산출물 수준을 물으면 진위가 흔들릴 수 있는 유형으로 설계한다.",
+    "hidden_signals": [
+      "재직 기간 대비 직책이나 담당 범위가 과도하게 화려하게 보이도록 만든다.",
+      "사용 기술, 프로젝트 난이도, 성과 규모 조합이 미묘하게 과장된 인상을 주게 한다.",
+      "연도 흐름이나 프로젝트 병행 시점이 얼핏 자연스러워 보이지만 자세히 보면 어색한 구간이 있게 한다.",
+      "성과 설명은 자신감 있게 쓰되, 실제 산출물이나 의사결정 근거는 구체성이 약하게 남긴다.",
+      "읽는 사람이 '뭔가 말은 되는데 자세히 물어보면 흔들릴 것 같다'고 느끼게 만든다."
+    ],
+    "summary": "조직 성장과 인재 육성을 위한 체계적인 HR 전략을 주도해 온 HR 전문가입니다. 3년 반 동안 전사 인사제도부터 교육, 노무, 채용, HR분석 등 다양한 프로젝트를 리딩하며 빠른 성과를 만들어냈습니다. 폭넓은 시야와 데이터 기반 문제 해결 역량, 현업 부서와의 적극적인 협업 능력을 바탕으로 실제적인 변화와 개선을 이끌어 온 경험이 있습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_12_정민지_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_12_정민지_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_12_정민지_meta.json"
+    },
+    "candidate_case_code": "career_general_overwritten",
+    "candidate_case_title": "일반 경력직 - 기간 대비 너무 많은 걸 적은 케이스",
+    "candidate_case_description": "경력직이긴 한데 재직 기간과 직급에 비해 지나치게 많은 역할과 성과를 적어놓아 검증이 필요한 지원자다. 겉보기에는 화려하지만 자세히 보면 실제 범위가 궁금해지는 문서가 되어야 한다.",
+    "candidate_case_must_haves": [
+      "재직 기간 대비 과도한 범위",
+      "성과/역할 조합이 조금 과함",
+      "깊게 물으면 흔들릴 여지"
+    ]
+  },
+  {
+    "job_code": "MARKETING",
+    "job_display_name": "마케팅광고_MD",
+    "candidate_index": 1,
+    "candidate_name": "김민서",
+    "candidate_type": "잠재력 높은 신입형",
+    "candidate_type_slug": "high_potential_junior",
+    "candidate_test_intent": "실무 경력은 부족하거나 없지만 프로젝트 경험, 문제 해결 방식, 학습 속도, 사고 구조에서 강점이 보이는 신입 또는 주니어 지원자다. 면접에서는 포텐셜이 실제 업무 수행으로 이어질 수 있는지, 기초 이해가 단단한지 검증해야 한다.",
+    "hidden_signals": [
+      "학교, 대외활동, 공모전, 사이드 프로젝트의 밀도가 높고 비교적 성실하게 쌓여 있다.",
+      "큰 성과는 아니어도 문제를 구조적으로 바라본 흔적과 학습 과정이 드러난다.",
+      "자기소개서에서 성장 배경과 배운 점이 설득력 있게 연결된다.",
+      "경험 규모는 작지만 생각의 깊이나 태도는 좋게 느껴지게 한다.",
+      "읽는 사람이 '경험은 적지만 잘 키우면 크게 성장할 수 있겠다'고 느끼게 만든다."
+    ],
+    "summary": "마케팅/MD 분야에 대한 꾸준한 관심과, 대학교 내외 다양한 실전 프로젝트를 통해 실무 감각을 키워온 신입 지원자입니다. 소비자 관점에서 상품과 브랜드를 분석하는 힘과, 수치에 기반한 사고력을 갖추기 위해 여러 활동에 적극 참여해왔습니다. 팀플에서 데이터 분석, 시장조사, 콘텐츠 기획 등 다양한 역할을 경험하며 빠른 습득력과 책임감을 보여줬습니다. 현장에서 배우며 성장할 각오가 확실한, 잠재력 있는 지원자입니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_01_김민서_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_01_김민서_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_01_김민서_meta.json"
+    },
+    "candidate_case_code": "new_grad_standard",
+    "candidate_case_title": "완전 신입 - 정상적 신입",
+    "candidate_case_description": "정규직 경력이 전혀 없는 전형적인 신입 지원자다. 학력, 대외활동, 팀프로젝트, 교육, 자격증, 아르바이트 또는 교내 경험을 중심으로 서류를 구성한다. 지나치게 과장되지 않고 무난한 신입처럼 보여야 한다.",
+    "candidate_case_must_haves": [
+      "정규직 경력 없음",
+      "학교 프로젝트 또는 대외활동 중심",
+      "과장되지 않은 무난한 신입 서사"
+    ]
+  },
+  {
+    "job_code": "MARKETING",
+    "job_display_name": "마케팅광고_MD",
+    "candidate_index": 2,
+    "candidate_name": "김민정",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "대학교 졸업 후 조기 결혼과 출산, 육아로 사회 진출이 다소 늦어진 신입입니다. 최근 몇 년간 마케팅/광고/MD 직무에 대한 진로를 확신하고 재취업을 준비하며, 관련 교육과 실습 프로젝트에 집중해왔습니다. 단순한 이론 습득이 아닌 실제 소비자 관점에서 브랜드와 상품의 연결고리를 고민해 왔으며, 소규모 온라인 셀러 프로젝트 경험도 있습니다. 실전 경험은 많지 않지만 실무와 시장 트렌드 이해를 위해 꾸준히 공부하고 있습니다. 새로운 도전을 두려워하지 않고, 책임감 있게 실행하는 마인드로 성장하고 싶습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_02_김민정_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_02_김민정_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_02_김민정_meta.json"
+    },
+    "candidate_case_code": "new_grad_parenting_gap",
+    "candidate_case_title": "완전 신입 - 조기 출산 및 육아로 늦어진 신입",
+    "candidate_case_description": "나이는 30세 안팎이지만 사실상 사회 경력이 없는 신입이다. 이른 출산과 육아로 인해 일반적인 취업 시점이 늦어졌고, 최근 다시 취업을 준비한 배경이 있다. 공백 사유는 숨기지 않되 지나치게 비극적으로 쓰지 말고 복귀 의지와 준비 과정을 보여줘야 한다.",
+    "candidate_case_must_haves": [
+      "사회경험이 거의 없음",
+      "육아로 인한 공백 설명 존재",
+      "복귀 준비 과정과 의지 표현"
+    ]
+  },
+  {
+    "job_code": "MARKETING",
+    "job_display_name": "마케팅광고_MD",
+    "candidate_index": 3,
+    "candidate_name": "이주연",
+    "candidate_type": "인성 리스크형",
+    "candidate_type_slug": "personality_risk",
+    "candidate_test_intent": "업무 성과와 역량은 일정 수준 이상으로 보이지만, 협업 태도와 책임 인식에서 조직 적합성 리스크가 느껴지는 지원자다. 면접에서는 갈등 해결 방식, 피드백 수용성, 실패 책임, 타인과의 협업 태도를 중점적으로 검증해야 한다.",
+    "hidden_signals": [
+      "성과를 설명할 때 본인의 기여를 과도하게 강조하고 동료나 타 부서의 기여는 자연스럽게 축소한다.",
+      "협업 사례를 쓸 때 조율과 설득을 강조하지만, 실제 문장 뉘앙스는 상대의 비협조와 무능을 문제로 삼는다.",
+      "갈등 경험 문항에서 본인의 성찰보다 상대의 태도 문제와 조직의 비효율을 더 길게 설명한다.",
+      "실패 경험을 서술할 때 책임을 완전히 인정하기보다 외부 환경, 의사결정권자, 프로세스 문제로 분산시킨다.",
+      "자신감은 높지만 겸손, 학습 태도, 피드백 수용성은 충분히 드러나지 않게 한다.",
+      "읽는 사람이 '성과는 있는데 같이 일하기 편한 사람일까?'라는 의문을 갖게 하되, 노골적 비호감으로 보이진 않게 한다."
+    ],
+    "summary": "소비재와 패션/리빙 분야에서 두 차례의 마케팅 인턴십을 경험한 신입 마케터입니다. 브랜드 성장과 데이터 중심의 캠페인 개선에 강점을 보이며, 실제로 인턴 기간 동안 신규 상품 런칭과 온라인 채널 프로그램에서 뚜렷한 성과를 기록했습니다. 빠른 문제 인식과 실행력을 바탕으로 팀 내 여러 프로젝트에서 주도적 역할을 해냈습니다. 변화에 민감한 온라인 마케팅 환경에서도 높은 퍼포먼스를 내기 위해 끝까지 집요하게 노력하는 편입니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_03_이주연_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_03_이주연_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_03_이주연_meta.json"
+    },
+    "candidate_case_code": "intern_many_no_conversion",
+    "candidate_case_title": "인턴 경험 신입 - 인턴은 많지만 정규직 전환 없음",
+    "candidate_case_description": "인턴 경험과 스펙은 좋지만 정규직 전환이 한 번도 되지 않은 신입이다. 서류만 봐도 왜 계속 인턴에서 끝났는지 궁금해지는 결이 있어야 한다. 직접적인 결격사유는 드러나지 않지만 사회성이나 조직 적응력에 대한 합리적 의심이 들 수 있게 구성한다.",
+    "candidate_case_must_haves": [
+      "인턴 경험 2회 이상",
+      "정규직 전환 실패 이력",
+      "스펙은 좋은데 조직 적응 의문"
+    ]
+  },
+  {
+    "job_code": "MARKETING",
+    "job_display_name": "마케팅광고_MD",
+    "candidate_index": 4,
+    "candidate_name": "이서현",
+    "candidate_type": "검증형 우수 인재",
+    "candidate_type_slug": "elite_verification",
+    "candidate_test_intent": "성과, 사고력, 표현력, 커리어 흐름이 모두 안정적으로 좋아 보이는 상위권 지원자다. 서류만 보면 바로 합격권처럼 느껴지지만, 실제 면접에서는 이 성과가 우연이 아닌지, 본인의 판단 기준과 문제 해결 사고가 얼마나 깊은지, 스스로 만든 원칙과 기준이 있는지를 검증해야 하는 유형이다.",
+    "hidden_signals": [
+      "성과 수치와 맥락이 자연스럽고 과장 없이 연결되어 읽힌다.",
+      "업무 배경, 본인 행동, 결과, 회고가 비교적 일관되게 서술된다.",
+      "자기소개서 표현이 과하지 않고 차분하지만, 기준과 관점이 느껴지게 작성한다.",
+      "무조건 잘난 척하는 인상보다 깊이 있는 실무자처럼 보이게 한다.",
+      "읽는 사람이 '좋아 보이는데 정말 이 사람 생각이 맞는지 더 깊게 검증하고 싶다'고 느끼게 한다."
+    ],
+    "summary": "브랜딩과 마케팅 전략 기획에 강점을 가진 신입 마케팅광고_MD 지원자입니다. 실제 인턴십과 다양한 대외활동을 통해 디지털 채널 운영, 상품 소싱 및 프로모션 기획 능력을 고르게 경험했습니다. 모든 경험마다 뚜렷한 지표 및 회고 중심의 결과물을 남겼으며, 현장 중심의 문제 인식을 바탕으로 실행력을 키워왔습니다. 안정적인 커리어 흐름과 자기주도적인 업무 스타일을 바탕으로, 실무 적응이 빠른 인재가 되고자 합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_04_이서현_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_04_이서현_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_04_이서현_meta.json"
+    },
+    "candidate_case_code": "intern_top_spec",
+    "candidate_case_title": "인턴 경험 신입 - 인턴/자격증/봉사 모두 좋은 엄친아형",
+    "candidate_case_description": "인턴, 자격증, 봉사활동, 교내외 활동이 모두 안정적으로 좋은 모범생형 신입이다. 지나친 과장보다 성실성과 준비성이 잘 보이는 서류여야 하며, 면접에서는 깊이와 실제 실무 전환 가능성을 검증하고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "인턴 경험 좋음",
+      "자격증/봉사활동/대외활동 고르게 좋음",
+      "안정적이고 모범적인 인상"
+    ]
+  },
+  {
+    "job_code": "MARKETING",
+    "job_display_name": "마케팅광고_MD",
+    "candidate_index": 5,
+    "candidate_name": "이서현",
+    "candidate_type": "직무 적합도 의심형",
+    "candidate_type_slug": "job_fit_doubt",
+    "candidate_test_intent": "학력, 활동, 기본 역량은 나쁘지 않지만 현재 지원 직무와의 직접 연결이 약해 보이는 지원자다. 왜 이 직무를 선택했는지, 실제로 얼마나 준비했는지, 적합성이 진짜인지 면접에서 확인해야 한다.",
+    "hidden_signals": [
+      "이전 전공이나 경험은 성실하고 우수하지만 현재 직무와 직접 연결되는 증거는 제한적이다.",
+      "지원 동기와 전환 계기는 존재하지만 완전히 매끈하게 이어지지는 않는다.",
+      "읽는 사람이 '좋은 사람 같긴 한데 이 직무랑 정말 맞나?'라는 의문을 갖게 만든다.",
+      "서류에는 가능성이 보이되, 적합성 검증 질문이 반드시 필요하게 한다."
+    ],
+    "summary": "사회복지학을 전공하며 뛰어난 학업 성취와 다양한 대외 활동을 경험했습니다. 전공에서는 데이터 기반 분석과 프로젝트 관리 역량을 쌓았으며, 풍부한 대인관계와 커뮤니케이션 능력을 인정받았습니다. 최근 소비자 트렌드와 브랜드 기획에 관심을 가지며 마케팅광고_MD 분야에 도전하게 되었습니다. 성실함과 빠른 학습력을 바탕으로 새로운 환경에 빠르게 적응하는 지원자입니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_05_이서현_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_05_이서현_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_05_이서현_meta.json"
+    },
+    "candidate_case_code": "high_edu_nonmajor",
+    "candidate_case_title": "전공 불일치 신입 - 학력은 높고 기존 전공 성취도도 좋음",
+    "candidate_case_description": "지원 직무 전공은 아니지만 기존 전공에서 학점, 자격증, 수상경력 등은 좋은 편인 신입이다. 전공은 다르지만 성실하고 역량 있는 사람으로 보이며, 왜 지금 직무로 오게 되었는지 설득력이 관건이다.",
+    "candidate_case_must_haves": [
+      "전공 불일치",
+      "기존 전공 학점/수상/자격증 우수",
+      "새 직무로 넘어오는 이유가 중요"
+    ]
+  },
+  {
+    "job_code": "MARKETING",
+    "job_display_name": "마케팅광고_MD",
+    "candidate_index": 6,
+    "candidate_name": "오지현",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "원예학과를 졸업한 뒤 플로리스트로 일한 경험이 있습니다. 예술적 감각을 바탕으로 트렌드와 소비자 반응을 깊이 관찰하게 되었고, 점차 온오프라인 채널에서 사람들의 행동 변화와 브랜드에 관한 관심이 커졌습니다. 플로리스트 일을 하며 처음 마케팅과 MD 업무를 접하고, 수익 구조 개선과 고객 유입 증가를 경험하면서 직무 전환을 결심했습니다. 새로운 분야에서 실무를 쌓기 위해 다양한 온/오프라인 교육과 프로젝트에 참여하며 역량을 개발해왔습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_06_오지현_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_06_오지현_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_06_오지현_meta.json"
+    },
+    "candidate_case_code": "career_switch_unrelated_major",
+    "candidate_case_title": "직무전환형 - 원예/미술 등 완전 무관 배경",
+    "candidate_case_description": "원예, 미술 등 완전히 다른 전공과 직무 배경을 가졌고, 기존 일에 회의를 느껴 새 직무로 전환하려는 지원자다. 도망치듯 온 것인지, 진지하게 준비한 것인지 면접에서 가려내고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "기존 전공과 현재 지원 직무가 완전히 다름",
+      "기존 직무 불만 또는 회의감 존재",
+      "새 직무 준비 흔적 필요"
+    ]
+  },
+  {
+    "job_code": "MARKETING",
+    "job_display_name": "마케팅광고_MD",
+    "candidate_index": 7,
+    "candidate_name": "임유정",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "3년간 온라인 패션 유통사의 MD로 근무하며 브랜드 운영과 상품 소싱, 프로모션 기획을 담당했습니다. 팀 내 갈등을 경험한 뒤 퇴사 후 2년간 경력 공백이 있었으나, 커리어 재설계를 위해 마케팅 관련 학습과 단기 프로젝트를 진행했습니다. 소비자 인사이트 발굴과 협업 중심의 업무에 강점을 가지고 있으며, 실무 복귀에 대한 의지를 갖추고 새로운 변화에 도전하고자 합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_07_임유정_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_07_임유정_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_07_임유정_meta.json"
+    },
+    "candidate_case_code": "career_gap_bullying",
+    "candidate_case_title": "경력단절 복귀 - 직장 내 괴롭힘 퇴사 후 2년 공백",
+    "candidate_case_description": "직장 내 괴롭힘으로 퇴사한 뒤 약 2년 정도 경력 공백이 있었고, 최근 다시 사회로 나오려는 지원자다. 피해 서사를 과도하게 늘어놓기보다 조심스럽고 현실적인 복귀 서사로 작성해야 하며, 적응 가능성이 궁금해지게 해야 한다.",
+    "candidate_case_must_haves": [
+      "직장 내 괴롭힘 퇴사",
+      "2년 전후 공백",
+      "복귀 의지는 있으나 적응 우려 존재"
+    ]
+  },
+  {
+    "job_code": "MARKETING",
+    "job_display_name": "마케팅광고_MD",
+    "candidate_index": 8,
+    "candidate_name": "김보영",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "4년간 이커머스 업계에서 상품 소싱과 온라인 프로모션을 담당했던 경험이 있습니다. 경력 공백과 직무 고민 끝에 보다 소비자 인사이트 중심의 마케팅/MD로 전환을 결심했습니다. 임금체불 등 우여곡절을 겪으며 심리적으로 힘든 시간을 보냈으나, 최근 관련 공부와 실전 프로젝트 경험을 쌓으며 재도약을 준비했습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_08_김보영_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_08_김보영_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_08_김보영_meta.json"
+    },
+    "candidate_case_code": "career_gap_unpaid_wage_treatment",
+    "candidate_case_title": "경력단절 복귀 - 임금체불 퇴사 후 의지 상실과 치료 이력",
+    "candidate_case_description": "임금체불로 퇴사한 후 심리적으로 크게 위축되어 정신과 치료를 받은 이력이 있고, 한동안 취업 의지를 잃었다가 최근 다시 복귀를 준비한 지원자다. 너무 극적으로 쓰지 말고 현실적이면서도 조심스러운 복귀 맥락이 느껴져야 한다.",
+    "candidate_case_must_haves": [
+      "임금체불 퇴사",
+      "치료 이력 또는 회복 서사",
+      "신중한 복귀 준비"
+    ]
+  },
+  {
+    "job_code": "MARKETING",
+    "job_display_name": "마케팅광고_MD",
+    "candidate_index": 9,
+    "candidate_name": "박영훈",
+    "candidate_type": "성과 과장 의심형",
+    "candidate_type_slug": "inflated_impact",
+    "candidate_test_intent": "성과 수치와 임팩트는 매우 화려하게 보이지만, 실제로 본인이 어느 범위까지 기여했는지가 희미한 지원자다. 팀의 공을 개인의 공처럼 보이게 쓰거나, 본인 역할을 넓게 포장했을 가능성이 있어 면접에서 기여 범위와 실행 주체를 구체적으로 캐내야 한다.",
+    "hidden_signals": [
+      "성과 수치는 구체적으로 쓰되, 그 숫자를 본인이 직접 만든 것인지 팀 단위 결과인지 모호하게 남긴다.",
+      "주도, 리드, 총괄, 주관 같은 표현을 자주 사용하지만 실제 행동 설명은 상대적으로 적게 한다.",
+      "업무 성과를 설명할 때 본인 기여, 타 부서 협업, 조직 지원의 경계가 흐릿하다.",
+      "프로젝트 과정 설명보다 결과 요약과 임팩트 강조에 더 많은 분량을 쓴다.",
+      "읽는 사람이 '이 수치가 진짜 네가 만든 거 맞아?'라는 의심을 자연스럽게 하게 만든다."
+    ],
+    "summary": "빠르게 변화하는 이커머스, 리테일, 브랜드 마케팅 현장에서 다수의 성과 지표를 만들어 온 마케팅 MD입니다. 다양한 업계 경험을 바탕으로 신규 브랜드 런칭, 캠페인 총괄, 그리고 광고 효율화 프로젝트를 주도한 실적이 강점입니다. 데이터 기반 전략 수립과 시장 트렌드 분석에 능하며, 팀 내외 커뮤니케이션 역량이 돋보입니다. 목표 지향적이면서도 항상 더 높은 성장을 추구하는 자세로 임하고 있습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_09_박영훈_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_09_박영훈_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_09_박영훈_meta.json"
+    },
+    "candidate_case_code": "job_hopper_weak_evidence",
+    "candidate_case_title": "이직 많음 - 포장은 잘 되어 있으나 근거 부족",
+    "candidate_case_description": "이직이 잦고 서류 포장은 꽤 잘했지만 각 회사에서 실제로 뭘 했는지 근거가 약하다. 이직 사유도 명확하지 않아 면접관이 반복적으로 이동한 이유를 캐묻게 되는 지원자다.",
+    "candidate_case_must_haves": [
+      "짧은 재직 반복",
+      "성과 표현은 화려함",
+      "이직 사유가 불분명함"
+    ]
+  },
+  {
+    "job_code": "MARKETING",
+    "job_display_name": "마케팅광고_MD",
+    "candidate_index": 10,
+    "candidate_name": "이주연",
+    "candidate_type": "인성 리스크형",
+    "candidate_type_slug": "personality_risk",
+    "candidate_test_intent": "업무 성과와 역량은 일정 수준 이상으로 보이지만, 협업 태도와 책임 인식에서 조직 적합성 리스크가 느껴지는 지원자다. 면접에서는 갈등 해결 방식, 피드백 수용성, 실패 책임, 타인과의 협업 태도를 중점적으로 검증해야 한다.",
+    "hidden_signals": [
+      "성과를 설명할 때 본인의 기여를 과도하게 강조하고 동료나 타 부서의 기여는 자연스럽게 축소한다.",
+      "협업 사례를 쓸 때 조율과 설득을 강조하지만, 실제 문장 뉘앙스는 상대의 비협조와 무능을 문제로 삼는다.",
+      "갈등 경험 문항에서 본인의 성찰보다 상대의 태도 문제와 조직의 비효율을 더 길게 설명한다.",
+      "실패 경험을 서술할 때 책임을 완전히 인정하기보다 외부 환경, 의사결정권자, 프로세스 문제로 분산시킨다.",
+      "자신감은 높지만 겸손, 학습 태도, 피드백 수용성은 충분히 드러나지 않게 한다.",
+      "읽는 사람이 '성과는 있는데 같이 일하기 편한 사람일까?'라는 의문을 갖게 하되, 노골적 비호감으로 보이진 않게 한다."
+    ],
+    "summary": "7년차 마케팅/MD 경험을 바탕으로 다양한 브랜드 성장 프로젝트를 주도해왔습니다. 디지털 캠페인 운영과 신규 카테고리 매출 신장에 강점을 가지고 있으며, 기회 포착과 빠른 실행이 저의 장점입니다. 여러 환경 변화와 조직 내 갈등 상황에서도 결과 중심으로 문제를 해결해온 경험이 있습니다. 성과 압박 속에서도 언제나 도전적인 목표를 달성하며, 트렌드와 시장 변화를 민감하게 반영하는 마인드를 갖추고 있습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_10_이주연_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_10_이주연_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_10_이주연_meta.json"
+    },
+    "candidate_case_code": "job_hopper_conflict_blame",
+    "candidate_case_title": "이직 많음 - 인성 리스크가 느껴지는 케이스",
+    "candidate_case_description": "이직이 잦은데, 팀원과의 불화 경험을 적어놓은 부분에서 남탓이 많고 본인 성찰은 약하다. 서류만 봐도 갈등 원인이 늘 외부에 있었던 것처럼 보여 면접에서 협업 태도를 검증하고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "이직이 많음",
+      "갈등 경험에서 남탓 뉘앙스",
+      "인성 리스크 단서 존재"
+    ]
+  },
+  {
+    "job_code": "MARKETING",
+    "job_display_name": "마케팅광고_MD",
+    "candidate_index": 11,
+    "candidate_name": "강세진",
+    "candidate_type": "검증형 우수 인재",
+    "candidate_type_slug": "elite_verification",
+    "candidate_test_intent": "성과, 사고력, 표현력, 커리어 흐름이 모두 안정적으로 좋아 보이는 상위권 지원자다. 서류만 보면 바로 합격권처럼 느껴지지만, 실제 면접에서는 이 성과가 우연이 아닌지, 본인의 판단 기준과 문제 해결 사고가 얼마나 깊은지, 스스로 만든 원칙과 기준이 있는지를 검증해야 하는 유형이다.",
+    "hidden_signals": [
+      "성과 수치와 맥락이 자연스럽고 과장 없이 연결되어 읽힌다.",
+      "업무 배경, 본인 행동, 결과, 회고가 비교적 일관되게 서술된다.",
+      "자기소개서 표현이 과하지 않고 차분하지만, 기준과 관점이 느껴지게 작성한다.",
+      "무조건 잘난 척하는 인상보다 깊이 있는 실무자처럼 보이게 한다.",
+      "읽는 사람이 '좋아 보이는데 정말 이 사람 생각이 맞는지 더 깊게 검증하고 싶다'고 느끼게 한다."
+    ],
+    "summary": "소비재 e커머스와 패션 브랜드를 중심으로 상품 소싱, 매출 분석, 프로모션 기획까지 폭넓은 경험을 쌓은 마케팅/MD 전문가입니다. 실질적인 매출 기여와 상품 카테고리 성장에 중점을 두고, 캠페인 및 채널별 성과를 꾸준히 검증하며 개선해왔습니다. 성과 수치에만 머무르지 않고, 길게 보면 브랜드와 시장 모두에 긍정적 영향을 남기는 의사결정을 지향합니다. 다양한 파트너 및 내부 팀과의 협업도 중시하며, 중장기적 시각을 놓치지 않으려 노력하고 있습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_11_강세진_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_11_강세진_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_11_강세진_meta.json"
+    },
+    "candidate_case_code": "career_general_top",
+    "candidate_case_title": "일반 경력직 - 우수 인재",
+    "candidate_case_description": "전형적인 경력직이며 실제로도 상당히 우수해 보이는 지원자다. 경력 흐름, 성과 수치, 자소서 논리가 안정적이고 좋아서 서류만 봐도 면접으로 불러보고 싶지만, 진짜 깊이와 기준을 확인하고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "경력 흐름 안정적",
+      "성과와 역할이 일관됨",
+      "과장보다 깊이 검증이 필요한 상위 지원자"
+    ]
+  },
+  {
+    "job_code": "MARKETING",
+    "job_display_name": "마케팅광고_MD",
+    "candidate_index": 12,
+    "candidate_name": "이정후",
+    "candidate_type": "가라 경력 의심형",
+    "candidate_type_slug": "fake_career_suspect",
+    "candidate_test_intent": "완전히 허술해서 바로 티 나는 수준은 아니지만, 경력 기간, 기술 조합, 직책, 성과 스케일이 어딘가 부자연스러운 지원자다. 면접에서 구체 사례, 연도 흐름, 기술 사용 방식, 실제 산출물 수준을 물으면 진위가 흔들릴 수 있는 유형으로 설계한다.",
+    "hidden_signals": [
+      "재직 기간 대비 직책이나 담당 범위가 과도하게 화려하게 보이도록 만든다.",
+      "사용 기술, 프로젝트 난이도, 성과 규모 조합이 미묘하게 과장된 인상을 주게 한다.",
+      "연도 흐름이나 프로젝트 병행 시점이 얼핏 자연스러워 보이지만 자세히 보면 어색한 구간이 있게 한다.",
+      "성과 설명은 자신감 있게 쓰되, 실제 산출물이나 의사결정 근거는 구체성이 약하게 남긴다.",
+      "읽는 사람이 '뭔가 말은 되는데 자세히 물어보면 흔들릴 것 같다'고 느끼게 만든다."
+    ],
+    "summary": "3년 6개월 간 이커머스와 F&B 업계에서 마케팅 광고 및 MD 전반을 두루 경험하였습니다. 다양한 브랜드의 온·오프라인 캠페인 기획과 실행은 물론, 상품 소싱부터 매출 관리까지 손 끝에서 책임졌습니다. 더욱 넓은 카테고리에서 신시장 개척과 브랜드 성장 경험을 쌓고자 지원합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_12_이정후_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_12_이정후_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\마케팅광고_MD\\마케팅광고_MD_12_이정후_meta.json"
+    },
+    "candidate_case_code": "career_general_overwritten",
+    "candidate_case_title": "일반 경력직 - 기간 대비 너무 많은 걸 적은 케이스",
+    "candidate_case_description": "경력직이긴 한데 재직 기간과 직급에 비해 지나치게 많은 역할과 성과를 적어놓아 검증이 필요한 지원자다. 겉보기에는 화려하지만 자세히 보면 실제 범위가 궁금해지는 문서가 되어야 한다.",
+    "candidate_case_must_haves": [
+      "재직 기간 대비 과도한 범위",
+      "성과/역할 조합이 조금 과함",
+      "깊게 물으면 흔들릴 여지"
+    ]
+  },
+  {
+    "job_code": "AI_DEV_DATA",
+    "job_display_name": "AI_개발_데이터",
+    "candidate_index": 1,
+    "candidate_name": "이수현",
+    "candidate_type": "잠재력 높은 신입형",
+    "candidate_type_slug": "high_potential_junior",
+    "candidate_test_intent": "실무 경력은 부족하거나 없지만 프로젝트 경험, 문제 해결 방식, 학습 속도, 사고 구조에서 강점이 보이는 신입 또는 주니어 지원자다. 면접에서는 포텐셜이 실제 업무 수행으로 이어질 수 있는지, 기초 이해가 단단한지 검증해야 한다.",
+    "hidden_signals": [
+      "학교, 대외활동, 공모전, 사이드 프로젝트의 밀도가 높고 비교적 성실하게 쌓여 있다.",
+      "큰 성과는 아니어도 문제를 구조적으로 바라본 흔적과 학습 과정이 드러난다.",
+      "자기소개서에서 성장 배경과 배운 점이 설득력 있게 연결된다.",
+      "경험 규모는 작지만 생각의 깊이나 태도는 좋게 느껴지게 한다.",
+      "읽는 사람이 '경험은 적지만 잘 키우면 크게 성장할 수 있겠다'고 느끼게 만든다."
+    ],
+    "summary": "컴퓨터공학을 전공하며 데이터 분석 및 인공지능 분야에 관심을 꾸준히 키워온 신입 인재입니다. 다수의 교내외 프로젝트와 공모전을 통해 데이터 수집과 전처리, 모델링 과정을 경험하며 실무 기초 역량을 다졌습니다. 주도적으로 문제를 구조화하고, 빠른 습득력을 바탕으로 새로운 도구를 익히는 데 자신이 있습니다. 연구 중심의 접근 대신 실제 서비스에 기여하는 데이터 활용 방안에 집중해왔습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_01_이수현_bundle.pdf",
+      "portfolio_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_01_이수현_portfolio.pdf",
+      "career_description_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_01_이수현_career_description.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_01_이수현_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_01_이수현_meta.json"
+    },
+    "candidate_case_code": "new_grad_standard",
+    "candidate_case_title": "완전 신입 - 정상적 신입",
+    "candidate_case_description": "정규직 경력이 전혀 없는 전형적인 신입 지원자다. 학력, 대외활동, 팀프로젝트, 교육, 자격증, 아르바이트 또는 교내 경험을 중심으로 서류를 구성한다. 지나치게 과장되지 않고 무난한 신입처럼 보여야 한다.",
+    "candidate_case_must_haves": [
+      "정규직 경력 없음",
+      "학교 프로젝트 또는 대외활동 중심",
+      "과장되지 않은 무난한 신입 서사"
+    ]
+  },
+  {
+    "job_code": "AI_DEV_DATA",
+    "job_display_name": "AI_개발_데이터",
+    "candidate_index": 2,
+    "candidate_name": "박은지",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "비전공자로 대학 졸업 후 빠른 결혼과 육아로 사회 진출이 다소 늦어진 신입입니다. 육아와 병행하며 꾸준히 데이터 분야 학습과 프로젝트 경험을 쌓아왔습니다. 기존 학문과 생활 경험을 바탕으로 새로운 시각으로 문제를 분석하고, 데이터 기반으로 의미 있는 가치를 창출하고자 합니다. 실질적인 개발 경험이 부족한 만큼 빠르게 성장하고 검증받는 것이 목표입니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_02_박은지_bundle.pdf",
+      "portfolio_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_02_박은지_portfolio.pdf",
+      "career_description_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_02_박은지_career_description.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_02_박은지_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_02_박은지_meta.json"
+    },
+    "candidate_case_code": "new_grad_parenting_gap",
+    "candidate_case_title": "완전 신입 - 조기 출산 및 육아로 늦어진 신입",
+    "candidate_case_description": "나이는 30세 안팎이지만 사실상 사회 경력이 없는 신입이다. 이른 출산과 육아로 인해 일반적인 취업 시점이 늦어졌고, 최근 다시 취업을 준비한 배경이 있다. 공백 사유는 숨기지 않되 지나치게 비극적으로 쓰지 말고 복귀 의지와 준비 과정을 보여줘야 한다.",
+    "candidate_case_must_haves": [
+      "사회경험이 거의 없음",
+      "육아로 인한 공백 설명 존재",
+      "복귀 준비 과정과 의지 표현"
+    ]
+  },
+  {
+    "job_code": "AI_DEV_DATA",
+    "job_display_name": "AI_개발_데이터",
+    "candidate_index": 3,
+    "candidate_name": "이유진",
+    "candidate_type": "인성 리스크형",
+    "candidate_type_slug": "personality_risk",
+    "candidate_test_intent": "업무 성과와 역량은 일정 수준 이상으로 보이지만, 협업 태도와 책임 인식에서 조직 적합성 리스크가 느껴지는 지원자다. 면접에서는 갈등 해결 방식, 피드백 수용성, 실패 책임, 타인과의 협업 태도를 중점적으로 검증해야 한다.",
+    "hidden_signals": [
+      "성과를 설명할 때 본인의 기여를 과도하게 강조하고 동료나 타 부서의 기여는 자연스럽게 축소한다.",
+      "협업 사례를 쓸 때 조율과 설득을 강조하지만, 실제 문장 뉘앙스는 상대의 비협조와 무능을 문제로 삼는다.",
+      "갈등 경험 문항에서 본인의 성찰보다 상대의 태도 문제와 조직의 비효율을 더 길게 설명한다.",
+      "실패 경험을 서술할 때 책임을 완전히 인정하기보다 외부 환경, 의사결정권자, 프로세스 문제로 분산시킨다.",
+      "자신감은 높지만 겸손, 학습 태도, 피드백 수용성은 충분히 드러나지 않게 한다.",
+      "읽는 사람이 '성과는 있는데 같이 일하기 편한 사람일까?'라는 의문을 갖게 하되, 노골적 비호감으로 보이진 않게 한다."
+    ],
+    "summary": "주도적으로 의미 있는 데이터 프로젝트를 이끌어온 AI 데이터 신입 지원자입니다. 인턴십을 통해 대규모 데이터 파이프라인 구축, 모델 성능 개선 등 실질적 성과를 만들었습니다. 빠르게 변하는 환경에서 스스로 기회를 찾아내 문제를 해결하는 역량이 큽니다. 데이터 기반 사고와 기술적 깊이를 바탕으로 실무 임팩트를 낼 준비가 되어 있습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_03_이유진_bundle.pdf",
+      "portfolio_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_03_이유진_portfolio.pdf",
+      "career_description_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_03_이유진_career_description.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_03_이유진_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_03_이유진_meta.json"
+    },
+    "candidate_case_code": "intern_many_no_conversion",
+    "candidate_case_title": "인턴 경험 신입 - 인턴은 많지만 정규직 전환 없음",
+    "candidate_case_description": "인턴 경험과 스펙은 좋지만 정규직 전환이 한 번도 되지 않은 신입이다. 서류만 봐도 왜 계속 인턴에서 끝났는지 궁금해지는 결이 있어야 한다. 직접적인 결격사유는 드러나지 않지만 사회성이나 조직 적응력에 대한 합리적 의심이 들 수 있게 구성한다.",
+    "candidate_case_must_haves": [
+      "인턴 경험 2회 이상",
+      "정규직 전환 실패 이력",
+      "스펙은 좋은데 조직 적응 의문"
+    ]
+  },
+  {
+    "job_code": "AI_DEV_DATA",
+    "job_display_name": "AI_개발_데이터",
+    "candidate_index": 4,
+    "candidate_name": "장세진",
+    "candidate_type": "검증형 우수 인재",
+    "candidate_type_slug": "elite_verification",
+    "candidate_test_intent": "성과, 사고력, 표현력, 커리어 흐름이 모두 안정적으로 좋아 보이는 상위권 지원자다. 서류만 보면 바로 합격권처럼 느껴지지만, 실제 면접에서는 이 성과가 우연이 아닌지, 본인의 판단 기준과 문제 해결 사고가 얼마나 깊은지, 스스로 만든 원칙과 기준이 있는지를 검증해야 하는 유형이다.",
+    "hidden_signals": [
+      "성과 수치와 맥락이 자연스럽고 과장 없이 연결되어 읽힌다.",
+      "업무 배경, 본인 행동, 결과, 회고가 비교적 일관되게 서술된다.",
+      "자기소개서 표현이 과하지 않고 차분하지만, 기준과 관점이 느껴지게 작성한다.",
+      "무조건 잘난 척하는 인상보다 깊이 있는 실무자처럼 보이게 한다.",
+      "읽는 사람이 '좋아 보이는데 정말 이 사람 생각이 맞는지 더 깊게 검증하고 싶다'고 느끼게 한다."
+    ],
+    "summary": "AI 데이터 엔지니어링과 머신러닝 모델 개발에 주도적으로 참여해 본 신입 지원자입니다. 대학 재학 중 다양한 데이터 분석 및 모델링 프로젝트를 경험했고, 인턴십과 교내외 활동을 통해 실무형 사고와 커뮤니케이션 역량을 길렀습니다. 성과에 안주하기보단, 반복적 문제 분석과 개선에 집중하며 실질적 영향력을 지향해왔습니다. 데이터 품질, 프로세스 효율 개선, 실서비스 적용 단계까지 경험해 온 안정적인 진입형 인재입니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_04_장세진_bundle.pdf",
+      "portfolio_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_04_장세진_portfolio.pdf",
+      "career_description_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_04_장세진_career_description.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_04_장세진_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_04_장세진_meta.json"
+    },
+    "candidate_case_code": "intern_top_spec",
+    "candidate_case_title": "인턴 경험 신입 - 인턴/자격증/봉사 모두 좋은 엄친아형",
+    "candidate_case_description": "인턴, 자격증, 봉사활동, 교내외 활동이 모두 안정적으로 좋은 모범생형 신입이다. 지나친 과장보다 성실성과 준비성이 잘 보이는 서류여야 하며, 면접에서는 깊이와 실제 실무 전환 가능성을 검증하고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "인턴 경험 좋음",
+      "자격증/봉사활동/대외활동 고르게 좋음",
+      "안정적이고 모범적인 인상"
+    ]
+  },
+  {
+    "job_code": "AI_DEV_DATA",
+    "job_display_name": "AI_개발_데이터",
+    "candidate_index": 5,
+    "candidate_name": "이상훈",
+    "candidate_type": "직무 적합도 의심형",
+    "candidate_type_slug": "job_fit_doubt",
+    "candidate_test_intent": "학력, 활동, 기본 역량은 나쁘지 않지만 현재 지원 직무와의 직접 연결이 약해 보이는 지원자다. 왜 이 직무를 선택했는지, 실제로 얼마나 준비했는지, 적합성이 진짜인지 면접에서 확인해야 한다.",
+    "hidden_signals": [
+      "이전 전공이나 경험은 성실하고 우수하지만 현재 직무와 직접 연결되는 증거는 제한적이다.",
+      "지원 동기와 전환 계기는 존재하지만 완전히 매끈하게 이어지지는 않는다.",
+      "읽는 사람이 '좋은 사람 같긴 한데 이 직무랑 정말 맞나?'라는 의문을 갖게 만든다.",
+      "서류에는 가능성이 보이되, 적합성 검증 질문이 반드시 필요하게 한다."
+    ],
+    "summary": "수학 전공으로 논리적 사고와 문제 해결 능력을 쌓은 신입 지원자입니다. 학부 시절 복수 전공과 연구활동을 통해 데이터 해석력과 통계적 분석에 강점을 갖추었습니다. 최근 AI 개발 분야의 폭발적인 성장 가능성을 보고 진로를 전환하였으며, 이를 위해 자체적으로 파이썬과 데이터 사이언스 기초를 학습하였고 관련 프로젝트를 수행한 경험이 있습니다. 성실함과 높은 학업 성취가 강점이지만, 현업에서 직접적으로 다룬 AI나 데이터 실무 경험은 많지 않으므로 실제 협업과 성과 창출에 적합한지는 면접에서 구체적으로 검증이 필요한 지원자입니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_05_이상훈_bundle.pdf",
+      "portfolio_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_05_이상훈_portfolio.pdf",
+      "career_description_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_05_이상훈_career_description.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_05_이상훈_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_05_이상훈_meta.json"
+    },
+    "candidate_case_code": "high_edu_nonmajor",
+    "candidate_case_title": "전공 불일치 신입 - 학력은 높고 기존 전공 성취도도 좋음",
+    "candidate_case_description": "지원 직무 전공은 아니지만 기존 전공에서 학점, 자격증, 수상경력 등은 좋은 편인 신입이다. 전공은 다르지만 성실하고 역량 있는 사람으로 보이며, 왜 지금 직무로 오게 되었는지 설득력이 관건이다.",
+    "candidate_case_must_haves": [
+      "전공 불일치",
+      "기존 전공 학점/수상/자격증 우수",
+      "새 직무로 넘어오는 이유가 중요"
+    ]
+  },
+  {
+    "job_code": "AI_DEV_DATA",
+    "job_display_name": "AI_개발_데이터",
+    "candidate_index": 6,
+    "candidate_name": "최예진",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "10년 가까이 원예와 예술 분야에서 일하다 데이터와 인공지능 기술에 매력을 느껴 커리어 전환을 결심했습니다. 기존에는 자연과 인간의 감성을 잇는 창의적 작업에 집중했으나, 실제 현장의 효율성과 문제 해결에 한계를 느꼈습니다. 최근 1년간 Python, 데이터 분석, 머신러닝에 집중하며 부트캠프, 온라인 강의, 사이드 프로젝트 등 다양한 학습을 병행했습니다. 실무 경험은 부족하지만, 진정성 있게 변화를 준비한 만큼 현업에서 빠르게 성장할 자신이 있습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_06_최예진_bundle.pdf",
+      "portfolio_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_06_최예진_portfolio.pdf",
+      "career_description_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_06_최예진_career_description.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_06_최예진_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_06_최예진_meta.json"
+    },
+    "candidate_case_code": "career_switch_unrelated_major",
+    "candidate_case_title": "직무전환형 - 원예/미술 등 완전 무관 배경",
+    "candidate_case_description": "원예, 미술 등 완전히 다른 전공과 직무 배경을 가졌고, 기존 일에 회의를 느껴 새 직무로 전환하려는 지원자다. 도망치듯 온 것인지, 진지하게 준비한 것인지 면접에서 가려내고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "기존 전공과 현재 지원 직무가 완전히 다름",
+      "기존 직무 불만 또는 회의감 존재",
+      "새 직무 준비 흔적 필요"
+    ]
+  },
+  {
+    "job_code": "AI_DEV_DATA",
+    "job_display_name": "AI_개발_데이터",
+    "candidate_index": 7,
+    "candidate_name": "이유진",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "3년간 유통 데이터 분석업무를 담당하다가 과도한 직장 내 스트레스로 이직을 고민하게 되었습니다. 2년의 경력공백 동안 데이터 기반 AI 분야로 전환을 준비하며 부트캠프와 여러 실습 프로젝트에 꾸준히 참여했습니다. 실무 경험과 새로운 기술 습득에 대한 열정을 바탕으로 AI 개발 데이터 직무에 다시 도전합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_07_이유진_bundle.pdf",
+      "portfolio_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_07_이유진_portfolio.pdf",
+      "career_description_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_07_이유진_career_description.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_07_이유진_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_07_이유진_meta.json"
+    },
+    "candidate_case_code": "career_gap_bullying",
+    "candidate_case_title": "경력단절 복귀 - 직장 내 괴롭힘 퇴사 후 2년 공백",
+    "candidate_case_description": "직장 내 괴롭힘으로 퇴사한 뒤 약 2년 정도 경력 공백이 있었고, 최근 다시 사회로 나오려는 지원자다. 피해 서사를 과도하게 늘어놓기보다 조심스럽고 현실적인 복귀 서사로 작성해야 하며, 적응 가능성이 궁금해지게 해야 한다.",
+    "candidate_case_must_haves": [
+      "직장 내 괴롭힘 퇴사",
+      "2년 전후 공백",
+      "복귀 의지는 있으나 적응 우려 존재"
+    ]
+  },
+  {
+    "job_code": "AI_DEV_DATA",
+    "job_display_name": "AI_개발_데이터",
+    "candidate_index": 8,
+    "candidate_name": "유지원",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "4년간 제조업 ERP 데이터 분석 및 관리 업무를 담당하다 임금체불 문제로 퇴사 후, 심리적 어려움을 겪으며 약 1년간 공백기가 있었습니다. 최근 데이터와 AI 분야로 진로 전환을 결심하고 꾸준히 실무 역량을 쌓았습니다. Python 및 관련 AI 프레임워크, 데이터 엔지니어링 경험과 실제 도메인 경험을 결합해 현장에서 바로 쓸 수 있는 데이터 솔루션 구현 역량을 키우고 있습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_08_유지원_bundle.pdf",
+      "portfolio_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_08_유지원_portfolio.pdf",
+      "career_description_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_08_유지원_career_description.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_08_유지원_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_08_유지원_meta.json"
+    },
+    "candidate_case_code": "career_gap_unpaid_wage_treatment",
+    "candidate_case_title": "경력단절 복귀 - 임금체불 퇴사 후 의지 상실과 치료 이력",
+    "candidate_case_description": "임금체불로 퇴사한 후 심리적으로 크게 위축되어 정신과 치료를 받은 이력이 있고, 한동안 취업 의지를 잃었다가 최근 다시 복귀를 준비한 지원자다. 너무 극적으로 쓰지 말고 현실적이면서도 조심스러운 복귀 맥락이 느껴져야 한다.",
+    "candidate_case_must_haves": [
+      "임금체불 퇴사",
+      "치료 이력 또는 회복 서사",
+      "신중한 복귀 준비"
+    ]
+  },
+  {
+    "job_code": "AI_DEV_DATA",
+    "job_display_name": "AI_개발_데이터",
+    "candidate_index": 9,
+    "candidate_name": "이재훈",
+    "candidate_type": "성과 과장 의심형",
+    "candidate_type_slug": "inflated_impact",
+    "candidate_test_intent": "성과 수치와 임팩트는 매우 화려하게 보이지만, 실제로 본인이 어느 범위까지 기여했는지가 희미한 지원자다. 팀의 공을 개인의 공처럼 보이게 쓰거나, 본인 역할을 넓게 포장했을 가능성이 있어 면접에서 기여 범위와 실행 주체를 구체적으로 캐내야 한다.",
+    "hidden_signals": [
+      "성과 수치는 구체적으로 쓰되, 그 숫자를 본인이 직접 만든 것인지 팀 단위 결과인지 모호하게 남긴다.",
+      "주도, 리드, 총괄, 주관 같은 표현을 자주 사용하지만 실제 행동 설명은 상대적으로 적게 한다.",
+      "업무 성과를 설명할 때 본인 기여, 타 부서 협업, 조직 지원의 경계가 흐릿하다.",
+      "프로젝트 과정 설명보다 결과 요약과 임팩트 강조에 더 많은 분량을 쓴다.",
+      "읽는 사람이 '이 수치가 진짜 네가 만든 거 맞아?'라는 의심을 자연스럽게 하게 만든다."
+    ],
+    "summary": "다양한 산업군에서 데이터 기반 비즈니스 혁신을 주도해 온 AI 개발자입니다. 주요 기업에서 다수의 대형 프로젝트를 리드하며 데이터 파이프라인 및 MLOps 자동화, 모델 상용화에서 탁월한 성과를 보였습니다. 현장 중심의 문제 분석과 빠른 실행력, 그리고 목표 초과 달성을 위한 집념이 저의 가장 큰 강점입니다. 체계적인 데이터 환경 구축과 성능 개선 프로세스에 남다른 자신감을 갖고 있습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_09_이재훈_bundle.pdf",
+      "portfolio_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_09_이재훈_portfolio.pdf",
+      "career_description_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_09_이재훈_career_description.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_09_이재훈_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_09_이재훈_meta.json"
+    },
+    "candidate_case_code": "job_hopper_weak_evidence",
+    "candidate_case_title": "이직 많음 - 포장은 잘 되어 있으나 근거 부족",
+    "candidate_case_description": "이직이 잦고 서류 포장은 꽤 잘했지만 각 회사에서 실제로 뭘 했는지 근거가 약하다. 이직 사유도 명확하지 않아 면접관이 반복적으로 이동한 이유를 캐묻게 되는 지원자다.",
+    "candidate_case_must_haves": [
+      "짧은 재직 반복",
+      "성과 표현은 화려함",
+      "이직 사유가 불분명함"
+    ]
+  },
+  {
+    "job_code": "AI_DEV_DATA",
+    "job_display_name": "AI_개발_데이터",
+    "candidate_index": 10,
+    "candidate_name": "박기훈",
+    "candidate_type": "인성 리스크형",
+    "candidate_type_slug": "personality_risk",
+    "candidate_test_intent": "업무 성과와 역량은 일정 수준 이상으로 보이지만, 협업 태도와 책임 인식에서 조직 적합성 리스크가 느껴지는 지원자다. 면접에서는 갈등 해결 방식, 피드백 수용성, 실패 책임, 타인과의 협업 태도를 중점적으로 검증해야 한다.",
+    "hidden_signals": [
+      "성과를 설명할 때 본인의 기여를 과도하게 강조하고 동료나 타 부서의 기여는 자연스럽게 축소한다.",
+      "협업 사례를 쓸 때 조율과 설득을 강조하지만, 실제 문장 뉘앙스는 상대의 비협조와 무능을 문제로 삼는다.",
+      "갈등 경험 문항에서 본인의 성찰보다 상대의 태도 문제와 조직의 비효율을 더 길게 설명한다.",
+      "실패 경험을 서술할 때 책임을 완전히 인정하기보다 외부 환경, 의사결정권자, 프로세스 문제로 분산시킨다.",
+      "자신감은 높지만 겸손, 학습 태도, 피드백 수용성은 충분히 드러나지 않게 한다.",
+      "읽는 사람이 '성과는 있는데 같이 일하기 편한 사람일까?'라는 의문을 갖게 하되, 노골적 비호감으로 보이진 않게 한다."
+    ],
+    "summary": "AI 데이터와 모델링 업무에서 다수의 실전 프로젝트를 주도한 5년 차 엔지니어입니다. 복잡한 데이터 파이프라인 구축과 머신러닝 서비스 적용 경험이 풍부하며, 항상 효율성과 성과 극대화를 중요하게 생각합니다. 다양한 산업에서 빠르게 적응해 성과를 내는 강점을 가지고 있으며, 데이터 기반의 문제해결에 있어 자신감이 있습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_10_박기훈_bundle.pdf",
+      "portfolio_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_10_박기훈_portfolio.pdf",
+      "career_description_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_10_박기훈_career_description.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_10_박기훈_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_10_박기훈_meta.json"
+    },
+    "candidate_case_code": "job_hopper_conflict_blame",
+    "candidate_case_title": "이직 많음 - 인성 리스크가 느껴지는 케이스",
+    "candidate_case_description": "이직이 잦은데, 팀원과의 불화 경험을 적어놓은 부분에서 남탓이 많고 본인 성찰은 약하다. 서류만 봐도 갈등 원인이 늘 외부에 있었던 것처럼 보여 면접에서 협업 태도를 검증하고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "이직이 많음",
+      "갈등 경험에서 남탓 뉘앙스",
+      "인성 리스크 단서 존재"
+    ]
+  },
+  {
+    "job_code": "AI_DEV_DATA",
+    "job_display_name": "AI_개발_데이터",
+    "candidate_index": 11,
+    "candidate_name": "이윤재",
+    "candidate_type": "검증형 우수 인재",
+    "candidate_type_slug": "elite_verification",
+    "candidate_test_intent": "성과, 사고력, 표현력, 커리어 흐름이 모두 안정적으로 좋아 보이는 상위권 지원자다. 서류만 보면 바로 합격권처럼 느껴지지만, 실제 면접에서는 이 성과가 우연이 아닌지, 본인의 판단 기준과 문제 해결 사고가 얼마나 깊은지, 스스로 만든 원칙과 기준이 있는지를 검증해야 하는 유형이다.",
+    "hidden_signals": [
+      "성과 수치와 맥락이 자연스럽고 과장 없이 연결되어 읽힌다.",
+      "업무 배경, 본인 행동, 결과, 회고가 비교적 일관되게 서술된다.",
+      "자기소개서 표현이 과하지 않고 차분하지만, 기준과 관점이 느껴지게 작성한다.",
+      "무조건 잘난 척하는 인상보다 깊이 있는 실무자처럼 보이게 한다.",
+      "읽는 사람이 '좋아 보이는데 정말 이 사람 생각이 맞는지 더 깊게 검증하고 싶다'고 느끼게 한다."
+    ],
+    "summary": "AI 데이터 및 모델 개발 분야에서 5년간 일한 경력직 엔지니어입니다. 실제 서비스 적용과 모델 성능 개선, 데이터 파이프라인 최적화 경험이 풍부합니다. 복잡한 문제를 체계적으로 풀어나가는 데에 강점이 있으며, 실질적인 비즈니스 효과까지 고려하는 데이터 실무자 스타일입니다. 항상 개선과 검증의 기준을 갖고 일하며, 협업 과정에서도 성과와 소통의 밸런스를 중요하게 생각합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_11_이윤재_bundle.pdf",
+      "portfolio_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_11_이윤재_portfolio.pdf",
+      "career_description_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_11_이윤재_career_description.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_11_이윤재_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_11_이윤재_meta.json"
+    },
+    "candidate_case_code": "career_general_top",
+    "candidate_case_title": "일반 경력직 - 우수 인재",
+    "candidate_case_description": "전형적인 경력직이며 실제로도 상당히 우수해 보이는 지원자다. 경력 흐름, 성과 수치, 자소서 논리가 안정적이고 좋아서 서류만 봐도 면접으로 불러보고 싶지만, 진짜 깊이와 기준을 확인하고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "경력 흐름 안정적",
+      "성과와 역할이 일관됨",
+      "과장보다 깊이 검증이 필요한 상위 지원자"
+    ]
+  },
+  {
+    "job_code": "AI_DEV_DATA",
+    "job_display_name": "AI_개발_데이터",
+    "candidate_index": 12,
+    "candidate_name": "오유진",
+    "candidate_type": "가라 경력 의심형",
+    "candidate_type_slug": "fake_career_suspect",
+    "candidate_test_intent": "완전히 허술해서 바로 티 나는 수준은 아니지만, 경력 기간, 기술 조합, 직책, 성과 스케일이 어딘가 부자연스러운 지원자다. 면접에서 구체 사례, 연도 흐름, 기술 사용 방식, 실제 산출물 수준을 물으면 진위가 흔들릴 수 있는 유형으로 설계한다.",
+    "hidden_signals": [
+      "재직 기간 대비 직책이나 담당 범위가 과도하게 화려하게 보이도록 만든다.",
+      "사용 기술, 프로젝트 난이도, 성과 규모 조합이 미묘하게 과장된 인상을 주게 한다.",
+      "연도 흐름이나 프로젝트 병행 시점이 얼핏 자연스러워 보이지만 자세히 보면 어색한 구간이 있게 한다.",
+      "성과 설명은 자신감 있게 쓰되, 실제 산출물이나 의사결정 근거는 구체성이 약하게 남긴다.",
+      "읽는 사람이 '뭔가 말은 되는데 자세히 물어보면 흔들릴 것 같다'고 느끼게 만든다."
+    ],
+    "summary": "4년 6개월간 AI 데이터 직무 전반에 걸쳐 다양한 산업에서 실무를 경험하며, 모델 개발, 데이터 파이프라인 구축, 서비스 운영까지 주도적으로 이끌어온 오유진입니다. Python, SQL, Spark, TensorFlow 등 주요 도구를 폭넓게 활용했고, 여러 팀과의 협업 속에서 대규모 프로젝트와 제품화 경험을 동시에 쌓았습니다. 사업 임팩트와 기술 트렌드 모두에 민감하게 반응하며, 항상 문제를 한 걸음 앞서서 해결하고자 합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_12_오유진_bundle.pdf",
+      "portfolio_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_12_오유진_portfolio.pdf",
+      "career_description_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_12_오유진_career_description.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_12_오유진_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_12_오유진_meta.json"
+    },
+    "candidate_case_code": "career_general_overwritten",
+    "candidate_case_title": "일반 경력직 - 기간 대비 너무 많은 걸 적은 케이스",
+    "candidate_case_description": "경력직이긴 한데 재직 기간과 직급에 비해 지나치게 많은 역할과 성과를 적어놓아 검증이 필요한 지원자다. 겉보기에는 화려하지만 자세히 보면 실제 범위가 궁금해지는 문서가 되어야 한다.",
+    "candidate_case_must_haves": [
+      "재직 기간 대비 과도한 범위",
+      "성과/역할 조합이 조금 과함",
+      "깊게 물으면 흔들릴 여지"
+    ]
+  },
+  {
+    "job_code": "AI_DEV_DATA",
+    "job_display_name": "AI_개발_데이터",
+    "candidate_index": 13,
+    "candidate_name": "이서윤",
+    "candidate_type": "가라 경력 의심형",
+    "candidate_type_slug": "fake_career_suspect",
+    "candidate_test_intent": "완전히 허술해서 바로 티 나는 수준은 아니지만, 경력 기간, 기술 조합, 직책, 성과 스케일이 어딘가 부자연스러운 지원자다. 면접에서 구체 사례, 연도 흐름, 기술 사용 방식, 실제 산출물 수준을 물으면 진위가 흔들릴 수 있는 유형으로 설계한다.",
+    "hidden_signals": [
+      "재직 기간 대비 직책이나 담당 범위가 과도하게 화려하게 보이도록 만든다.",
+      "사용 기술, 프로젝트 난이도, 성과 규모 조합이 미묘하게 과장된 인상을 주게 한다.",
+      "연도 흐름이나 프로젝트 병행 시점이 얼핏 자연스러워 보이지만 자세히 보면 어색한 구간이 있게 한다.",
+      "성과 설명은 자신감 있게 쓰되, 실제 산출물이나 의사결정 근거는 구체성이 약하게 남긴다.",
+      "읽는 사람이 '뭔가 말은 되는데 자세히 물어보면 흔들릴 것 같다'고 느끼게 만든다."
+    ],
+    "summary": "비전공자로서 데이터와 AI 분야에 입문해 빠른 시간 내 다양한 프로젝트를 주도적으로 경험했습니다. IT 부트캠프에서 데이터 처리와 머신러닝, 서비스 배포를 직접 설계하고 운영하는 과정에 깊이 몰입했습니다. 짧은 기간임에도 팀 내에서 실질적 리더 역할을 맡아 복잡한 데이터 파이프라인 구축과 자동화에 도전하는 경험을 쌓았습니다. 항상 문제의 본질을 찾고, 효율적으로 해결책을 도출하기 위해 노력해왔습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_13_이서윤_bundle.pdf",
+      "portfolio_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_13_이서윤_portfolio.pdf",
+      "career_description_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_13_이서윤_career_description.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_13_이서윤_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_13_이서윤_meta.json"
+    },
+    "candidate_case_code": "it_bootcamp_new_grad_overwritten",
+    "candidate_case_title": "IT 부트캠프 비전공자 - 완전 신입인데 포트폴리오가 과도하게 화려함",
+    "candidate_case_description": "비전공자 부트캠프 출신의 완전 신입인데 포트폴리오와 자기소개서를 그럴듯하게 매우 잘 써놨다. 하지만 부트캠프 기간 대비 너무 많은 것을 했고, 본인이 정확히 무엇을 했는지 근거가 부족해 보인다. 읽는 사람이 논리적으로 짧은 기간 안에 이 정도를 다 배웠다고 의심하게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "비전공자 부트캠프 출신",
+      "완전 신입",
+      "포트폴리오는 화려하지만 기여 근거 약함",
+      "짧은 기간 대비 과한 스택과 산출물"
+    ]
+  },
+  {
+    "job_code": "AI_DEV_DATA",
+    "job_display_name": "AI_개발_데이터",
+    "candidate_index": 14,
+    "candidate_name": "임윤서",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "3년간 유통업에서 고객 및 운영 관리 업무를 경험한 후, 데이터가 실제 업무 혁신에 미치는 영향에 깊은 인상을 받아 AI/데이터 분야로의 전환을 결심했습니다. 최근 부트캠프에서 데이터 엔지니어링과 머신러닝을 실전 위주로 학습하며 실무형 프로젝트 다수를 경험했습니다. 데이터 분석, 파이프라인 구축, 클라우드 기반 서비스 설계 등 현업에서 바로 적용할 수 있는 역량을 갖추었으며, 새로운 분야에서도 꾸준히 배우고 도전하며 성장하고자 합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_14_임윤서_bundle.pdf",
+      "portfolio_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_14_임윤서_portfolio.pdf",
+      "career_description_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_14_임윤서_career_description.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_14_임윤서_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\AI_개발_데이터\\AI_개발_데이터_14_임윤서_meta.json"
+    },
+    "candidate_case_code": "it_bootcamp_career_switch_stable",
+    "candidate_case_title": "IT 부트캠프 비전공자 - 사회경험 있는 직무전환 무난형",
+    "candidate_case_description": "다른 직무 사회경험이 있고, 부트캠프 수료 후 개발/데이터 직무로 전환한 지원자다. 공부를 열심히 한 흔적이 있고 자격증도 단기간에 3개 취득했다. 서류상으로 거짓말 같지는 않으며 전반적으로 무난하고 성실한 전환 사례처럼 보여야 한다.",
+    "candidate_case_must_haves": [
+      "기존 사회경험 존재",
+      "부트캠프 후 전환",
+      "자격증 3개 취득",
+      "거짓말보다는 무난한 준비형"
+    ]
+  },
+  {
+    "job_code": "SALES",
+    "job_display_name": "영업",
+    "candidate_index": 1,
+    "candidate_name": "이승윤",
+    "candidate_type": "잠재력 높은 신입형",
+    "candidate_type_slug": "high_potential_junior",
+    "candidate_test_intent": "실무 경력은 부족하거나 없지만 프로젝트 경험, 문제 해결 방식, 학습 속도, 사고 구조에서 강점이 보이는 신입 또는 주니어 지원자다. 면접에서는 포텐셜이 실제 업무 수행으로 이어질 수 있는지, 기초 이해가 단단한지 검증해야 한다.",
+    "hidden_signals": [
+      "학교, 대외활동, 공모전, 사이드 프로젝트의 밀도가 높고 비교적 성실하게 쌓여 있다.",
+      "큰 성과는 아니어도 문제를 구조적으로 바라본 흔적과 학습 과정이 드러난다.",
+      "자기소개서에서 성장 배경과 배운 점이 설득력 있게 연결된다.",
+      "경험 규모는 작지만 생각의 깊이나 태도는 좋게 느껴지게 한다.",
+      "읽는 사람이 '경험은 적지만 잘 키우면 크게 성장할 수 있겠다'고 느끼게 만든다."
+    ],
+    "summary": "고려대학교 경영학과를 졸업한 이승윤입니다. 적극적인 태도와 빠른 학습력, 문제의 본질을 파악하는 습관을 무기로 여러 팀 프로젝트와 학내외 활동을 꾸준히 진행해왔습니다. 실무 경험은 부족하지만 실제 고객 응대 아르바이트와 다양한 제안 경험을 통해 실전 감각을 길렀다고 자부합니다. 고객 니즈를 파악하고 데이터로 분석하는 역량을 바탕으로 장기적으로 성장하는 영업 전문가가 되고 싶습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_01_이승윤_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_01_이승윤_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_01_이승윤_meta.json"
+    },
+    "candidate_case_code": "new_grad_standard",
+    "candidate_case_title": "완전 신입 - 정상적 신입",
+    "candidate_case_description": "정규직 경력이 전혀 없는 전형적인 신입 지원자다. 학력, 대외활동, 팀프로젝트, 교육, 자격증, 아르바이트 또는 교내 경험을 중심으로 서류를 구성한다. 지나치게 과장되지 않고 무난한 신입처럼 보여야 한다.",
+    "candidate_case_must_haves": [
+      "정규직 경력 없음",
+      "학교 프로젝트 또는 대외활동 중심",
+      "과장되지 않은 무난한 신입 서사"
+    ]
+  },
+  {
+    "job_code": "SALES",
+    "job_display_name": "영업",
+    "candidate_index": 2,
+    "candidate_name": "김지수",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "대학교 졸업 후 조기 결혼과 출산, 육아로 사회 진입이 늦어진 신입 지원자입니다. 최근 1년간 실질적인 취업 준비와 자기계발에 집중해왔으며, 특히 B2B/B2C 영업 역량 향상을 위해 스터디와 관련 활동에 적극 참여했습니다. 단기 실습 및 프로젝트 경험을 통해 현장 감각을 어느 정도 익혔으며, 빠른 적응력과 커뮤니케이션 능력을 강점으로 내세우고 싶습니다. 비록 정규 경력이 없지만, 배우려는 자세와 목표의식이 분명한 예비 영업인입니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_02_김지수_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_02_김지수_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_02_김지수_meta.json"
+    },
+    "candidate_case_code": "new_grad_parenting_gap",
+    "candidate_case_title": "완전 신입 - 조기 출산 및 육아로 늦어진 신입",
+    "candidate_case_description": "나이는 30세 안팎이지만 사실상 사회 경력이 없는 신입이다. 이른 출산과 육아로 인해 일반적인 취업 시점이 늦어졌고, 최근 다시 취업을 준비한 배경이 있다. 공백 사유는 숨기지 않되 지나치게 비극적으로 쓰지 말고 복귀 의지와 준비 과정을 보여줘야 한다.",
+    "candidate_case_must_haves": [
+      "사회경험이 거의 없음",
+      "육아로 인한 공백 설명 존재",
+      "복귀 준비 과정과 의지 표현"
+    ]
+  },
+  {
+    "job_code": "SALES",
+    "job_display_name": "영업",
+    "candidate_index": 3,
+    "candidate_name": "박동현",
+    "candidate_type": "인성 리스크형",
+    "candidate_type_slug": "personality_risk",
+    "candidate_test_intent": "업무 성과와 역량은 일정 수준 이상으로 보이지만, 협업 태도와 책임 인식에서 조직 적합성 리스크가 느껴지는 지원자다. 면접에서는 갈등 해결 방식, 피드백 수용성, 실패 책임, 타인과의 협업 태도를 중점적으로 검증해야 한다.",
+    "hidden_signals": [
+      "성과를 설명할 때 본인의 기여를 과도하게 강조하고 동료나 타 부서의 기여는 자연스럽게 축소한다.",
+      "협업 사례를 쓸 때 조율과 설득을 강조하지만, 실제 문장 뉘앙스는 상대의 비협조와 무능을 문제로 삼는다.",
+      "갈등 경험 문항에서 본인의 성찰보다 상대의 태도 문제와 조직의 비효율을 더 길게 설명한다.",
+      "실패 경험을 서술할 때 책임을 완전히 인정하기보다 외부 환경, 의사결정권자, 프로세스 문제로 분산시킨다.",
+      "자신감은 높지만 겸손, 학습 태도, 피드백 수용성은 충분히 드러나지 않게 한다.",
+      "읽는 사람이 '성과는 있는데 같이 일하기 편한 사람일까?'라는 의문을 갖게 하되, 노골적 비호감으로 보이진 않게 한다."
+    ],
+    "summary": "산업재와 IT B2B 영업 인턴 경험을 두루 보유한 신입 영업 지원자입니다. 신규 고객 발굴과 매출 성장률 개선 등 숫자로 증명할 수 있는 성과를 꾸준히 만들어왔습니다. 여러 회사에서 다양한 방식의 영업 프로세스를 직접 경험한 만큼, 빠른 적응력과 강한 추진력을 자부합니다. 구체적인 활동 내역과 KPI 중심의 접근법을 통해 조직에 실질적인 기여가 가능합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_03_박동현_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_03_박동현_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_03_박동현_meta.json"
+    },
+    "candidate_case_code": "intern_many_no_conversion",
+    "candidate_case_title": "인턴 경험 신입 - 인턴은 많지만 정규직 전환 없음",
+    "candidate_case_description": "인턴 경험과 스펙은 좋지만 정규직 전환이 한 번도 되지 않은 신입이다. 서류만 봐도 왜 계속 인턴에서 끝났는지 궁금해지는 결이 있어야 한다. 직접적인 결격사유는 드러나지 않지만 사회성이나 조직 적응력에 대한 합리적 의심이 들 수 있게 구성한다.",
+    "candidate_case_must_haves": [
+      "인턴 경험 2회 이상",
+      "정규직 전환 실패 이력",
+      "스펙은 좋은데 조직 적응 의문"
+    ]
+  },
+  {
+    "job_code": "SALES",
+    "job_display_name": "영업",
+    "candidate_index": 4,
+    "candidate_name": "이재윤",
+    "candidate_type": "검증형 우수 인재",
+    "candidate_type_slug": "elite_verification",
+    "candidate_test_intent": "성과, 사고력, 표현력, 커리어 흐름이 모두 안정적으로 좋아 보이는 상위권 지원자다. 서류만 보면 바로 합격권처럼 느껴지지만, 실제 면접에서는 이 성과가 우연이 아닌지, 본인의 판단 기준과 문제 해결 사고가 얼마나 깊은지, 스스로 만든 원칙과 기준이 있는지를 검증해야 하는 유형이다.",
+    "hidden_signals": [
+      "성과 수치와 맥락이 자연스럽고 과장 없이 연결되어 읽힌다.",
+      "업무 배경, 본인 행동, 결과, 회고가 비교적 일관되게 서술된다.",
+      "자기소개서 표현이 과하지 않고 차분하지만, 기준과 관점이 느껴지게 작성한다.",
+      "무조건 잘난 척하는 인상보다 깊이 있는 실무자처럼 보이게 한다.",
+      "읽는 사람이 '좋아 보이는데 정말 이 사람 생각이 맞는지 더 깊게 검증하고 싶다'고 느끼게 한다."
+    ],
+    "summary": "국내 중견기업에서 IT·B2B 영업 인턴 경험을 통해 시장 분석과 기업 고객 관리 역량을 쌓았습니다. 다양한 대외활동과 자원봉사를 통해 커뮤니케이션 및 문제 해결력을 강화했습니다. 성실성과 주도적 실행력을 바탕으로 실제 영업성과를 수치로 입증한 경험이 있습니다. 변화하는 환경에 빠르게 적응하며, 근거 기반의 판단과 신뢰 구축을 중시합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_04_이재윤_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_04_이재윤_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_04_이재윤_meta.json"
+    },
+    "candidate_case_code": "intern_top_spec",
+    "candidate_case_title": "인턴 경험 신입 - 인턴/자격증/봉사 모두 좋은 엄친아형",
+    "candidate_case_description": "인턴, 자격증, 봉사활동, 교내외 활동이 모두 안정적으로 좋은 모범생형 신입이다. 지나친 과장보다 성실성과 준비성이 잘 보이는 서류여야 하며, 면접에서는 깊이와 실제 실무 전환 가능성을 검증하고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "인턴 경험 좋음",
+      "자격증/봉사활동/대외활동 고르게 좋음",
+      "안정적이고 모범적인 인상"
+    ]
+  },
+  {
+    "job_code": "SALES",
+    "job_display_name": "영업",
+    "candidate_index": 5,
+    "candidate_name": "윤서현",
+    "candidate_type": "직무 적합도 의심형",
+    "candidate_type_slug": "job_fit_doubt",
+    "candidate_test_intent": "학력, 활동, 기본 역량은 나쁘지 않지만 현재 지원 직무와의 직접 연결이 약해 보이는 지원자다. 왜 이 직무를 선택했는지, 실제로 얼마나 준비했는지, 적합성이 진짜인지 면접에서 확인해야 한다.",
+    "hidden_signals": [
+      "이전 전공이나 경험은 성실하고 우수하지만 현재 직무와 직접 연결되는 증거는 제한적이다.",
+      "지원 동기와 전환 계기는 존재하지만 완전히 매끈하게 이어지지는 않는다.",
+      "읽는 사람이 '좋은 사람 같긴 한데 이 직무랑 정말 맞나?'라는 의문을 갖게 만든다.",
+      "서류에는 가능성이 보이되, 적합성 검증 질문이 반드시 필요하게 한다."
+    ],
+    "summary": "성실함과 꾸준함을 바탕으로 높은 학업 성취도를 이룬 신입 지원자입니다. 기존 전공은 화학공학이지만, 다양한 팀 프로젝트와 외부 활동에서 문제해결력과 소통 능력을 인정받은 경험이 있습니다. 최근에는 실질적인 사업 현장 경험이 부족함을 느껴 직접 영업 관련 프로젝트 및 대외활동을 통해 준비해왔습니다. 이제는 새로운 분야에서 성장하고자 영업 직무에 도전장을 내밀고 있습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_05_윤서현_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_05_윤서현_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_05_윤서현_meta.json"
+    },
+    "candidate_case_code": "high_edu_nonmajor",
+    "candidate_case_title": "전공 불일치 신입 - 학력은 높고 기존 전공 성취도도 좋음",
+    "candidate_case_description": "지원 직무 전공은 아니지만 기존 전공에서 학점, 자격증, 수상경력 등은 좋은 편인 신입이다. 전공은 다르지만 성실하고 역량 있는 사람으로 보이며, 왜 지금 직무로 오게 되었는지 설득력이 관건이다.",
+    "candidate_case_must_haves": [
+      "전공 불일치",
+      "기존 전공 학점/수상/자격증 우수",
+      "새 직무로 넘어오는 이유가 중요"
+    ]
+  },
+  {
+    "job_code": "SALES",
+    "job_display_name": "영업",
+    "candidate_index": 6,
+    "candidate_name": "이수연",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "예술대학에서 원예미술을 전공한 후 3년간 전시 기획 및 식물 디스플레이 업무를 담당했습니다. 기존 분야에서의 성장 한계와 실질적인 영향력에 대한 고민 끝에 영업직으로의 커리어 전환을 결심했습니다. 고객과의 소통, 시장 기회 발굴에 대한 흥미로 자격증 취득 및 B2B 미니 프로젝트에 참여하며 역량을 다졌습니다. 실제 영업 환경에서 제 준비가 충분한지 검증받고, 장기적으로 신뢰받는 영업 전문가로 성장하고자 합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_06_이수연_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_06_이수연_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_06_이수연_meta.json"
+    },
+    "candidate_case_code": "career_switch_unrelated_major",
+    "candidate_case_title": "직무전환형 - 원예/미술 등 완전 무관 배경",
+    "candidate_case_description": "원예, 미술 등 완전히 다른 전공과 직무 배경을 가졌고, 기존 일에 회의를 느껴 새 직무로 전환하려는 지원자다. 도망치듯 온 것인지, 진지하게 준비한 것인지 면접에서 가려내고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "기존 전공과 현재 지원 직무가 완전히 다름",
+      "기존 직무 불만 또는 회의감 존재",
+      "새 직무 준비 흔적 필요"
+    ]
+  },
+  {
+    "job_code": "SALES",
+    "job_display_name": "영업",
+    "candidate_index": 7,
+    "candidate_name": "이정윤",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "유통 산업에서 3년간 B2B 영업을 담당하며 신규 파트너 발굴과 매출 성장을 경험한 세일즈 전문가입니다. 업무 중 조직 내 괴롭힘으로 인해 자의적 퇴사를 결정하고, 이후 약 2년간 경력 공백을 가졌지만 다시 성장을 갈망하며 복귀를 준비해왔습니다. 실제 현장 경험과 고객 니즈 파악 능력을 바탕으로, 재도약의 기회를 모색하고자 지원합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_07_이정윤_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_07_이정윤_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_07_이정윤_meta.json"
+    },
+    "candidate_case_code": "career_gap_bullying",
+    "candidate_case_title": "경력단절 복귀 - 직장 내 괴롭힘 퇴사 후 2년 공백",
+    "candidate_case_description": "직장 내 괴롭힘으로 퇴사한 뒤 약 2년 정도 경력 공백이 있었고, 최근 다시 사회로 나오려는 지원자다. 피해 서사를 과도하게 늘어놓기보다 조심스럽고 현실적인 복귀 서사로 작성해야 하며, 적응 가능성이 궁금해지게 해야 한다.",
+    "candidate_case_must_haves": [
+      "직장 내 괴롭힘 퇴사",
+      "2년 전후 공백",
+      "복귀 의지는 있으나 적응 우려 존재"
+    ]
+  },
+  {
+    "job_code": "SALES",
+    "job_display_name": "영업",
+    "candidate_index": 8,
+    "candidate_name": "김선영",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "중소 IT유통기업에서 B2B 영업을 경험한 뒤, 개인적 사정으로 약 1년 반의 경력 공백을 가졌던 지원자입니다. 복귀를 앞두고 스스로의 영업 역량과 심리적 회복에 집중하며 신중하게 재진입을 준비하였습니다. 산업과 고객 이해를 바탕으로 영업이라는 역할의 본질에 대해 다시 고민하고 있습니다. 재도약을 위해 실제 시장 상황에 맞춘 영업 실전 교육과 다양한 실습을 병행하며 부족한 부분을 보완해왔습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_08_김선영_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_08_김선영_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_08_김선영_meta.json"
+    },
+    "candidate_case_code": "career_gap_unpaid_wage_treatment",
+    "candidate_case_title": "경력단절 복귀 - 임금체불 퇴사 후 의지 상실과 치료 이력",
+    "candidate_case_description": "임금체불로 퇴사한 후 심리적으로 크게 위축되어 정신과 치료를 받은 이력이 있고, 한동안 취업 의지를 잃었다가 최근 다시 복귀를 준비한 지원자다. 너무 극적으로 쓰지 말고 현실적이면서도 조심스러운 복귀 맥락이 느껴져야 한다.",
+    "candidate_case_must_haves": [
+      "임금체불 퇴사",
+      "치료 이력 또는 회복 서사",
+      "신중한 복귀 준비"
+    ]
+  },
+  {
+    "job_code": "SALES",
+    "job_display_name": "영업",
+    "candidate_index": 9,
+    "candidate_name": "김재훈",
+    "candidate_type": "성과 과장 의심형",
+    "candidate_type_slug": "inflated_impact",
+    "candidate_test_intent": "성과 수치와 임팩트는 매우 화려하게 보이지만, 실제로 본인이 어느 범위까지 기여했는지가 희미한 지원자다. 팀의 공을 개인의 공처럼 보이게 쓰거나, 본인 역할을 넓게 포장했을 가능성이 있어 면접에서 기여 범위와 실행 주체를 구체적으로 캐내야 한다.",
+    "hidden_signals": [
+      "성과 수치는 구체적으로 쓰되, 그 숫자를 본인이 직접 만든 것인지 팀 단위 결과인지 모호하게 남긴다.",
+      "주도, 리드, 총괄, 주관 같은 표현을 자주 사용하지만 실제 행동 설명은 상대적으로 적게 한다.",
+      "업무 성과를 설명할 때 본인 기여, 타 부서 협업, 조직 지원의 경계가 흐릿하다.",
+      "프로젝트 과정 설명보다 결과 요약과 임팩트 강조에 더 많은 분량을 쓴다.",
+      "읽는 사람이 '이 수치가 진짜 네가 만든 거 맞아?'라는 의심을 자연스럽게 하게 만든다."
+    ],
+    "summary": "신규 시장 개척과 효율적인 파이프라인 관리에 강점을 갖춘 B2B 영업 전문가입니다. 여러 업계에서 빠르게 적응하며, 팀 주도하에 크고 작은 프로젝트를 성공적으로 이끌어왔습니다. 뛰어난 사업 감각과 공격적인 실적 달성에 집중해왔으며, 영업 환경의 변화에도 유연하게 대응해온 경험이 있습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_09_김재훈_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_09_김재훈_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_09_김재훈_meta.json"
+    },
+    "candidate_case_code": "job_hopper_weak_evidence",
+    "candidate_case_title": "이직 많음 - 포장은 잘 되어 있으나 근거 부족",
+    "candidate_case_description": "이직이 잦고 서류 포장은 꽤 잘했지만 각 회사에서 실제로 뭘 했는지 근거가 약하다. 이직 사유도 명확하지 않아 면접관이 반복적으로 이동한 이유를 캐묻게 되는 지원자다.",
+    "candidate_case_must_haves": [
+      "짧은 재직 반복",
+      "성과 표현은 화려함",
+      "이직 사유가 불분명함"
+    ]
+  },
+  {
+    "job_code": "SALES",
+    "job_display_name": "영업",
+    "candidate_index": 10,
+    "candidate_name": "이도현",
+    "candidate_type": "인성 리스크형",
+    "candidate_type_slug": "personality_risk",
+    "candidate_test_intent": "업무 성과와 역량은 일정 수준 이상으로 보이지만, 협업 태도와 책임 인식에서 조직 적합성 리스크가 느껴지는 지원자다. 면접에서는 갈등 해결 방식, 피드백 수용성, 실패 책임, 타인과의 협업 태도를 중점적으로 검증해야 한다.",
+    "hidden_signals": [
+      "성과를 설명할 때 본인의 기여를 과도하게 강조하고 동료나 타 부서의 기여는 자연스럽게 축소한다.",
+      "협업 사례를 쓸 때 조율과 설득을 강조하지만, 실제 문장 뉘앙스는 상대의 비협조와 무능을 문제로 삼는다.",
+      "갈등 경험 문항에서 본인의 성찰보다 상대의 태도 문제와 조직의 비효율을 더 길게 설명한다.",
+      "실패 경험을 서술할 때 책임을 완전히 인정하기보다 외부 환경, 의사결정권자, 프로세스 문제로 분산시킨다.",
+      "자신감은 높지만 겸손, 학습 태도, 피드백 수용성은 충분히 드러나지 않게 한다.",
+      "읽는 사람이 '성과는 있는데 같이 일하기 편한 사람일까?'라는 의문을 갖게 하되, 노골적 비호감으로 보이진 않게 한다."
+    ],
+    "summary": "다양한 산업군에서 B2B/B2C 영업 경험을 쌓아왔으며, 빠르게 신규 판로를 개척하는 데 강점을 보여왔습니다. 매출 실적과 고객사 확보에서 매번 눈에 띄는 결과를 만든 실무형 영업인입니다. 문제 상황에서는 주도적으로 대안을 만들고, 제 의견을 명확히 관철시키는 스타일입니다. 빠르게 적응하고, 결과를 내기 위해 기존 방식을 의심하고 개선하는 것을 두려워하지 않습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_10_이도현_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_10_이도현_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_10_이도현_meta.json"
+    },
+    "candidate_case_code": "job_hopper_conflict_blame",
+    "candidate_case_title": "이직 많음 - 인성 리스크가 느껴지는 케이스",
+    "candidate_case_description": "이직이 잦은데, 팀원과의 불화 경험을 적어놓은 부분에서 남탓이 많고 본인 성찰은 약하다. 서류만 봐도 갈등 원인이 늘 외부에 있었던 것처럼 보여 면접에서 협업 태도를 검증하고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "이직이 많음",
+      "갈등 경험에서 남탓 뉘앙스",
+      "인성 리스크 단서 존재"
+    ]
+  },
+  {
+    "job_code": "SALES",
+    "job_display_name": "영업",
+    "candidate_index": 11,
+    "candidate_name": "박시은",
+    "candidate_type": "검증형 우수 인재",
+    "candidate_type_slug": "elite_verification",
+    "candidate_test_intent": "성과, 사고력, 표현력, 커리어 흐름이 모두 안정적으로 좋아 보이는 상위권 지원자다. 서류만 보면 바로 합격권처럼 느껴지지만, 실제 면접에서는 이 성과가 우연이 아닌지, 본인의 판단 기준과 문제 해결 사고가 얼마나 깊은지, 스스로 만든 원칙과 기준이 있는지를 검증해야 하는 유형이다.",
+    "hidden_signals": [
+      "성과 수치와 맥락이 자연스럽고 과장 없이 연결되어 읽힌다.",
+      "업무 배경, 본인 행동, 결과, 회고가 비교적 일관되게 서술된다.",
+      "자기소개서 표현이 과하지 않고 차분하지만, 기준과 관점이 느껴지게 작성한다.",
+      "무조건 잘난 척하는 인상보다 깊이 있는 실무자처럼 보이게 한다.",
+      "읽는 사람이 '좋아 보이는데 정말 이 사람 생각이 맞는지 더 깊게 검증하고 싶다'고 느끼게 한다."
+    ],
+    "summary": "8년 차 B2B/IT 산업 영업 전문가로 일관성 있는 매출 성장과 고객 관리 경험을 보유하고 있습니다. 파이프라인 관리 및 신규 시장 개척 경험을 통해 고객의 니즈를 깊이 이해하고, 맞춤형 솔루션 제안을 주도해 왔습니다. 철저한 분석과 내실 있는 협업을 바탕으로 재계약률과 고객 만족을 이끌어냈습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_11_박시은_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_11_박시은_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_11_박시은_meta.json"
+    },
+    "candidate_case_code": "career_general_top",
+    "candidate_case_title": "일반 경력직 - 우수 인재",
+    "candidate_case_description": "전형적인 경력직이며 실제로도 상당히 우수해 보이는 지원자다. 경력 흐름, 성과 수치, 자소서 논리가 안정적이고 좋아서 서류만 봐도 면접으로 불러보고 싶지만, 진짜 깊이와 기준을 확인하고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "경력 흐름 안정적",
+      "성과와 역할이 일관됨",
+      "과장보다 깊이 검증이 필요한 상위 지원자"
+    ]
+  },
+  {
+    "job_code": "SALES",
+    "job_display_name": "영업",
+    "candidate_index": 12,
+    "candidate_name": "박지훈",
+    "candidate_type": "가라 경력 의심형",
+    "candidate_type_slug": "fake_career_suspect",
+    "candidate_test_intent": "완전히 허술해서 바로 티 나는 수준은 아니지만, 경력 기간, 기술 조합, 직책, 성과 스케일이 어딘가 부자연스러운 지원자다. 면접에서 구체 사례, 연도 흐름, 기술 사용 방식, 실제 산출물 수준을 물으면 진위가 흔들릴 수 있는 유형으로 설계한다.",
+    "hidden_signals": [
+      "재직 기간 대비 직책이나 담당 범위가 과도하게 화려하게 보이도록 만든다.",
+      "사용 기술, 프로젝트 난이도, 성과 규모 조합이 미묘하게 과장된 인상을 주게 한다.",
+      "연도 흐름이나 프로젝트 병행 시점이 얼핏 자연스러워 보이지만 자세히 보면 어색한 구간이 있게 한다.",
+      "성과 설명은 자신감 있게 쓰되, 실제 산출물이나 의사결정 근거는 구체성이 약하게 남긴다.",
+      "읽는 사람이 '뭔가 말은 되는데 자세히 물어보면 흔들릴 것 같다'고 느끼게 만든다."
+    ],
+    "summary": "고객 중심의 혁신적 영업 전략을 발굴하고, 다양한 산업군을 넘나들며 높은 성과를 달성한 경력 3년 6개월차 영업 전문가입니다. 적극적인 리드 발굴과 대형 B2B 프로젝트 수주 경험을 바탕으로 단기간 내 조직 내 성장과 도약을 이루었습니다. 복잡한 상황에서도 유연하게 협업하며, 치밀한 데이터 분석과 세밀한 시장 이해를 통해 성과 창출에 집중합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_12_박지훈_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_12_박지훈_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\영업\\영업_12_박지훈_meta.json"
+    },
+    "candidate_case_code": "career_general_overwritten",
+    "candidate_case_title": "일반 경력직 - 기간 대비 너무 많은 걸 적은 케이스",
+    "candidate_case_description": "경력직이긴 한데 재직 기간과 직급에 비해 지나치게 많은 역할과 성과를 적어놓아 검증이 필요한 지원자다. 겉보기에는 화려하지만 자세히 보면 실제 범위가 궁금해지는 문서가 되어야 한다.",
+    "candidate_case_must_haves": [
+      "재직 기간 대비 과도한 범위",
+      "성과/역할 조합이 조금 과함",
+      "깊게 물으면 흔들릴 여지"
+    ]
+  },
+  {
+    "job_code": "STRATEGY_PLANNING",
+    "job_display_name": "기획_전략",
+    "candidate_index": 1,
+    "candidate_name": "서지훈",
+    "candidate_type": "잠재력 높은 신입형",
+    "candidate_type_slug": "high_potential_junior",
+    "candidate_test_intent": "실무 경력은 부족하거나 없지만 프로젝트 경험, 문제 해결 방식, 학습 속도, 사고 구조에서 강점이 보이는 신입 또는 주니어 지원자다. 면접에서는 포텐셜이 실제 업무 수행으로 이어질 수 있는지, 기초 이해가 단단한지 검증해야 한다.",
+    "hidden_signals": [
+      "학교, 대외활동, 공모전, 사이드 프로젝트의 밀도가 높고 비교적 성실하게 쌓여 있다.",
+      "큰 성과는 아니어도 문제를 구조적으로 바라본 흔적과 학습 과정이 드러난다.",
+      "자기소개서에서 성장 배경과 배운 점이 설득력 있게 연결된다.",
+      "경험 규모는 작지만 생각의 깊이나 태도는 좋게 느껴지게 한다.",
+      "읽는 사람이 '경험은 적지만 잘 키우면 크게 성장할 수 있겠다'고 느끼게 만든다."
+    ],
+    "summary": "저는 구체적인 문제 정의와 구조화된 분석에 강점을 가진 신입 기획자입니다. 정규직 경력은 없으나 학교 프로젝트, 공모전, 대외활동을 통해 실제 데이터를 바탕으로 아이디어를 도출하고 실행 전략을 세워본 경험이 많습니다. 새로운 산업에 대한 빠른 학습력과 집요하게 문제의 본질을 찾아가는 태도가 저의 무기입니다. 작은 규모 경험이지만 항상 논리와 합의점을 중시하며 성장해 왔습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_01_서지훈_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_01_서지훈_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_01_서지훈_meta.json"
+    },
+    "candidate_case_code": "new_grad_standard",
+    "candidate_case_title": "완전 신입 - 정상적 신입",
+    "candidate_case_description": "정규직 경력이 전혀 없는 전형적인 신입 지원자다. 학력, 대외활동, 팀프로젝트, 교육, 자격증, 아르바이트 또는 교내 경험을 중심으로 서류를 구성한다. 지나치게 과장되지 않고 무난한 신입처럼 보여야 한다.",
+    "candidate_case_must_haves": [
+      "정규직 경력 없음",
+      "학교 프로젝트 또는 대외활동 중심",
+      "과장되지 않은 무난한 신입 서사"
+    ]
+  },
+  {
+    "job_code": "STRATEGY_PLANNING",
+    "job_display_name": "기획_전략",
+    "candidate_index": 2,
+    "candidate_name": "임미진",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "주요 사회 경험 없이 이른 출산과 육아로 취업이 늦어진 30세 신입 지원자입니다. 육아 기간에도 기획/전략 역량 향상을 위해 온라인 코스와 실제 문제 기반 프로젝트에 꾸준히 참여했습니다. 고객 니즈 분석과 시장 트렌드 파악, 논리적 문제 정의에 흥미를 느끼고 기획 직무에 도전합니다. 비록 실무 경험은 부족하지만, 실제 사업 사례를 연구하고 기초부터 체계적으로 준비한 점을 강점으로 생각합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_02_임미진_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_02_임미진_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_02_임미진_meta.json"
+    },
+    "candidate_case_code": "new_grad_parenting_gap",
+    "candidate_case_title": "완전 신입 - 조기 출산 및 육아로 늦어진 신입",
+    "candidate_case_description": "나이는 30세 안팎이지만 사실상 사회 경력이 없는 신입이다. 이른 출산과 육아로 인해 일반적인 취업 시점이 늦어졌고, 최근 다시 취업을 준비한 배경이 있다. 공백 사유는 숨기지 않되 지나치게 비극적으로 쓰지 말고 복귀 의지와 준비 과정을 보여줘야 한다.",
+    "candidate_case_must_haves": [
+      "사회경험이 거의 없음",
+      "육아로 인한 공백 설명 존재",
+      "복귀 준비 과정과 의지 표현"
+    ]
+  },
+  {
+    "job_code": "STRATEGY_PLANNING",
+    "job_display_name": "기획_전략",
+    "candidate_index": 3,
+    "candidate_name": "김주환",
+    "candidate_type": "인성 리스크형",
+    "candidate_type_slug": "personality_risk",
+    "candidate_test_intent": "업무 성과와 역량은 일정 수준 이상으로 보이지만, 협업 태도와 책임 인식에서 조직 적합성 리스크가 느껴지는 지원자다. 면접에서는 갈등 해결 방식, 피드백 수용성, 실패 책임, 타인과의 협업 태도를 중점적으로 검증해야 한다.",
+    "hidden_signals": [
+      "성과를 설명할 때 본인의 기여를 과도하게 강조하고 동료나 타 부서의 기여는 자연스럽게 축소한다.",
+      "협업 사례를 쓸 때 조율과 설득을 강조하지만, 실제 문장 뉘앙스는 상대의 비협조와 무능을 문제로 삼는다.",
+      "갈등 경험 문항에서 본인의 성찰보다 상대의 태도 문제와 조직의 비효율을 더 길게 설명한다.",
+      "실패 경험을 서술할 때 책임을 완전히 인정하기보다 외부 환경, 의사결정권자, 프로세스 문제로 분산시킨다.",
+      "자신감은 높지만 겸손, 학습 태도, 피드백 수용성은 충분히 드러나지 않게 한다.",
+      "읽는 사람이 '성과는 있는데 같이 일하기 편한 사람일까?'라는 의문을 갖게 하되, 노골적 비호감으로 보이진 않게 한다."
+    ],
+    "summary": "빠른 이해력과 논리적 문제 해결력을 바탕으로 다수의 기획/전략 인턴십에서 핵심 역할을 담당했던 신입입니다. 다양한 프로젝트에서 기획안 도출과 데이터 기반 시장 분석 업무를 주도적으로 수행하고 실질적 성과를 입증했습니다. 수치와 결과를 중심으로 스스로 목표를 설정하고 실행하는데 익숙하며, 외부 제약에도 흔들리지 않는 추진력을 지녔습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_03_김주환_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_03_김주환_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_03_김주환_meta.json"
+    },
+    "candidate_case_code": "intern_many_no_conversion",
+    "candidate_case_title": "인턴 경험 신입 - 인턴은 많지만 정규직 전환 없음",
+    "candidate_case_description": "인턴 경험과 스펙은 좋지만 정규직 전환이 한 번도 되지 않은 신입이다. 서류만 봐도 왜 계속 인턴에서 끝났는지 궁금해지는 결이 있어야 한다. 직접적인 결격사유는 드러나지 않지만 사회성이나 조직 적응력에 대한 합리적 의심이 들 수 있게 구성한다.",
+    "candidate_case_must_haves": [
+      "인턴 경험 2회 이상",
+      "정규직 전환 실패 이력",
+      "스펙은 좋은데 조직 적응 의문"
+    ]
+  },
+  {
+    "job_code": "STRATEGY_PLANNING",
+    "job_display_name": "기획_전략",
+    "candidate_index": 4,
+    "candidate_name": "유지현",
+    "candidate_type": "검증형 우수 인재",
+    "candidate_type_slug": "elite_verification",
+    "candidate_test_intent": "성과, 사고력, 표현력, 커리어 흐름이 모두 안정적으로 좋아 보이는 상위권 지원자다. 서류만 보면 바로 합격권처럼 느껴지지만, 실제 면접에서는 이 성과가 우연이 아닌지, 본인의 판단 기준과 문제 해결 사고가 얼마나 깊은지, 스스로 만든 원칙과 기준이 있는지를 검증해야 하는 유형이다.",
+    "hidden_signals": [
+      "성과 수치와 맥락이 자연스럽고 과장 없이 연결되어 읽힌다.",
+      "업무 배경, 본인 행동, 결과, 회고가 비교적 일관되게 서술된다.",
+      "자기소개서 표현이 과하지 않고 차분하지만, 기준과 관점이 느껴지게 작성한다.",
+      "무조건 잘난 척하는 인상보다 깊이 있는 실무자처럼 보이게 한다.",
+      "읽는 사람이 '좋아 보이는데 정말 이 사람 생각이 맞는지 더 깊게 검증하고 싶다'고 느끼게 한다."
+    ],
+    "summary": "시장과 고객의 흐름을 읽어 내는 데이터 기반 분석 역량과 현장에서 검증된 기획 경험을 갖춘 신입 기획자입니다. 다양한 산업에 관심을 두고 실제 인턴십과 프로젝트에서 문제 정의부터 실행, 성과 평가까지 일관된 절차로 기여하였습니다. 일의 원리를 고민하며 스스로 기준을 세워 개선한 경험을 다수 가지고 있습니다. 협업 시 상대의 관점을 이해하고 조율하는 것을 중시하며, 깊이 있게 실무로 확장할 수 있는 성장 가능성을 보여왔다는 평가를 받았습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_04_유지현_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_04_유지현_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_04_유지현_meta.json"
+    },
+    "candidate_case_code": "intern_top_spec",
+    "candidate_case_title": "인턴 경험 신입 - 인턴/자격증/봉사 모두 좋은 엄친아형",
+    "candidate_case_description": "인턴, 자격증, 봉사활동, 교내외 활동이 모두 안정적으로 좋은 모범생형 신입이다. 지나친 과장보다 성실성과 준비성이 잘 보이는 서류여야 하며, 면접에서는 깊이와 실제 실무 전환 가능성을 검증하고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "인턴 경험 좋음",
+      "자격증/봉사활동/대외활동 고르게 좋음",
+      "안정적이고 모범적인 인상"
+    ]
+  },
+  {
+    "job_code": "STRATEGY_PLANNING",
+    "job_display_name": "기획_전략",
+    "candidate_index": 5,
+    "candidate_name": "김지현",
+    "candidate_type": "직무 적합도 의심형",
+    "candidate_type_slug": "job_fit_doubt",
+    "candidate_test_intent": "학력, 활동, 기본 역량은 나쁘지 않지만 현재 지원 직무와의 직접 연결이 약해 보이는 지원자다. 왜 이 직무를 선택했는지, 실제로 얼마나 준비했는지, 적합성이 진짜인지 면접에서 확인해야 한다.",
+    "hidden_signals": [
+      "이전 전공이나 경험은 성실하고 우수하지만 현재 직무와 직접 연결되는 증거는 제한적이다.",
+      "지원 동기와 전환 계기는 존재하지만 완전히 매끈하게 이어지지는 않는다.",
+      "읽는 사람이 '좋은 사람 같긴 한데 이 직무랑 정말 맞나?'라는 의문을 갖게 만든다.",
+      "서류에는 가능성이 보이되, 적합성 검증 질문이 반드시 필요하게 한다."
+    ],
+    "summary": "서울대학교 화학과를 우수한 성적으로 졸업한 신입 지원자입니다. 이공계 이슈를 다루며 논리적 분석과 문제 해결을 반복해왔지만, 비즈니스 전략 분야에 진로를 새롭게 설정하였습니다. 전공과는 다르지만 데이터를 토대로 현상을 해석하고 개선 실행안을 도출하는 역량에 자부심이 있습니다. 화학 실험 설계 경험과 비영리단체 프로젝트 기획 경험을 바탕으로 조직에서 실질적인 변화를 만들어내고자 합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_05_김지현_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_05_김지현_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_05_김지현_meta.json"
+    },
+    "candidate_case_code": "high_edu_nonmajor",
+    "candidate_case_title": "전공 불일치 신입 - 학력은 높고 기존 전공 성취도도 좋음",
+    "candidate_case_description": "지원 직무 전공은 아니지만 기존 전공에서 학점, 자격증, 수상경력 등은 좋은 편인 신입이다. 전공은 다르지만 성실하고 역량 있는 사람으로 보이며, 왜 지금 직무로 오게 되었는지 설득력이 관건이다.",
+    "candidate_case_must_haves": [
+      "전공 불일치",
+      "기존 전공 학점/수상/자격증 우수",
+      "새 직무로 넘어오는 이유가 중요"
+    ]
+  },
+  {
+    "job_code": "STRATEGY_PLANNING",
+    "job_display_name": "기획_전략",
+    "candidate_index": 6,
+    "candidate_name": "최다인",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "식물과 예술 분야에서 시작해 새로운 비즈니스 기획과 전략에 도전하고자 직무 전환을 준비해왔습니다. 비교적 낯선 환경에서 배운 관찰력과 문제 해결 경험을 바탕으로, 기획자로서 창의적이고 실질적인 개선을 끌어내고자 합니다. 공백기 동안 다양한 온라인 과정, 사이드 프로젝트로 실무 감각을 길렀지만, 실제 실전 경험이 부족한 점은 빠르게 보완해나가고자 합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_06_최다인_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_06_최다인_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_06_최다인_meta.json"
+    },
+    "candidate_case_code": "career_switch_unrelated_major",
+    "candidate_case_title": "직무전환형 - 원예/미술 등 완전 무관 배경",
+    "candidate_case_description": "원예, 미술 등 완전히 다른 전공과 직무 배경을 가졌고, 기존 일에 회의를 느껴 새 직무로 전환하려는 지원자다. 도망치듯 온 것인지, 진지하게 준비한 것인지 면접에서 가려내고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "기존 전공과 현재 지원 직무가 완전히 다름",
+      "기존 직무 불만 또는 회의감 존재",
+      "새 직무 준비 흔적 필요"
+    ]
+  },
+  {
+    "job_code": "STRATEGY_PLANNING",
+    "job_display_name": "기획_전략",
+    "candidate_index": 7,
+    "candidate_name": "윤민지",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "시장에서의 데이터 기반 분석과 실행 전략 수립 경험을 바탕으로 기획_전략 직무로 커리어 전환을 준비 중인 지원자입니다. IT 벤처에서 3년간 서비스 기획 및 운영 개선에 집중했으나 조직 내 갈등으로 퇴사, 약 2년의 경력 공백을 거쳤습니다. 그 기간 동안 사업 케이스 분석과 최신 트렌드 학습을 이어오며 재도약을 준비했습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_07_윤민지_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_07_윤민지_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_07_윤민지_meta.json"
+    },
+    "candidate_case_code": "career_gap_bullying",
+    "candidate_case_title": "경력단절 복귀 - 직장 내 괴롭힘 퇴사 후 2년 공백",
+    "candidate_case_description": "직장 내 괴롭힘으로 퇴사한 뒤 약 2년 정도 경력 공백이 있었고, 최근 다시 사회로 나오려는 지원자다. 피해 서사를 과도하게 늘어놓기보다 조심스럽고 현실적인 복귀 서사로 작성해야 하며, 적응 가능성이 궁금해지게 해야 한다.",
+    "candidate_case_must_haves": [
+      "직장 내 괴롭힘 퇴사",
+      "2년 전후 공백",
+      "복귀 의지는 있으나 적응 우려 존재"
+    ]
+  },
+  {
+    "job_code": "STRATEGY_PLANNING",
+    "job_display_name": "기획_전략",
+    "candidate_index": 8,
+    "candidate_name": "이수정",
+    "candidate_type": "공백 및 전환형",
+    "candidate_type_slug": "career_gap_switch",
+    "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+    "hidden_signals": [
+      "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+      "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+      "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+      "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+      "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+    ],
+    "summary": "사업 전략 수립과 데이터 기반 기획 경험을 토대로, 변화에 유연하게 대응하며 복잡한 문제를 명확하게 정의하고 실행하는 과정에 강점을 지닌 인재입니다. 임금체불로 인한 퇴사 및 심리적 회복의 시간을 거쳤지만, 그 과정에서 다시 한 번 본인의 방향성을 점검하고 실질적인 역량 강화를 위해 재정비한 경험이 있습니다. 새로운 관점에서 문제를 바라보고, 다양한 관점의 조화로운 조율에 적극적으로 임하고자 합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_08_이수정_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_08_이수정_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_08_이수정_meta.json"
+    },
+    "candidate_case_code": "career_gap_unpaid_wage_treatment",
+    "candidate_case_title": "경력단절 복귀 - 임금체불 퇴사 후 의지 상실과 치료 이력",
+    "candidate_case_description": "임금체불로 퇴사한 후 심리적으로 크게 위축되어 정신과 치료를 받은 이력이 있고, 한동안 취업 의지를 잃었다가 최근 다시 복귀를 준비한 지원자다. 너무 극적으로 쓰지 말고 현실적이면서도 조심스러운 복귀 맥락이 느껴져야 한다.",
+    "candidate_case_must_haves": [
+      "임금체불 퇴사",
+      "치료 이력 또는 회복 서사",
+      "신중한 복귀 준비"
+    ]
+  },
+  {
+    "job_code": "STRATEGY_PLANNING",
+    "job_display_name": "기획_전략",
+    "candidate_index": 9,
+    "candidate_name": "임지훈",
+    "candidate_type": "성과 과장 의심형",
+    "candidate_type_slug": "inflated_impact",
+    "candidate_test_intent": "성과 수치와 임팩트는 매우 화려하게 보이지만, 실제로 본인이 어느 범위까지 기여했는지가 희미한 지원자다. 팀의 공을 개인의 공처럼 보이게 쓰거나, 본인 역할을 넓게 포장했을 가능성이 있어 면접에서 기여 범위와 실행 주체를 구체적으로 캐내야 한다.",
+    "hidden_signals": [
+      "성과 수치는 구체적으로 쓰되, 그 숫자를 본인이 직접 만든 것인지 팀 단위 결과인지 모호하게 남긴다.",
+      "주도, 리드, 총괄, 주관 같은 표현을 자주 사용하지만 실제 행동 설명은 상대적으로 적게 한다.",
+      "업무 성과를 설명할 때 본인 기여, 타 부서 협업, 조직 지원의 경계가 흐릿하다.",
+      "프로젝트 과정 설명보다 결과 요약과 임팩트 강조에 더 많은 분량을 쓴다.",
+      "읽는 사람이 '이 수치가 진짜 네가 만든 거 맞아?'라는 의심을 자연스럽게 하게 만든다."
+    ],
+    "summary": "다양한 산업에서 전략과 사업 기획을 주도하며 빠르게 성과를 내온 기획 전문가입니다. 시장 변화에 민감하게 반응하며, 경영진 맞춤형 실행안을 도출한 경험이 풍부합니다. 데이터 기반 분석과 유연한 의사결정으로 직접 눈에 띄는 성과를 창출한 것이 저만의 강점입니다. 마지막 역할에서는 1년 만에 B2B 매출 70% 성장을 이끌어내며 임팩트 있는 결과를 남겼습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_09_임지훈_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_09_임지훈_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_09_임지훈_meta.json"
+    },
+    "candidate_case_code": "job_hopper_weak_evidence",
+    "candidate_case_title": "이직 많음 - 포장은 잘 되어 있으나 근거 부족",
+    "candidate_case_description": "이직이 잦고 서류 포장은 꽤 잘했지만 각 회사에서 실제로 뭘 했는지 근거가 약하다. 이직 사유도 명확하지 않아 면접관이 반복적으로 이동한 이유를 캐묻게 되는 지원자다.",
+    "candidate_case_must_haves": [
+      "짧은 재직 반복",
+      "성과 표현은 화려함",
+      "이직 사유가 불분명함"
+    ]
+  },
+  {
+    "job_code": "STRATEGY_PLANNING",
+    "job_display_name": "기획_전략",
+    "candidate_index": 10,
+    "candidate_name": "정민수",
+    "candidate_type": "인성 리스크형",
+    "candidate_type_slug": "personality_risk",
+    "candidate_test_intent": "업무 성과와 역량은 일정 수준 이상으로 보이지만, 협업 태도와 책임 인식에서 조직 적합성 리스크가 느껴지는 지원자다. 면접에서는 갈등 해결 방식, 피드백 수용성, 실패 책임, 타인과의 협업 태도를 중점적으로 검증해야 한다.",
+    "hidden_signals": [
+      "성과를 설명할 때 본인의 기여를 과도하게 강조하고 동료나 타 부서의 기여는 자연스럽게 축소한다.",
+      "협업 사례를 쓸 때 조율과 설득을 강조하지만, 실제 문장 뉘앙스는 상대의 비협조와 무능을 문제로 삼는다.",
+      "갈등 경험 문항에서 본인의 성찰보다 상대의 태도 문제와 조직의 비효율을 더 길게 설명한다.",
+      "실패 경험을 서술할 때 책임을 완전히 인정하기보다 외부 환경, 의사결정권자, 프로세스 문제로 분산시킨다.",
+      "자신감은 높지만 겸손, 학습 태도, 피드백 수용성은 충분히 드러나지 않게 한다.",
+      "읽는 사람이 '성과는 있는데 같이 일하기 편한 사람일까?'라는 의문을 갖게 하되, 노골적 비호감으로 보이진 않게 한다."
+    ],
+    "summary": "4년간 3개의 IT 및 유통기업에서 다양한 신사업 기획 프로젝트를 주도하여 단 기간 내 성과를 만들어낸 기획 전문가입니다. 다양한 조직의 전략, 실행, 데이터 분석 전반을 경험하면서 빠른 문제 파악과 실행력을 검증받았습니다. 짧은 재직 기간에도 핵심 프로젝트를 맡고 빠르게 성과로 연결시키는 능력에 자신이 있습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_10_정민수_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_10_정민수_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_10_정민수_meta.json"
+    },
+    "candidate_case_code": "job_hopper_conflict_blame",
+    "candidate_case_title": "이직 많음 - 인성 리스크가 느껴지는 케이스",
+    "candidate_case_description": "이직이 잦은데, 팀원과의 불화 경험을 적어놓은 부분에서 남탓이 많고 본인 성찰은 약하다. 서류만 봐도 갈등 원인이 늘 외부에 있었던 것처럼 보여 면접에서 협업 태도를 검증하고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "이직이 많음",
+      "갈등 경험에서 남탓 뉘앙스",
+      "인성 리스크 단서 존재"
+    ]
+  },
+  {
+    "job_code": "STRATEGY_PLANNING",
+    "job_display_name": "기획_전략",
+    "candidate_index": 11,
+    "candidate_name": "이재훈",
+    "candidate_type": "검증형 우수 인재",
+    "candidate_type_slug": "elite_verification",
+    "candidate_test_intent": "성과, 사고력, 표현력, 커리어 흐름이 모두 안정적으로 좋아 보이는 상위권 지원자다. 서류만 보면 바로 합격권처럼 느껴지지만, 실제 면접에서는 이 성과가 우연이 아닌지, 본인의 판단 기준과 문제 해결 사고가 얼마나 깊은지, 스스로 만든 원칙과 기준이 있는지를 검증해야 하는 유형이다.",
+    "hidden_signals": [
+      "성과 수치와 맥락이 자연스럽고 과장 없이 연결되어 읽힌다.",
+      "업무 배경, 본인 행동, 결과, 회고가 비교적 일관되게 서술된다.",
+      "자기소개서 표현이 과하지 않고 차분하지만, 기준과 관점이 느껴지게 작성한다.",
+      "무조건 잘난 척하는 인상보다 깊이 있는 실무자처럼 보이게 한다.",
+      "읽는 사람이 '좋아 보이는데 정말 이 사람 생각이 맞는지 더 깊게 검증하고 싶다'고 느끼게 한다."
+    ],
+    "summary": "6년 차 전략 및 사업기획 경력자입니다. 복수의 신사업 검토와 사업모델 혁신 프로젝트를 이끌며 시장성·수익성을 동시에 검증한 실적이 있습니다. 데이터 기반 분석과 실행력, 이해관계 조율 경험에서 강점을 갖고 있습니다. 탄탄한 커리어 흐름과 깊은 실무 경험을 바탕으로 조직의 성장 동력에 기여하고자 합니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_11_이재훈_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_11_이재훈_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_11_이재훈_meta.json"
+    },
+    "candidate_case_code": "career_general_top",
+    "candidate_case_title": "일반 경력직 - 우수 인재",
+    "candidate_case_description": "전형적인 경력직이며 실제로도 상당히 우수해 보이는 지원자다. 경력 흐름, 성과 수치, 자소서 논리가 안정적이고 좋아서 서류만 봐도 면접으로 불러보고 싶지만, 진짜 깊이와 기준을 확인하고 싶게 만들어야 한다.",
+    "candidate_case_must_haves": [
+      "경력 흐름 안정적",
+      "성과와 역할이 일관됨",
+      "과장보다 깊이 검증이 필요한 상위 지원자"
+    ]
+  },
+  {
+    "job_code": "STRATEGY_PLANNING",
+    "job_display_name": "기획_전략",
+    "candidate_index": 12,
+    "candidate_name": "윤다은",
+    "candidate_type": "가라 경력 의심형",
+    "candidate_type_slug": "fake_career_suspect",
+    "candidate_test_intent": "완전히 허술해서 바로 티 나는 수준은 아니지만, 경력 기간, 기술 조합, 직책, 성과 스케일이 어딘가 부자연스러운 지원자다. 면접에서 구체 사례, 연도 흐름, 기술 사용 방식, 실제 산출물 수준을 물으면 진위가 흔들릴 수 있는 유형으로 설계한다.",
+    "hidden_signals": [
+      "재직 기간 대비 직책이나 담당 범위가 과도하게 화려하게 보이도록 만든다.",
+      "사용 기술, 프로젝트 난이도, 성과 규모 조합이 미묘하게 과장된 인상을 주게 한다.",
+      "연도 흐름이나 프로젝트 병행 시점이 얼핏 자연스러워 보이지만 자세히 보면 어색한 구간이 있게 한다.",
+      "성과 설명은 자신감 있게 쓰되, 실제 산출물이나 의사결정 근거는 구체성이 약하게 남긴다.",
+      "읽는 사람이 '뭔가 말은 되는데 자세히 물어보면 흔들릴 것 같다'고 느끼게 만든다."
+    ],
+    "summary": "3년 반 동안 IT 스타트업과 대기업 협력사업에서 다양한 전략·기획 경험을 쌓았습니다. 사업 전략 수립과 운영 최적화, 신규 BM 분석 및 서비스 런칭까지 여러 역할을 두루 담당하며 빠른 성장세를 보여왔습니다. 분석적 사고와 실행력, 그리고 데이터 기반 도출 역량이 강점입니다. 다양한 프로젝트를 짧은 기간 내에 성공적으로 리딩하며 전방위적 기획 능력을 검증받았습니다.",
+    "files": {
+      "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_12_윤다은_bundle.pdf",
+      "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_12_윤다은_source.json",
+      "meta_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_12_윤다은_meta.json"
+    },
+    "candidate_case_code": "career_general_overwritten",
+    "candidate_case_title": "일반 경력직 - 기간 대비 너무 많은 걸 적은 케이스",
+    "candidate_case_description": "경력직이긴 한데 재직 기간과 직급에 비해 지나치게 많은 역할과 성과를 적어놓아 검증이 필요한 지원자다. 겉보기에는 화려하지만 자세히 보면 실제 범위가 궁금해지는 문서가 되어야 한다.",
+    "candidate_case_must_haves": [
+      "재직 기간 대비 과도한 범위",
+      "성과/역할 조합이 조금 과함",
+      "깊게 물으면 흔들릴 여지"
+    ]
+  }
+]

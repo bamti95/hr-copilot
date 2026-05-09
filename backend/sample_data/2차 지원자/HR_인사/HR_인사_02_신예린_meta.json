@@ -1,0 +1,29 @@
+{
+  "job_code": "HR",
+  "job_display_name": "HR_인사",
+  "candidate_index": 2,
+  "candidate_name": "신예린",
+  "candidate_type": "공백 및 전환형",
+  "candidate_type_slug": "career_gap_switch",
+  "candidate_test_intent": "공백기, 진로 변경, 직무 전환이 있어 서류만으로는 배경 설명이 충분하지 않은 지원자다. 전환 동기와 준비 과정이 진짜인지, 공백 기간 동안 어떤 학습과 실전 노력이 있었는지, 이번 지원이 일시적 선택인지 확인해야 하는 유형이다.",
+  "hidden_signals": [
+    "경력 흐름 중 공백기나 직무 전환 구간이 존재하지만 설명은 지나치게 길지 않게 남긴다.",
+    "전환 동기는 납득 가능하게 쓰되, 실제로 얼마나 준비했는지는 면접에서 더 확인하고 싶게 한다.",
+    "학습, 자격증, 프로젝트, 개인 활동 등이 일부 보이지만 실전 강도는 애매하게 설계한다.",
+    "이전 경력과 현재 지원 직무 사이 연결고리는 그럴듯하되 완전히 매끈하지는 않게 한다.",
+    "읽는 사람이 '의지는 있는 것 같은데 정말 준비가 충분한가?'라고 생각하게 만든다."
+  ],
+  "summary": "일찍 결혼과 출산을 경험하며 경력 시작이 늦어진 신입 인사 지원자입니다. 최근 HR 분야의 변화와 실무 역량 개발에 꾸준히 투자하며, 실제 현업에서의 실질적 문제 해결이 가능한 인재를 목표로 하고 있습니다. 기업의 조직문화와 구성원 경험 향상에 관심이 많으며, 제도와 사람 사이의 연결고리를 고민해 왔습니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_02_신예린_bundle.pdf",
+    "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_02_신예린_source.json"
+  },
+  "candidate_case_code": "new_grad_parenting_gap",
+  "candidate_case_title": "완전 신입 - 조기 출산 및 육아로 늦어진 신입",
+  "candidate_case_description": "나이는 30세 안팎이지만 사실상 사회 경력이 없는 신입이다. 이른 출산과 육아로 인해 일반적인 취업 시점이 늦어졌고, 최근 다시 취업을 준비한 배경이 있다. 공백 사유는 숨기지 않되 지나치게 비극적으로 쓰지 말고 복귀 의지와 준비 과정을 보여줘야 한다.",
+  "candidate_case_must_haves": [
+    "사회경험이 거의 없음",
+    "육아로 인한 공백 설명 존재",
+    "복귀 준비 과정과 의지 표현"
+  ]
+}

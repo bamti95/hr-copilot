@@ -1,0 +1,29 @@
+{
+  "job_code": "STRATEGY_PLANNING",
+  "job_display_name": "기획_전략",
+  "candidate_index": 11,
+  "candidate_name": "이재훈",
+  "candidate_type": "검증형 우수 인재",
+  "candidate_type_slug": "elite_verification",
+  "candidate_test_intent": "성과, 사고력, 표현력, 커리어 흐름이 모두 안정적으로 좋아 보이는 상위권 지원자다. 서류만 보면 바로 합격권처럼 느껴지지만, 실제 면접에서는 이 성과가 우연이 아닌지, 본인의 판단 기준과 문제 해결 사고가 얼마나 깊은지, 스스로 만든 원칙과 기준이 있는지를 검증해야 하는 유형이다.",
+  "hidden_signals": [
+    "성과 수치와 맥락이 자연스럽고 과장 없이 연결되어 읽힌다.",
+    "업무 배경, 본인 행동, 결과, 회고가 비교적 일관되게 서술된다.",
+    "자기소개서 표현이 과하지 않고 차분하지만, 기준과 관점이 느껴지게 작성한다.",
+    "무조건 잘난 척하는 인상보다 깊이 있는 실무자처럼 보이게 한다.",
+    "읽는 사람이 '좋아 보이는데 정말 이 사람 생각이 맞는지 더 깊게 검증하고 싶다'고 느끼게 한다."
+  ],
+  "summary": "6년 차 전략 및 사업기획 경력자입니다. 복수의 신사업 검토와 사업모델 혁신 프로젝트를 이끌며 시장성·수익성을 동시에 검증한 실적이 있습니다. 데이터 기반 분석과 실행력, 이해관계 조율 경험에서 강점을 갖고 있습니다. 탄탄한 커리어 흐름과 깊은 실무 경험을 바탕으로 조직의 성장 동력에 기여하고자 합니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_11_이재훈_bundle.pdf",
+    "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_11_이재훈_source.json"
+  },
+  "candidate_case_code": "career_general_top",
+  "candidate_case_title": "일반 경력직 - 우수 인재",
+  "candidate_case_description": "전형적인 경력직이며 실제로도 상당히 우수해 보이는 지원자다. 경력 흐름, 성과 수치, 자소서 논리가 안정적이고 좋아서 서류만 봐도 면접으로 불러보고 싶지만, 진짜 깊이와 기준을 확인하고 싶게 만들어야 한다.",
+  "candidate_case_must_haves": [
+    "경력 흐름 안정적",
+    "성과와 역할이 일관됨",
+    "과장보다 깊이 검증이 필요한 상위 지원자"
+  ]
+}

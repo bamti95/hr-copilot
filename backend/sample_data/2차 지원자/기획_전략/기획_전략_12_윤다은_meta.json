@@ -1,0 +1,29 @@
+{
+  "job_code": "STRATEGY_PLANNING",
+  "job_display_name": "기획_전략",
+  "candidate_index": 12,
+  "candidate_name": "윤다은",
+  "candidate_type": "가라 경력 의심형",
+  "candidate_type_slug": "fake_career_suspect",
+  "candidate_test_intent": "완전히 허술해서 바로 티 나는 수준은 아니지만, 경력 기간, 기술 조합, 직책, 성과 스케일이 어딘가 부자연스러운 지원자다. 면접에서 구체 사례, 연도 흐름, 기술 사용 방식, 실제 산출물 수준을 물으면 진위가 흔들릴 수 있는 유형으로 설계한다.",
+  "hidden_signals": [
+    "재직 기간 대비 직책이나 담당 범위가 과도하게 화려하게 보이도록 만든다.",
+    "사용 기술, 프로젝트 난이도, 성과 규모 조합이 미묘하게 과장된 인상을 주게 한다.",
+    "연도 흐름이나 프로젝트 병행 시점이 얼핏 자연스러워 보이지만 자세히 보면 어색한 구간이 있게 한다.",
+    "성과 설명은 자신감 있게 쓰되, 실제 산출물이나 의사결정 근거는 구체성이 약하게 남긴다.",
+    "읽는 사람이 '뭔가 말은 되는데 자세히 물어보면 흔들릴 것 같다'고 느끼게 만든다."
+  ],
+  "summary": "3년 반 동안 IT 스타트업과 대기업 협력사업에서 다양한 전략·기획 경험을 쌓았습니다. 사업 전략 수립과 운영 최적화, 신규 BM 분석 및 서비스 런칭까지 여러 역할을 두루 담당하며 빠른 성장세를 보여왔습니다. 분석적 사고와 실행력, 그리고 데이터 기반 도출 역량이 강점입니다. 다양한 프로젝트를 짧은 기간 내에 성공적으로 리딩하며 전방위적 기획 능력을 검증받았습니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_12_윤다은_bundle.pdf",
+    "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_12_윤다은_source.json"
+  },
+  "candidate_case_code": "career_general_overwritten",
+  "candidate_case_title": "일반 경력직 - 기간 대비 너무 많은 걸 적은 케이스",
+  "candidate_case_description": "경력직이긴 한데 재직 기간과 직급에 비해 지나치게 많은 역할과 성과를 적어놓아 검증이 필요한 지원자다. 겉보기에는 화려하지만 자세히 보면 실제 범위가 궁금해지는 문서가 되어야 한다.",
+  "candidate_case_must_haves": [
+    "재직 기간 대비 과도한 범위",
+    "성과/역할 조합이 조금 과함",
+    "깊게 물으면 흔들릴 여지"
+  ]
+}

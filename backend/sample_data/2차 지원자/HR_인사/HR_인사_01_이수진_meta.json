@@ -1,0 +1,29 @@
+{
+  "job_code": "HR",
+  "job_display_name": "HR_인사",
+  "candidate_index": 1,
+  "candidate_name": "이수진",
+  "candidate_type": "잠재력 높은 신입형",
+  "candidate_type_slug": "high_potential_junior",
+  "candidate_test_intent": "실무 경력은 부족하거나 없지만 프로젝트 경험, 문제 해결 방식, 학습 속도, 사고 구조에서 강점이 보이는 신입 또는 주니어 지원자다. 면접에서는 포텐셜이 실제 업무 수행으로 이어질 수 있는지, 기초 이해가 단단한지 검증해야 한다.",
+  "hidden_signals": [
+    "학교, 대외활동, 공모전, 사이드 프로젝트의 밀도가 높고 비교적 성실하게 쌓여 있다.",
+    "큰 성과는 아니어도 문제를 구조적으로 바라본 흔적과 학습 과정이 드러난다.",
+    "자기소개서에서 성장 배경과 배운 점이 설득력 있게 연결된다.",
+    "경험 규모는 작지만 생각의 깊이나 태도는 좋게 느껴지게 한다.",
+    "읽는 사람이 '경험은 적지만 잘 키우면 크게 성장할 수 있겠다'고 느끼게 만든다."
+  ],
+  "summary": "조직과 사람이 함께 성장하는 환경에 관심이 많은 신입 HR 지원자입니다. 대학 시절 인사제도 분석과 채용 체험 프로젝트를 경험했으며, 다양한 팀 프로젝트에서 문제를 논리적으로 분석하는 역량을 키웠습니다. 직접 설계해본 소규모 평가제도에서 데이터 기반으로 개선 방안을 제안한 경험이 있습니다. 적극적으로 배우고 협업하는 태도로 HR 커리어의 기반을 쌓아가고 있습니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_01_이수진_bundle.pdf",
+    "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_01_이수진_source.json"
+  },
+  "candidate_case_code": "new_grad_standard",
+  "candidate_case_title": "완전 신입 - 정상적 신입",
+  "candidate_case_description": "정규직 경력이 전혀 없는 전형적인 신입 지원자다. 학력, 대외활동, 팀프로젝트, 교육, 자격증, 아르바이트 또는 교내 경험을 중심으로 서류를 구성한다. 지나치게 과장되지 않고 무난한 신입처럼 보여야 한다.",
+  "candidate_case_must_haves": [
+    "정규직 경력 없음",
+    "학교 프로젝트 또는 대외활동 중심",
+    "과장되지 않은 무난한 신입 서사"
+  ]
+}

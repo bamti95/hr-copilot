@@ -1,0 +1,29 @@
+{
+  "job_code": "HR",
+  "job_display_name": "HR_인사",
+  "candidate_index": 4,
+  "candidate_name": "이수현",
+  "candidate_type": "검증형 우수 인재",
+  "candidate_type_slug": "elite_verification",
+  "candidate_test_intent": "성과, 사고력, 표현력, 커리어 흐름이 모두 안정적으로 좋아 보이는 상위권 지원자다. 서류만 보면 바로 합격권처럼 느껴지지만, 실제 면접에서는 이 성과가 우연이 아닌지, 본인의 판단 기준과 문제 해결 사고가 얼마나 깊은지, 스스로 만든 원칙과 기준이 있는지를 검증해야 하는 유형이다.",
+  "hidden_signals": [
+    "성과 수치와 맥락이 자연스럽고 과장 없이 연결되어 읽힌다.",
+    "업무 배경, 본인 행동, 결과, 회고가 비교적 일관되게 서술된다.",
+    "자기소개서 표현이 과하지 않고 차분하지만, 기준과 관점이 느껴지게 작성한다.",
+    "무조건 잘난 척하는 인상보다 깊이 있는 실무자처럼 보이게 한다.",
+    "읽는 사람이 '좋아 보이는데 정말 이 사람 생각이 맞는지 더 깊게 검증하고 싶다'고 느끼게 한다."
+  ],
+  "summary": "HR 직무를 목표로 본교 및 외부 다양한 인턴십과 대외 경험을 폭넓게 쌓아왔습니다. 현장 이해도와 데이터 기반 업무 분석력, 그리고 구성원 중심의 사고를 바탕으로 조직 내 실질적 변화와 성과를 추구합니다. 성실함과 깊이 있는 성찰을 강점으로, 문제의 본질을 파악하고 원칙에 따라 판단하는 것을 중시합니다. 빠르게 변화하는 조직 환경에서도 차분하게 소통하며 본인의 기준을 지키고자 노력해왔습니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_04_이수현_bundle.pdf",
+    "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\HR_인사\\HR_인사_04_이수현_source.json"
+  },
+  "candidate_case_code": "intern_top_spec",
+  "candidate_case_title": "인턴 경험 신입 - 인턴/자격증/봉사 모두 좋은 엄친아형",
+  "candidate_case_description": "인턴, 자격증, 봉사활동, 교내외 활동이 모두 안정적으로 좋은 모범생형 신입이다. 지나친 과장보다 성실성과 준비성이 잘 보이는 서류여야 하며, 면접에서는 깊이와 실제 실무 전환 가능성을 검증하고 싶게 만들어야 한다.",
+  "candidate_case_must_haves": [
+    "인턴 경험 좋음",
+    "자격증/봉사활동/대외활동 고르게 좋음",
+    "안정적이고 모범적인 인상"
+  ]
+}

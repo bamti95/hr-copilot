@@ -1,0 +1,29 @@
+{
+  "job_code": "STRATEGY_PLANNING",
+  "job_display_name": "기획_전략",
+  "candidate_index": 9,
+  "candidate_name": "임지훈",
+  "candidate_type": "성과 과장 의심형",
+  "candidate_type_slug": "inflated_impact",
+  "candidate_test_intent": "성과 수치와 임팩트는 매우 화려하게 보이지만, 실제로 본인이 어느 범위까지 기여했는지가 희미한 지원자다. 팀의 공을 개인의 공처럼 보이게 쓰거나, 본인 역할을 넓게 포장했을 가능성이 있어 면접에서 기여 범위와 실행 주체를 구체적으로 캐내야 한다.",
+  "hidden_signals": [
+    "성과 수치는 구체적으로 쓰되, 그 숫자를 본인이 직접 만든 것인지 팀 단위 결과인지 모호하게 남긴다.",
+    "주도, 리드, 총괄, 주관 같은 표현을 자주 사용하지만 실제 행동 설명은 상대적으로 적게 한다.",
+    "업무 성과를 설명할 때 본인 기여, 타 부서 협업, 조직 지원의 경계가 흐릿하다.",
+    "프로젝트 과정 설명보다 결과 요약과 임팩트 강조에 더 많은 분량을 쓴다.",
+    "읽는 사람이 '이 수치가 진짜 네가 만든 거 맞아?'라는 의심을 자연스럽게 하게 만든다."
+  ],
+  "summary": "다양한 산업에서 전략과 사업 기획을 주도하며 빠르게 성과를 내온 기획 전문가입니다. 시장 변화에 민감하게 반응하며, 경영진 맞춤형 실행안을 도출한 경험이 풍부합니다. 데이터 기반 분석과 유연한 의사결정으로 직접 눈에 띄는 성과를 창출한 것이 저만의 강점입니다. 마지막 역할에서는 1년 만에 B2B 매출 70% 성장을 이끌어내며 임팩트 있는 결과를 남겼습니다.",
+  "files": {
+    "resume_bundle_pdf": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_09_임지훈_bundle.pdf",
+    "source_json": "C:\\DEV\\WorkSpace\\bamti95\\hr-copilot\\backend\\sample_data\\2차 지원자\\기획_전략\\기획_전략_09_임지훈_source.json"
+  },
+  "candidate_case_code": "job_hopper_weak_evidence",
+  "candidate_case_title": "이직 많음 - 포장은 잘 되어 있으나 근거 부족",
+  "candidate_case_description": "이직이 잦고 서류 포장은 꽤 잘했지만 각 회사에서 실제로 뭘 했는지 근거가 약하다. 이직 사유도 명확하지 않아 면접관이 반복적으로 이동한 이유를 캐묻게 되는 지원자다.",
+  "candidate_case_must_haves": [
+    "짧은 재직 반복",
+    "성과 표현은 화려함",
+    "이직 사유가 불분명함"
+  ]
+}
