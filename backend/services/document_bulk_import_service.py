@@ -29,6 +29,7 @@ from common.file_util import (
     resolve_document_dir,
     strip_extension,
 )
+from common.job_position import normalize_job_position
 from core.config import settings
 from core.database import AsyncSessionLocal
 from models.ai_job import AiJob, AiJobStatus, AiJobTargetType, AiJobType
@@ -107,8 +108,11 @@ class StagedDocument:
 
 
 def _normalize_default_job_position(value: str | None) -> str | None:
-    normalized = (value or "").strip()
-    return normalized or None
+    normalized = normalize_job_position(value)
+    if normalized:
+        return normalized
+    stripped = (value or "").strip()
+    return stripped or None
 
 
 def _validate_apply_status(value: str | None) -> str:
@@ -317,7 +321,7 @@ def _infer_experience_suffix(text: str) -> str | None:
 
 
 def _append_experience_suffix(job_position: str | None, suffix: str | None) -> str | None:
-    normalized = (job_position or "").strip()
+    normalized = normalize_job_position(job_position) or (job_position or "").strip()
     if not normalized or not suffix:
         return normalized or None
     if re.search(r"\((?:신입|경력)\)\s*$", normalized):
@@ -449,6 +453,11 @@ async def _extract_profile(
     if llm_profile is not None:
         if default_job_position and not llm_profile.job_position:
             llm_profile.job_position = default_job_position
+        llm_profile.job_position = (
+            normalize_job_position(llm_profile.job_position)
+            or normalize_job_position(default_job_position)
+            or llm_profile.job_position
+        )
         return llm_profile
 
     return _heuristic_extract_profile(
@@ -748,7 +757,9 @@ class DocumentBulkImportService:
             name = str(candidate_payload.get("name") or "").strip()
             email = str(candidate_payload.get("email") or "").strip()
             phone = str(candidate_payload.get("phone") or "").strip()
-            job_position = str(candidate_payload.get("job_position") or "").strip() or None
+            job_position = normalize_job_position(
+                str(candidate_payload.get("job_position") or "").strip()
+            )
             apply_status = str(
                 candidate_payload.get("apply_status") or ApplyStatus.APPLIED.value
             ).strip()

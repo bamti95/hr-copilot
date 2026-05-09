@@ -5,6 +5,7 @@ from models.manager import Manager
 from models.interview_session import InterviewSession
 from models.candidate import Candidate
 from models.document import Document
+from common.job_position import JOB_POSITION_ALIASES, JOB_POSITION_LABELS, normalize_job_position_code
 from repositories.base_repository import BaseRepository
 
 
@@ -125,7 +126,26 @@ class CandidateRepository(BaseRepository[Candidate]):
                 )
             )
         if target_job and target_job.strip():
-            conditions.append(Candidate.job_position == target_job.strip())
+            normalized_job = normalize_job_position_code(target_job)
+            if normalized_job:
+                alias_terms = {
+                    normalized_job,
+                    JOB_POSITION_LABELS[normalized_job],
+                    *JOB_POSITION_ALIASES[normalized_job],
+                }
+                conditions.append(
+                    or_(
+                        Candidate.job_position == normalized_job,
+                        Candidate.job_position.ilike(f"{normalized_job} (%)"),
+                        *[
+                            Candidate.job_position.ilike(f"%{alias}%")
+                            for alias in alias_terms
+                            if alias
+                        ],
+                    )
+                )
+            else:
+                conditions.append(Candidate.job_position == target_job.strip())
         return conditions
 
     async def count_list(

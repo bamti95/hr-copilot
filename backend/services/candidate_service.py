@@ -24,6 +24,7 @@ from common.file_util import (
     save_upload_file_pairs,
     strip_extension,
 )
+from common.job_position import normalize_job_position, normalize_job_position_code
 from core.database import AsyncSessionLocal
 from models.candidate import ApplyStatus, Candidate
 from models.document import Document
@@ -482,7 +483,7 @@ class CandidateService:
             name=request.name.strip(),
             email=str(request.email).strip(),
             phone=request.phone.strip(),
-            job_position=request.job_position.strip() if request.job_position else None,
+            job_position=normalize_job_position(request.job_position),
             birth_date=request.birth_date,
             apply_status=ApplyStatus.APPLIED.value,
             created_by=actor_id,
@@ -542,9 +543,16 @@ class CandidateService:
             for status_item in ApplyStatus
         ]
         job_rows = await repo.count_by_target_job_distinct_candidates()
+        target_job_count_map: dict[str, int] = {}
+        for job, count in job_rows:
+            normalized_job = normalize_job_position_code(job)
+            if not normalized_job:
+                continue
+            target_job_count_map[normalized_job] = target_job_count_map.get(normalized_job, 0) + count
         by_target_job = [
-            TargetJobCountRow(target_job=job, count=count)
-            for job, count in job_rows
+            TargetJobCountRow(target_job=job, count=target_job_count_map[job])
+            for job in _JOB_CODE_TO_POSITION
+            if target_job_count_map.get(job, 0) > 0
         ]
         with_session = await repo.count_distinct_active_candidates_with_session()
         without_session = max(0, total - with_session)
@@ -633,7 +641,7 @@ class CandidateService:
         entity.name = request.name.strip()
         entity.email = str(request.email).strip()
         entity.phone = request.phone.strip()
-        entity.job_position = request.job_position.strip() if request.job_position else None
+        entity.job_position = normalize_job_position(request.job_position)
         entity.birth_date = request.birth_date
         entity.updated_at = datetime.now(timezone.utc)
 
