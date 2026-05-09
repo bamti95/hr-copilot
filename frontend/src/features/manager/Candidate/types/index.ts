@@ -8,12 +8,15 @@ export type CandidateApplyStatus =
   | "ACCEPTED"
   | "REJECTED";
 
-export type CandidateJobPosition =
-  | "STRATEGY_PLANNING"
-  | "HR"
-  | "MARKETING"
-  | "AI_DEV_DATA"
-  | "SALES";
+export const CANDIDATE_APPLY_STATUS_LABEL: Record<CandidateApplyStatus, string> = {
+  APPLIED: "지원 완료",
+  SCREENING: "서류 검토",
+  INTERVIEW: "면접 진행",
+  ACCEPTED: "합격",
+  REJECTED: "불합격",
+};
+
+export type CandidateJobPosition = string;
 
 export type CandidateDocumentType =
   | "RESUME"
@@ -202,4 +205,127 @@ export interface CandidateBulkImportResponse {
   skippedCount: number;
   documentCount: number;
   errors: CandidateBulkImportError[];
+}
+
+export type DocumentBulkUploadMode = "ZIP" | "FILES";
+
+export interface CandidateProfileExtractionOutput {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  birthDate: string | null;
+  jobPosition: string | null;
+  summary: string | null;
+  confidenceScore: number;
+  missingFields: string[];
+  warnings: string[];
+}
+
+export interface DocumentBulkImportPreviewDocument {
+  originalFileName: string;
+  storedFileName: string;
+  filePath: string;
+  fileExt: string | null;
+  mimeType: string | null;
+  fileSize: number | null;
+  documentType: CandidateDocumentType;
+  extractStatus: string;
+  extractStrategy: string | null;
+  extractQualityScore: number;
+  extractSourceType: string | null;
+  detectedDocumentType: string | null;
+  extractedTextLength: number;
+  extractedTextPreview: string | null;
+  extractMeta: Record<string, unknown> | null;
+  errorMessage: string | null;
+}
+
+export interface DocumentBulkImportPreviewRow {
+  rowId: string;
+  status: "READY" | "NEEDS_REVIEW" | "INVALID" | string;
+  groupKey: string;
+  inferredCandidateName: string | null;
+  extractedProfile: CandidateProfileExtractionOutput;
+  candidate: {
+    name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    birth_date?: string | null;
+    job_position?: string | null;
+    apply_status?: CandidateApplyStatus | string;
+  };
+  documents: DocumentBulkImportPreviewDocument[];
+  documentCount: number;
+  confidenceScore: number;
+  duplicateCandidateId: number | null;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface DocumentBulkImportPreviewSummary {
+  totalGroups: number;
+  processedGroups: number;
+  readyCount: number;
+  needsReviewCount: number;
+  invalidCount: number;
+  documentCount: number;
+}
+
+export interface DocumentBulkImportPreviewResponse {
+  jobId: number;
+  uploadMode: DocumentBulkUploadMode;
+  summary: DocumentBulkImportPreviewSummary;
+  rows: DocumentBulkImportPreviewRow[];
+}
+
+export interface DocumentBulkImportPreviewStartResponse {
+  jobId: number;
+  status: string;
+  progress: number;
+  currentStep: string | null;
+  message: string;
+}
+
+export interface DocumentBulkImportPreviewJobResponse {
+  jobId: number;
+  status: string;
+  progress: number;
+  currentStep: string | null;
+  errorMessage: string | null;
+  uploadMode: DocumentBulkUploadMode | null;
+  summary: DocumentBulkImportPreviewSummary | null;
+  rows: DocumentBulkImportPreviewRow[];
+}
+
+export interface DocumentBulkImportPreviewJobListResponse {
+  jobs: DocumentBulkImportPreviewJobResponse[];
+}
+
+export interface DocumentBulkImportPreviewRequest {
+  mode: DocumentBulkUploadMode;
+  zipFile?: File | null;
+  files?: File[];
+  defaultJobPosition?: string;
+  defaultApplyStatus?: CandidateApplyStatus;
+}
+
+export interface DocumentBulkImportConfirmRequest {
+  jobId: number;
+  selectedRowIds: string[];
+}
+
+export interface DocumentBulkImportConfirmError {
+  rowId: string | null;
+  groupKey: string | null;
+  reason: string;
+}
+
+export interface DocumentBulkImportConfirmResponse {
+  jobId: number;
+  requestedCount: number;
+  createdCount: number;
+  skippedCount: number;
+  documentCount: number;
+  candidateIds: number[];
+  errors: DocumentBulkImportConfirmError[];
 }

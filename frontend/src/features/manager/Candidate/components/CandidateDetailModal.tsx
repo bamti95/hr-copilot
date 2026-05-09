@@ -10,6 +10,8 @@ import {
   Upload,
 } from "lucide-react";
 import { StatusPill } from "../../../../common/components/StatusPill";
+import { getJobPositionLabel } from "../../common/candidateJobPosition";
+import { CANDIDATE_APPLY_STATUS_LABEL } from "../types";
 import type {
   CandidateApplyStatus,
   CandidateDetailResponse,
@@ -18,12 +20,20 @@ import type {
   CandidateFormState,
   CandidateJobPosition,
   CandidatePendingDocument,
+  DocumentBulkImportPreviewRequest,
+  DocumentBulkImportPreviewJobResponse,
+  DocumentBulkUploadMode,
 } from "../types";
 
 type ValidationErrors = Partial<Record<keyof CandidateFormState, string>>;
 
 interface CandidateDetailModalProps {
   mode: "create" | "detail";
+  registrationMode: "single" | "bulk";
+  onRegistrationModeChange: (mode: "single" | "bulk") => void;
+  documentBulkPreview: DocumentBulkImportPreviewJobResponse | null;
+  isDocumentBulkPreviewing: boolean;
+  isDocumentBulkImporting: boolean;
   detail: CandidateDetailResponse | null;
   form: CandidateFormState;
   validationErrors: ValidationErrors;
@@ -55,6 +65,8 @@ interface CandidateDetailModalProps {
     file: File | null,
   ) => void;
   onOpenDocument: (document: CandidateDocumentResponse) => void;
+  onDocumentBulkPreview: (request: DocumentBulkImportPreviewRequest) => void;
+  onDocumentBulkConfirmImport: (selectedRowIds: string[]) => void;
 }
 
 const fieldClassName =
@@ -63,7 +75,7 @@ const fieldClassName =
 const pendingCardClassName =
   "grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-[minmax(0,1fr)_220px_auto] md:items-center";
 
-const JOB_POSITION_LABEL: Record<CandidateJobPosition, string> = {
+const JOB_POSITION_LABEL: Record<string, string> = {
   STRATEGY_PLANNING: "기획·전략",
   HR: "인사·HR",
   MARKETING: "마케팅·광고·MD",
@@ -102,8 +114,129 @@ function formatFileSize(value: number | null) {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function formatPercent(value: number) {
+  return `${Math.round(value * 100)}%`;
+}
+
+const DOCUMENT_BULK_STATUS_LABEL: Record<string, string> = {
+  QUEUED: "대기 중",
+  RUNNING: "처리 중",
+  SUCCESS: "완료",
+  PARTIAL_SUCCESS: "일부 완료",
+  FAILED: "실패",
+  RETRYING: "재시도 중",
+  CANCELLED: "취소됨",
+};
+
+const DOCUMENT_BULK_ROW_STATUS_LABEL: Record<string, string> = {
+  READY: "등록 가능",
+  NEEDS_REVIEW: "검토 필요",
+  INVALID: "등록 불가",
+};
+
+const DOCUMENT_TYPE_LABEL: Record<string, string> = {
+  RESUME: "이력서",
+  PORTFOLIO: "포트폴리오",
+  COVER_LETTER: "자기소개서",
+  CAREER_DESCRIPTION: "경력기술서",
+  ROLE_PROFILE: "직무 프로필",
+};
+
+const EXTRACT_SOURCE_LABEL: Record<string, string> = {
+  DIGITAL_TEXT: "디지털 텍스트",
+  TEXT: "텍스트",
+  OCR: "OCR",
+  PDF: "PDF",
+  DOCX: "워드 문서",
+  HWP: "한글 문서",
+  HWPX: "한글 문서",
+};
+
+function formatBulkStatus(value?: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  return DOCUMENT_BULK_STATUS_LABEL[value] ?? value;
+}
+
+function formatBulkRowStatus(value: string) {
+  return DOCUMENT_BULK_ROW_STATUS_LABEL[value] ?? "확인 필요";
+}
+
+function formatDocumentType(value?: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  return DOCUMENT_TYPE_LABEL[value] ?? "기타 문서";
+}
+
+function formatExtractSource(value?: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  return EXTRACT_SOURCE_LABEL[value] ?? "자동 감지";
+}
+
+function formatExtractStrategy(value?: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  if (value.toLowerCase().includes("ocr")) {
+    return "OCR 추출";
+  }
+
+  if (value.toLowerCase().includes("text")) {
+    return "텍스트 추출";
+  }
+
+  if (value.toLowerCase().includes("pdf")) {
+    return "PDF 추출";
+  }
+
+  return "자동 추출";
+}
+
+function formatBulkStep(value?: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  const groupProgress = value.match(/^preview_processing_group_(\d+)_of_(\d+)$/);
+  if (groupProgress) {
+    return `그룹 처리 중 (${groupProgress[1]}/${groupProgress[2]})`;
+  }
+
+  const stepLabels: Record<string, string> = {
+    preview_job_created: "미리보기 작업 생성됨",
+    preview_grouping_completed: "문서 그룹 분류 완료",
+    preview_completed: "미리보기 완료",
+    preview_failed: "미리보기 실패",
+    preview_staging_files: "문서 임시 저장 중",
+    preview_extracting_documents: "문서 내용 추출 중",
+    preview_inferring_profile: "지원자 정보 추론 중",
+  };
+
+  return stepLabels[value] ?? "처리 중";
+}
+
+function formatBulkSelectedFiles(mode: DocumentBulkUploadMode, zipFile: File | null, files: File[]) {
+  if (mode === "ZIP") {
+    return zipFile ? [zipFile.name] : [];
+  }
+  return files.map((file) => file.name);
+}
+
 export function CandidateDetailModal({
   mode,
+  registrationMode,
+  onRegistrationModeChange,
+  documentBulkPreview,
+  isDocumentBulkPreviewing,
+  isDocumentBulkImporting,
   detail,
   form,
   validationErrors,
@@ -126,10 +259,24 @@ export function CandidateDetailModal({
   onExistingDocumentDelete,
   onExistingDocumentReplace,
   onOpenDocument,
+  onDocumentBulkPreview,
+  onDocumentBulkConfirmImport,
 }: CandidateDetailModalProps) {
   const [isDragOver, setIsDragOver] = useState(false);
+  const [bulkUploadMode, setBulkUploadMode] = useState<DocumentBulkUploadMode>("ZIP");
+  const [bulkZipFile, setBulkZipFile] = useState<File | null>(null);
+  const [bulkFiles, setBulkFiles] = useState<File[]>([]);
+  const [bulkDefaultJobPosition, setBulkDefaultJobPosition] = useState("");
+  const [bulkDefaultApplyStatus, setBulkDefaultApplyStatus] =
+    useState<CandidateApplyStatus>("APPLIED");
+  const [selectedBulkRowIds, setSelectedBulkRowIds] = useState<string[]>([]);
 
   const isCreateMode = mode === "create";
+  const isBulkCreateMode = isCreateMode && registrationMode === "bulk";
+  const isDocumentBulkJobRunning =
+    documentBulkPreview?.status === "QUEUED" ||
+    documentBulkPreview?.status === "RUNNING" ||
+    documentBulkPreview?.status === "RETRYING";
   const title = isCreateMode ? "지원자 신규 등록" : "지원자 상세 정보";
   const remainingDocumentSlots = Math.max(0, 3 - pendingDocuments.length);
   const documents = detail?.documents ?? [];
@@ -148,6 +295,32 @@ export function CandidateDetailModal({
   const completedExtractionCount =
     successExtractionCount + failedExtractionCount;
   const isInteractionLocked = hasPendingExtraction || isSaving;
+  const canCreateBulkPreview =
+    !isDocumentBulkPreviewing &&
+    !isDocumentBulkJobRunning &&
+    (bulkUploadMode === "ZIP" ? Boolean(bulkZipFile) : bulkFiles.length > 0);
+  const bulkSelectedFileNames = formatBulkSelectedFiles(
+    bulkUploadMode,
+    bulkZipFile,
+    bulkFiles,
+  );
+  const visibleBulkFileNames = bulkSelectedFileNames.slice(0, 10);
+  const hiddenBulkFileCount = Math.max(0, bulkSelectedFileNames.length - 10);
+  const documentBulkSummary = documentBulkPreview?.summary ?? null;
+  const importableBulkRows =
+    documentBulkPreview?.rows.filter((row) => row.status === "READY") ?? [];
+  const selectedImportableBulkRowIds =
+    selectedBulkRowIds.length > 0
+      ? selectedBulkRowIds.filter((rowId) =>
+          importableBulkRows.some((row) => row.rowId === rowId),
+        )
+      : importableBulkRows.map((row) => row.rowId);
+  const canConfirmBulkImport =
+    Boolean(documentBulkPreview) &&
+    !isDocumentBulkJobRunning &&
+    !isDocumentBulkPreviewing &&
+    !isDocumentBulkImporting &&
+    selectedImportableBulkRowIds.length > 0;
 
   return (
     <div className="space-y-6">
@@ -177,6 +350,409 @@ export function CandidateDetailModal({
           {!isCreateMode ? <StatusPill status={form.applyStatus} /> : null}
         </div>
 
+        {isCreateMode ? (
+          <div className="mt-5 inline-flex rounded-2xl border border-slate-200 bg-white p-1">
+            <button
+              type="button"
+              className={`h-10 rounded-xl px-4 text-sm font-semibold transition ${
+                registrationMode === "single"
+                  ? "bg-emerald-500 text-white"
+                  : "text-slate-600 hover:bg-slate-50"
+              }`}
+              onClick={() => onRegistrationModeChange("single")}
+            >
+              단일 등록
+            </button>
+            <button
+              type="button"
+              className={`h-10 rounded-xl px-4 text-sm font-semibold transition ${
+                registrationMode === "bulk"
+                  ? "bg-emerald-500 text-white"
+                  : "text-slate-600 hover:bg-slate-50"
+              }`}
+              onClick={() => onRegistrationModeChange("bulk")}
+            >
+              문서 일괄등록
+            </button>
+          </div>
+        ) : null}
+
+        {isBulkCreateMode ? (
+          <div className="mt-6 space-y-5">
+            <section className="rounded-[28px] border border-white/70 bg-[var(--panel-strong)] p-5">
+              <h3 className="text-lg font-bold text-[var(--text)]">
+                문서 기반 일괄등록 미리보기
+              </h3>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                ZIP 또는 다중 파일을 업로드해 지원자 후보를 미리 추출합니다. 현재 단계는 확정 저장 전 검수용입니다.
+              </p>
+
+              <div className="mt-4 grid gap-4 lg:grid-cols-[180px_minmax(0,1fr)_220px_180px]">
+                <label className="block text-sm font-medium text-slate-700">
+                  업로드 방식
+                  <select
+                    className={fieldClassName}
+                    value={bulkUploadMode}
+                    disabled={isDocumentBulkPreviewing}
+                    onChange={(event) =>
+                      setBulkUploadMode(event.target.value as DocumentBulkUploadMode)
+                    }
+                  >
+                    <option value="ZIP">ZIP</option>
+                    <option value="FILES">다중 파일</option>
+                  </select>
+                </label>
+
+                <div className="block text-sm font-medium text-slate-700">
+                  문서 파일
+                  <label
+                    className={`mt-2 flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed px-5 py-6 text-center transition ${
+                      isDragOver
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-slate-300 bg-white/80 hover:border-emerald-300 hover:bg-emerald-50/40"
+                    } ${isDocumentBulkPreviewing ? "cursor-not-allowed opacity-60" : ""}`}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      if (!isDocumentBulkPreviewing) {
+                        setIsDragOver(true);
+                      }
+                    }}
+                    onDragEnter={(event) => {
+                      event.preventDefault();
+                      if (!isDocumentBulkPreviewing) {
+                        setIsDragOver(true);
+                      }
+                    }}
+                    onDragLeave={(event) => {
+                      event.preventDefault();
+                      setIsDragOver(false);
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      setIsDragOver(false);
+                      if (isDocumentBulkPreviewing) {
+                        return;
+                      }
+                      const selected = Array.from(event.dataTransfer.files);
+                      if (bulkUploadMode === "ZIP") {
+                        setBulkZipFile(
+                          selected.find((file) =>
+                            file.name.toLowerCase().endsWith(".zip"),
+                          ) ??
+                            selected[0] ??
+                            null,
+                        );
+                      } else {
+                        setBulkFiles(selected);
+                      }
+                    }}
+                  >
+                    <Upload className="h-7 w-7 text-emerald-600" />
+                    <span className="mt-3 text-sm font-semibold text-slate-900">
+                      파일을 드래그앤드롭하거나 클릭해서 선택하세요.
+                    </span>
+                    <span className="mt-1 text-xs text-slate-500">
+                      {bulkUploadMode === "ZIP"
+                        ? "ZIP 파일 1개를 업로드합니다."
+                        : "PDF, DOCX, TXT 등 여러 문서를 한 번에 업로드합니다."}
+                    </span>
+                    <input
+                      className="hidden"
+                      type="file"
+                      accept={
+                        bulkUploadMode === "ZIP"
+                          ? ".zip"
+                          : ".pdf,.doc,.docx,.txt,.hwp,.hwpx"
+                      }
+                      multiple={bulkUploadMode === "FILES"}
+                      disabled={isDocumentBulkPreviewing}
+                      onChange={(event) => {
+                        const selected = Array.from(event.target.files ?? []);
+                        if (bulkUploadMode === "ZIP") {
+                          setBulkZipFile(selected[0] ?? null);
+                        } else {
+                          setBulkFiles(selected);
+                        }
+                        event.target.value = "";
+                      }}
+                    />
+                  </label>
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                    {visibleBulkFileNames.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {visibleBulkFileNames.map((fileName) => (
+                          <span
+                            key={fileName}
+                            className="max-w-[220px] truncate rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
+                            title={fileName}
+                          >
+                            {fileName}
+                          </span>
+                        ))}
+                        {hiddenBulkFileCount > 0 ? (
+                          <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+                            ... 외 {hiddenBulkFileCount}개
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-500">
+                        아직 선택된 파일이 없습니다.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <label className="block text-sm font-medium text-slate-700">
+                  기본 지원 직무
+                  <input
+                    className={fieldClassName}
+                    value={bulkDefaultJobPosition}
+                    disabled={isDocumentBulkPreviewing}
+                    onChange={(event) => setBulkDefaultJobPosition(event.target.value)}
+                    placeholder="예: 백엔드 개발자"
+                  />
+                </label>
+
+                <label className="block text-sm font-medium text-slate-700">
+                  기본 지원 상태
+                  <select
+                    className={fieldClassName}
+                    value={bulkDefaultApplyStatus}
+                    disabled={isDocumentBulkPreviewing}
+                    onChange={(event) =>
+                      setBulkDefaultApplyStatus(event.target.value as CandidateApplyStatus)
+                    }
+                  >
+                    {Object.entries(CANDIDATE_APPLY_STATUS_LABEL).map(
+                      ([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </label>
+              </div>
+
+              <div className="mt-5 flex justify-end">
+                <div className="flex flex-wrap justify-end gap-3">
+                  <button
+                    type="button"
+                    className="rounded-2xl bg-linear-to-r from-emerald-500 to-teal-500 px-4 py-3 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(16,185,129,0.22)] disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={!canCreateBulkPreview}
+                    onClick={() =>
+                      onDocumentBulkPreview({
+                        mode: bulkUploadMode,
+                        zipFile: bulkZipFile,
+                        files: bulkFiles,
+                        defaultJobPosition: bulkDefaultJobPosition,
+                        defaultApplyStatus: bulkDefaultApplyStatus,
+                      })
+                    }
+                  >
+                    {isDocumentBulkPreviewing ? "미리보기 생성 중..." : "미리보기 생성"}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={!canConfirmBulkImport}
+                    onClick={() => onDocumentBulkConfirmImport(selectedImportableBulkRowIds)}
+                  >
+                    {isDocumentBulkImporting
+                      ? "확정 등록 중..."
+                      : `등록 가능 ${selectedImportableBulkRowIds.length}건 확정 등록`}
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            {documentBulkPreview ? (
+              <section className="rounded-[28px] border border-white/70 bg-[var(--panel-strong)] p-5">
+                <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500">작업 상태</p>
+                      <p className="mt-1 text-sm font-bold text-slate-900">
+                        {formatBulkStatus(documentBulkPreview.status)}
+                        {documentBulkPreview.currentStep
+                          ? ` / ${formatBulkStep(documentBulkPreview.currentStep)}`
+                          : ""}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {documentBulkPreview.progress}%
+                    </p>
+                  </div>
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-emerald-500 transition-all"
+                      style={{
+                        width: `${Math.max(0, Math.min(100, documentBulkPreview.progress))}%`,
+                      }}
+                    />
+                  </div>
+                  {documentBulkSummary ? (
+                    <p className="mt-2 text-xs text-slate-500">
+                      총 {documentBulkSummary.totalGroups}개 그룹 중{" "}
+                      {documentBulkSummary.processedGroups}개 처리 완료
+                    </p>
+                  ) : null}
+                </div>
+                <div className="grid gap-3 md:grid-cols-5">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-semibold text-slate-500">작업 ID</p>
+                    <p className="mt-1 text-lg font-bold text-slate-900">
+                      {documentBulkPreview.jobId}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-semibold text-slate-500">그룹 수</p>
+                    <p className="mt-1 text-lg font-bold text-slate-900">
+                      {documentBulkSummary?.totalGroups ?? 0}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                    <p className="text-xs font-semibold text-emerald-700">등록 가능</p>
+                    <p className="mt-1 text-lg font-bold text-emerald-900">
+                      {documentBulkSummary?.readyCount ?? 0}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                    <p className="text-xs font-semibold text-amber-700">검토 필요</p>
+                    <p className="mt-1 text-lg font-bold text-amber-900">
+                      {documentBulkSummary?.needsReviewCount ?? 0}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                    <p className="text-xs font-semibold text-rose-700">등록 불가</p>
+                    <p className="mt-1 text-lg font-bold text-rose-900">
+                      {documentBulkSummary?.invalidCount ?? 0}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                  <table className="w-full border-collapse text-sm">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        {[
+                          "상태",
+                          "선택",
+                          "그룹",
+                          "이름",
+                          "이메일",
+                          "전화번호",
+                          "생년월일",
+                          "직무",
+                          "문서",
+                          "문서 파싱",
+                          "신뢰도",
+                          "비고",
+                        ].map((label) => (
+                          <th
+                            key={label}
+                            className="border-b border-slate-200 px-3 py-3 text-left font-bold text-slate-500"
+                          >
+                            {label}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {documentBulkPreview.rows.map((row) => (
+                        <tr key={row.rowId} className="align-top">
+                          <td className="border-b border-slate-200 px-3 py-3 font-semibold">
+                            {formatBulkRowStatus(row.status)}
+                          </td>
+                          <td className="border-b border-slate-200 px-3 py-3">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4"
+                              checked={selectedBulkRowIds.includes(row.rowId)}
+                              disabled={row.status !== "READY" || isDocumentBulkImporting}
+                              onChange={(event) => {
+                                setSelectedBulkRowIds((current) =>
+                                  event.target.checked
+                                    ? [...current, row.rowId]
+                                    : current.filter((rowId) => rowId !== row.rowId),
+                                );
+                              }}
+                            />
+                          </td>
+                          <td className="border-b border-slate-200 px-3 py-3">
+                            {row.groupKey}
+                          </td>
+                          <td className="border-b border-slate-200 px-3 py-3">
+                            {row.candidate.name || "-"}
+                          </td>
+                          <td className="border-b border-slate-200 px-3 py-3">
+                            {row.candidate.email || "-"}
+                          </td>
+                          <td className="border-b border-slate-200 px-3 py-3">
+                            {row.candidate.phone || "-"}
+                          </td>
+                          <td className="border-b border-slate-200 px-3 py-3">
+                            {row.candidate.birth_date || "-"}
+                          </td>
+                          <td className="border-b border-slate-200 px-3 py-3">
+                            {row.candidate.job_position
+                              ? getJobPositionLabel(row.candidate.job_position)
+                              : "-"}
+                          </td>
+                          <td className="border-b border-slate-200 px-3 py-3">
+                            {row.documentCount}
+                          </td>
+                          <td className="max-w-sm border-b border-slate-200 px-3 py-3">
+                            <div className="space-y-2">
+                              {row.documents.map((document) => (
+                                <details
+                                  key={document.storedFileName}
+                                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+                                >
+                                  <summary className="cursor-pointer text-xs font-semibold text-slate-700">
+                                    {document.originalFileName} ·{" "}
+                                    {formatBulkStatus(document.extractStatus)} ·{" "}
+                                    {formatPercent(document.extractQualityScore)}
+                                  </summary>
+                                  <div className="mt-2 space-y-1 text-xs text-slate-600">
+                                    <p>문서 유형: {formatDocumentType(document.documentType)}</p>
+                                    <p>추출 방식: {formatExtractStrategy(document.extractStrategy)}</p>
+                                    <p>원본 유형: {formatExtractSource(document.extractSourceType)}</p>
+                                    <p>감지 유형: {formatDocumentType(document.detectedDocumentType)}</p>
+                                    <p>추출 글자 수: {document.extractedTextLength.toLocaleString()}자</p>
+                                    {document.errorMessage ? <p>오류: {document.errorMessage}</p> : null}
+                                    {document.extractedTextPreview ? (
+                                      <p className="line-clamp-3">
+                                        미리보기: {document.extractedTextPreview}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                </details>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="border-b border-slate-200 px-3 py-3">
+                            {formatPercent(row.confidenceScore)}
+                          </td>
+                          <td className="max-w-xs border-b border-slate-200 px-3 py-3">
+                            {[...row.errors, ...row.warnings].join(" / ") || "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            ) : null}
+          </div>
+        ) : isDetailLoading ? (
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-[var(--muted)]">
+            지원자 상세 정보를 불러오는 중입니다.
+          </div>
+        ) : (
+          <>
+
         {hasPendingExtraction ? (
           <div className="mt-5 inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
             <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -188,7 +764,7 @@ export function CandidateDetailModal({
           </div>
         ) : null}
 
-        {isDetailLoading ? (
+        {false ? (
           <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-[var(--muted)]">
             지원자 상세 정보를 불러오는 중입니다.
           </div>
@@ -250,14 +826,14 @@ export function CandidateDetailModal({
                       onChange={(event) =>
                         onFieldChange(
                           "jobPosition",
-                          event.target.value as CandidateJobPosition | "",
+                          event.target.value,
                         )
                       }
                     >
                       <option value="">선택하세요</option>
                       {jobPositionOptions.map((jobPosition) => (
                         <option key={jobPosition} value={jobPosition}>
-                          {JOB_POSITION_LABEL[jobPosition]}
+                          {JOB_POSITION_LABEL[jobPosition] ?? jobPosition}
                         </option>
                       ))}
                     </select>
@@ -570,7 +1146,10 @@ export function CandidateDetailModal({
             </section>
           </div>
         )}
+          </>
+        )}
 
+        {!isBulkCreateMode ? (
         <div className="mt-6 flex flex-wrap justify-between gap-3 border-t border-[var(--line)] pt-5">
           <div>
             {!isCreateMode && detail ? (
@@ -604,6 +1183,7 @@ export function CandidateDetailModal({
             </button>
           </div>
         </div>
+        ) : null}
       </section>
     </div>
   );

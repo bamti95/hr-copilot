@@ -4,10 +4,14 @@ import { getErrorMessage } from "../../../../utils/getErrorMessage";
 import { createAnalysisSessions } from "../services/analysisSessionService";
 import {
   bulkImportCandidates,
+  confirmDocumentBulkImport,
   deleteCandidate,
   fetchCandidateList,
   fetchCandidateSampleFolders,
   fetchCandidateStatistics,
+  fetchDocumentBulkPreviewJob,
+  fetchDocumentBulkPreviewJobs,
+  previewDocumentBulkImport,
 } from "../services/candidateService";
 import type {
   AnalysisSessionCreateRequest,
@@ -16,6 +20,8 @@ import type {
   CandidateSampleFolder,
   CandidateListResponse,
   CandidateStatisticsResponse,
+  DocumentBulkImportPreviewRequest,
+  DocumentBulkImportPreviewJobResponse,
 } from "../types";
 
 export function useCandidateData() {
@@ -45,6 +51,22 @@ export function useCandidateData() {
   const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
   const [isLoadingSampleFolders, setIsLoadingSampleFolders] = useState(false);
   const [isBulkImporting, setIsBulkImporting] = useState(false);
+  const [isDocumentBulkImportModalOpen, setIsDocumentBulkImportModalOpen] =
+    useState(false);
+  const [isDocumentBulkPreviewing, setIsDocumentBulkPreviewing] = useState(false);
+  const [isDocumentBulkImporting, setIsDocumentBulkImporting] = useState(false);
+  const [documentBulkPreview, setDocumentBulkPreview] =
+    useState<DocumentBulkImportPreviewJobResponse | null>(null);
+  const [documentBulkJobId, setDocumentBulkJobId] = useState<number | null>(null);
+
+  const isActiveDocumentBulkJob = useCallback(
+    (job: DocumentBulkImportPreviewJobResponse | null) =>
+      Boolean(
+        job &&
+          ["QUEUED", "RUNNING", "RETRYING"].includes(job.status),
+      ),
+    [],
+  );
 
   const loadStatistics = useCallback(async () => {
     try {
@@ -75,12 +97,97 @@ export function useCandidateData() {
   }, []);
 
   useEffect(() => {
+    let active = true;
+
+    const hydrateActiveDocumentBulkJob = async () => {
+      try {
+        const response = await fetchDocumentBulkPreviewJobs({
+          activeOnly: true,
+          limit: 1,
+        });
+        if (!active) {
+          return;
+        }
+        const latestJob = response.jobs[0] ?? null;
+        if (latestJob) {
+          setDocumentBulkPreview(latestJob);
+          setDocumentBulkJobId(latestJob.jobId);
+        }
+      } catch {
+        if (active) {
+          setDocumentBulkJobId(null);
+        }
+      }
+    };
+
+    void hydrateActiveDocumentBulkJob();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!successMessage) {
       return;
     }
     const timer = window.setTimeout(() => setSuccessMessage(""), 4000);
     return () => window.clearTimeout(timer);
   }, [successMessage]);
+
+  useEffect(() => {
+    if (!documentBulkJobId) {
+      return;
+    }
+
+    let active = true;
+    const terminalStatuses = new Set([
+      "SUCCESS",
+      "PARTIAL_SUCCESS",
+      "FAILED",
+      "CANCELLED",
+    ]);
+
+    const poll = async () => {
+      try {
+        const job = await fetchDocumentBulkPreviewJob(documentBulkJobId);
+        if (!active) {
+          return;
+        }
+        setDocumentBulkPreview(job);
+        if (terminalStatuses.has(job.status)) {
+          setDocumentBulkJobId(null);
+          if (job.status === "FAILED") {
+            setErrorMessage(
+              job.errorMessage || "문서 일괄등록 미리보기 작업이 실패했습니다.",
+            );
+            return;
+          }
+          setSuccessMessage(
+            `문서 일괄등록 미리보기 완료: ${job.summary?.totalGroups ?? 0}개 그룹, ${job.summary?.documentCount ?? 0}개 문서`,
+          );
+        }
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+        setDocumentBulkJobId(null);
+        setErrorMessage(
+          getErrorMessage(error, "문서 일괄등록 미리보기 작업 상태를 불러오지 못했습니다."),
+        );
+      }
+    };
+
+    void poll();
+    const timer = window.setInterval(() => {
+      void poll();
+    }, 2000);
+
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [documentBulkJobId]);
 
   const jobQuery = jobFilter.trim() || undefined;
 
@@ -182,6 +289,19 @@ export function useCandidateData() {
       return;
     }
     setIsBulkImportModalOpen(false);
+  };
+
+  const handleOpenDocumentBulkImport = () => {
+    setErrorMessage("");
+    setDocumentBulkPreview(null);
+    setIsDocumentBulkImportModalOpen(true);
+  };
+
+  const handleCloseDocumentBulkImport = () => {
+    if (isDocumentBulkPreviewing) {
+      return;
+    }
+    setIsDocumentBulkImportModalOpen(false);
   };
 
   const handleOpenDetail = (candidateId: number) => {
@@ -321,6 +441,69 @@ export function useCandidateData() {
     }
   };
 
+  const handleDocumentBulkPreview = async (
+    request: DocumentBulkImportPreviewRequest,
+  ) => {
+    try {
+      setIsDocumentBulkPreviewing(true);
+      setErrorMessage("");
+      const response = await previewDocumentBulkImport(request);
+      setDocumentBulkPreview({
+        jobId: response.jobId,
+        status: response.status,
+        progress: response.progress,
+        currentStep: response.currentStep,
+        errorMessage: null,
+        uploadMode: request.mode,
+        summary: null,
+        rows: [],
+      });
+      setDocumentBulkJobId(response.jobId);
+      setSuccessMessage("문서 일괄등록 미리보기 작업을 시작했습니다.");
+    } catch (error) {
+      setErrorMessage(
+        getErrorMessage(error, "문서 일괄등록 미리보기 생성에 실패했습니다."),
+      );
+    } finally {
+      setIsDocumentBulkPreviewing(false);
+    }
+  };
+
+  const handleConfirmDocumentBulkImport = async (selectedRowIds: string[]) => {
+    if (!documentBulkPreview) {
+      return;
+    }
+    try {
+      setIsDocumentBulkImporting(true);
+      setErrorMessage("");
+      const response = await confirmDocumentBulkImport({
+        jobId: documentBulkPreview.jobId,
+        selectedRowIds,
+      });
+      await loadCandidates();
+      await loadStatistics();
+      setDocumentBulkJobId(null);
+      setSuccessMessage(
+        `문서 일괄등록 확정 완료: ${response.createdCount}명 등록, ${response.documentCount}개 문서 저장`,
+      );
+      if (response.errors.length > 0) {
+        setErrorMessage(
+          response.errors
+            .slice(0, 3)
+            .map((error) => `${error.groupKey ?? error.rowId ?? "-"}: ${error.reason}`)
+            .join(" / "),
+        );
+      }
+      setIsDocumentBulkImportModalOpen(false);
+    } catch (error) {
+      setErrorMessage(
+        getErrorMessage(error, "문서 일괄등록 확정 저장에 실패했습니다."),
+      );
+    } finally {
+      setIsDocumentBulkImporting(false);
+    }
+  };
+
   return {
     data,
     statistics,
@@ -338,6 +521,11 @@ export function useCandidateData() {
     isBulkImportModalOpen,
     isLoadingSampleFolders,
     isBulkImporting,
+    isDocumentBulkImportModalOpen,
+    isDocumentBulkPreviewing,
+    isDocumentBulkImporting,
+    documentBulkPreview,
+    isDocumentBulkJobActive: isActiveDocumentBulkJob(documentBulkPreview),
     isAnalysisSessionCreateModalOpen,
     isCreatingAnalysisSessions,
     setSearchInput,
@@ -350,12 +538,16 @@ export function useCandidateData() {
     handleOpenCreate,
     handleOpenBulkImport,
     handleCloseBulkImport,
+    handleOpenDocumentBulkImport,
+    handleCloseDocumentBulkImport,
     handleOpenDetail,
     handleDelete,
     toggleSelect,
     selectAllOnPage,
     loadSampleFolders,
     handleBulkImport,
+    handleDocumentBulkPreview,
+    handleConfirmDocumentBulkImport,
     openAnalysisSessionCreateModal,
     closeAnalysisSessionCreateModal,
     createAnalysisSessions: handleCreateAnalysisSessions,

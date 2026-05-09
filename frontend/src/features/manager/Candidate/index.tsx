@@ -13,8 +13,8 @@ import { emptyPromptProfileForm } from "../PromptProfile/utils/promptProfileForm
 import { CandidateAnalysisSessionCreateModal } from "./components/CandidateAnalysisSessionCreateModal";
 import { CandidateBoard } from "./components/CandidateBoard";
 import { CandidateBulkImportModal } from "./components/CandidateBulkImportModal";
+import { CandidateDocumentBulkImportModal } from "./components/CandidateDocumentBulkImportModal";
 import { useCandidateData } from "./hooks/useCandidateData";
-import type { CandidateJobPosition } from "./types";
 
 export default function CandidatePage() {
   const {
@@ -33,6 +33,11 @@ export default function CandidatePage() {
     isBulkImportModalOpen,
     isLoadingSampleFolders,
     isBulkImporting,
+    isDocumentBulkImportModalOpen,
+    isDocumentBulkPreviewing,
+    isDocumentBulkImporting,
+    documentBulkPreview,
+    isDocumentBulkJobActive,
     isAnalysisSessionCreateModalOpen,
     isCreatingAnalysisSessions,
     setSearchInput,
@@ -45,12 +50,16 @@ export default function CandidatePage() {
     handleOpenCreate,
     handleOpenBulkImport,
     handleCloseBulkImport,
+    handleOpenDocumentBulkImport,
+    handleCloseDocumentBulkImport,
     handleOpenDetail,
     handleDelete,
     toggleSelect,
     selectAllOnPage,
     loadSampleFolders,
     handleBulkImport,
+    handleDocumentBulkPreview,
+    handleConfirmDocumentBulkImport,
     openAnalysisSessionCreateModal,
     closeAnalysisSessionCreateModal,
     createAnalysisSessions,
@@ -94,7 +103,7 @@ export default function CandidatePage() {
   const openCreatePromptProfileForJob = useCallback((presetTargetJob: string) => {
     setPromptForm(
       emptyPromptProfileForm({
-        targetJob: presetTargetJob as CandidateJobPosition,
+        targetJob: presetTargetJob,
       }),
     );
     setPromptFormError("");
@@ -181,6 +190,9 @@ export default function CandidatePage() {
         }}
         onCreate={handleOpenCreate}
         onOpenBulkImport={() => void handleOpenBulkImport()}
+        onOpenDocumentBulkImport={handleOpenDocumentBulkImport}
+        documentBulkPreview={documentBulkPreview}
+        isDocumentBulkJobActive={isDocumentBulkJobActive}
         onView={handleOpenDetail}
         onDelete={(row) => void handleDelete(row.id, row.name)}
         onToggleSelect={toggleSelect}
@@ -198,6 +210,18 @@ export default function CandidatePage() {
         onFolderChange={setSelectedSampleFolderName}
         onRefresh={() => void loadSampleFolders()}
         onSubmit={() => void handleBulkImport()}
+      />
+
+      <CandidateDocumentBulkImportModal
+        open={isDocumentBulkImportModalOpen}
+        isSubmitting={isDocumentBulkPreviewing}
+        isImporting={isDocumentBulkImporting}
+        preview={documentBulkPreview}
+        onClose={handleCloseDocumentBulkImport}
+        onPreview={(request) => void handleDocumentBulkPreview(request)}
+        onConfirmImport={(selectedRowIds) =>
+          void handleConfirmDocumentBulkImport(selectedRowIds)
+        }
       />
 
       <CandidateAnalysisSessionCreateModal

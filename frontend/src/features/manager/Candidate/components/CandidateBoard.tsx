@@ -9,6 +9,7 @@ import type {
   CandidateListResponse,
   CandidateResponse,
   CandidateStatisticsResponse,
+  DocumentBulkImportPreviewJobResponse,
 } from "../types";
 
 interface CandidateBoardProps {
@@ -28,6 +29,9 @@ interface CandidateBoardProps {
   onPageSizeChange: (size: number) => void;
   onCreate: () => void;
   onOpenBulkImport: () => void;
+  onOpenDocumentBulkImport: () => void;
+  documentBulkPreview: DocumentBulkImportPreviewJobResponse | null;
+  isDocumentBulkJobActive: boolean;
   onView: (candidateId: number) => void;
   onDelete: (row: CandidateResponse) => void;
   onToggleSelect: (candidateId: number) => void;
@@ -64,6 +68,9 @@ export function CandidateBoard({
   onPageSizeChange,
   onCreate,
   onOpenBulkImport,
+  onOpenDocumentBulkImport,
+  documentBulkPreview,
+  isDocumentBulkJobActive,
   onView,
   onDelete,
   onToggleSelect,
@@ -77,6 +84,7 @@ export function CandidateBoard({
   const jobSelected = Boolean(jobFilter.trim());
   const canCreateAnalysisSession =
     jobSelected && selectedIds.length > 0 && !isLoading;
+  const documentBulkSummary = documentBulkPreview?.summary;
 
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
   useLayoutEffect(() => {
@@ -96,7 +104,47 @@ export function CandidateBoard({
         </p>
       </div>
 
-      <div className="mb-4 grid gap-3 rounded-3xl border border-white/70 bg-(--panel-strong) p-4 xl:grid-cols-[minmax(0,1fr)_160px_160px_150px_100px_auto_auto_auto] xl:items-end">
+      {documentBulkPreview ? (
+        <button
+          type="button"
+          className={`mb-4 flex w-full flex-col gap-3 rounded-3xl border px-4 py-3 text-left transition md:flex-row md:items-center md:justify-between ${
+            isDocumentBulkJobActive
+              ? "border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
+              : documentBulkPreview.status === "FAILED"
+                ? "border-rose-200 bg-rose-50 hover:bg-rose-100"
+                : "border-slate-200 bg-white hover:bg-slate-50"
+          }`}
+          onClick={onOpenDocumentBulkImport}
+        >
+          <div>
+            <p className="text-sm font-bold text-slate-900">
+              문서 일괄등록 작업 #{documentBulkPreview.jobId} · {documentBulkPreview.status}
+            </p>
+            <p className="mt-1 text-xs text-slate-600">
+              {documentBulkPreview.currentStep || "작업 상태를 확인하는 중입니다."}
+              {documentBulkSummary
+                ? ` · ${documentBulkSummary.processedGroups}/${documentBulkSummary.totalGroups} 그룹 처리`
+                : ""}
+            </p>
+          </div>
+          <div className="min-w-48">
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+              <span>{documentBulkPreview.progress}%</span>
+              <span>{documentBulkPreview.rows.length} rows</span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/70">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all"
+                style={{
+                  width: `${Math.max(0, Math.min(100, documentBulkPreview.progress))}%`,
+                }}
+              />
+            </div>
+          </div>
+        </button>
+      ) : null}
+
+      <div className="mb-4 grid gap-3 rounded-3xl border border-white/70 bg-(--panel-strong) p-4 xl:grid-cols-[minmax(0,1fr)_160px_160px_150px_100px_auto_auto_auto_auto] xl:items-end">
         <label className="text-sm font-medium text-(--text)">
           검색어
           <input
@@ -184,6 +232,14 @@ export function CandidateBoard({
           onClick={onOpenBulkImport}
         >
           단체 지원자 등록
+        </button>
+
+        <button
+          type="button"
+          className={`${buttonClassName} border-teal-300 bg-teal-50 px-4 text-teal-900 hover:bg-teal-100`}
+          onClick={onOpenDocumentBulkImport}
+        >
+          문서 일괄등록
         </button>
 
         <button

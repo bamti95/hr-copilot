@@ -1,6 +1,4 @@
-import type { CandidateJobPosition } from "../Candidate/types";
-
-export const JOB_POSITION_LABEL: Record<CandidateJobPosition, string> = {
+export const JOB_POSITION_LABEL: Record<string, string> = {
   STRATEGY_PLANNING: "기획·전략",
   HR: "인사·HR",
   MARKETING: "마케팅·광고·MD",
@@ -8,16 +6,16 @@ export const JOB_POSITION_LABEL: Record<CandidateJobPosition, string> = {
   SALES: "영업",
 };
 
-const ORDER: CandidateJobPosition[] = [
+const ORDER = [
   "STRATEGY_PLANNING",
   "HR",
   "MARKETING",
   "AI_DEV_DATA",
   "SALES",
-];
+] as const;
 
 export const CANDIDATE_JOB_POSITION_OPTIONS: Array<{
-  value: CandidateJobPosition;
+  value: string;
   label: string;
 }> = ORDER.map((value) => ({
   value,
@@ -25,7 +23,13 @@ export const CANDIDATE_JOB_POSITION_OPTIONS: Array<{
 }));
 
 export function getJobPositionLabel(jobPosition: string): string {
-  return JOB_POSITION_LABEL[jobPosition as CandidateJobPosition] ?? jobPosition;
+  const trimmed = jobPosition.trim();
+  const suffixMatch = trimmed.match(/\s*(\((?:신입|경력)\))$/);
+  const suffix = suffixMatch?.[1] ?? "";
+  const basePosition = suffix ? trimmed.slice(0, -suffix.length).trim() : trimmed;
+  const label = JOB_POSITION_LABEL[basePosition as CandidateJobPosition] ?? basePosition;
+
+  return suffix ? `${label} ${suffix}` : label;
 }
 
 export function getJobAliasesForMatch(targetJob: string): Set<string> {
