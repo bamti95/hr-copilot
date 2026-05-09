@@ -12,6 +12,11 @@ from schemas.candidate import (
     CandidateBulkImportResponse,
     CandidateCreateRequest,
     CandidateDetailResponse,
+    DocumentBulkImportConfirmRequest,
+    DocumentBulkImportConfirmResponse,
+    DocumentBulkImportPreviewJobListResponse,
+    DocumentBulkImportPreviewJobResponse,
+    DocumentBulkImportPreviewStartResponse,
     CandidateDocumentDetailResponse,
     CandidateDeleteResponse,
     CandidateDocumentResponse,
@@ -26,6 +31,7 @@ from schemas.candidate import (
     CandidateUpdateRequest,
 )
 from services.candidate_service import CandidateService
+from services.document_bulk_import_service import DocumentBulkImportService
 
 router = APIRouter(prefix="/candidates", tags=["지원자 관리"])
 
@@ -85,6 +91,106 @@ async def bulk_import_candidates(
     db: AsyncSession = Depends(get_db),
 ) -> CandidateBulkImportResponse:
     return await CandidateService.bulk_import_candidates(
+        db=db,
+        request=request_body,
+        actor_id=current_manager.id,
+    )
+
+
+@router.post(
+    "/document-bulk/preview",
+    response_model=DocumentBulkImportPreviewStartResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="문서 ZIP 기반 지원자 일괄등록 미리보기",
+)
+async def preview_document_bulk_zip(
+    zip_file: Annotated[UploadFile, File(...)],
+    background_tasks: BackgroundTasks,
+    default_job_position: Annotated[str | None, Form()] = None,
+    default_apply_status: Annotated[str | None, Form()] = None,
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> DocumentBulkImportPreviewStartResponse:
+    response = await DocumentBulkImportService.start_preview_zip(
+        db=db,
+        zip_file=zip_file,
+        default_job_position=default_job_position,
+        default_apply_status=default_apply_status,
+        actor_id=current_manager.id,
+    )
+    background_tasks.add_task(DocumentBulkImportService.run_preview_job, response.job_id)
+    return response
+
+
+@router.post(
+    "/document-bulk/preview/files",
+    response_model=DocumentBulkImportPreviewStartResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="다중 파일 기반 지원자 일괄등록 미리보기",
+)
+async def preview_document_bulk_files(
+    files: Annotated[list[UploadFile], File(...)],
+    background_tasks: BackgroundTasks,
+    default_job_position: Annotated[str | None, Form()] = None,
+    default_apply_status: Annotated[str | None, Form()] = None,
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> DocumentBulkImportPreviewStartResponse:
+    response = await DocumentBulkImportService.start_preview_files(
+        db=db,
+        files=files,
+        default_job_position=default_job_position,
+        default_apply_status=default_apply_status,
+        actor_id=current_manager.id,
+    )
+    background_tasks.add_task(DocumentBulkImportService.run_preview_job, response.job_id)
+    return response
+
+
+@router.get(
+    "/document-bulk/preview/jobs",
+    response_model=DocumentBulkImportPreviewJobListResponse,
+    summary="문서 기반 지원자 일괄등록 미리보기 작업 목록 조회",
+)
+async def list_document_bulk_preview_jobs(
+    active_only: bool = Query(True),
+    limit: int = Query(10, ge=1, le=50),
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> DocumentBulkImportPreviewJobListResponse:
+    return await DocumentBulkImportService.list_preview_jobs(
+        db=db,
+        actor_id=current_manager.id,
+        active_only=active_only,
+        limit=limit,
+    )
+
+
+@router.get(
+    "/document-bulk/preview/jobs/{job_id}",
+    response_model=DocumentBulkImportPreviewJobResponse,
+    summary="문서 기반 지원자 일괄등록 미리보기 작업 조회",
+)
+async def get_document_bulk_preview_job(
+    job_id: int,
+    _: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> DocumentBulkImportPreviewJobResponse:
+    return await DocumentBulkImportService.get_preview_job(db=db, job_id=job_id)
+
+
+@router.post(
+    "/document-bulk/import",
+    response_model=DocumentBulkImportConfirmResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="문서 기반 지원자 일괄등록 확정 저장",
+)
+async def confirm_document_bulk_import(
+    request_body: DocumentBulkImportConfirmRequest,
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> DocumentBulkImportConfirmResponse:
+    return await DocumentBulkImportService.confirm_import(
         db=db,
         request=request_body,
         actor_id=current_manager.id,

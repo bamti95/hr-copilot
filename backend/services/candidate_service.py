@@ -25,7 +25,7 @@ from common.file_util import (
     strip_extension,
 )
 from core.database import AsyncSessionLocal
-from models.candidate import ApplyStatus, Candidate, JobPosition
+from models.candidate import ApplyStatus, Candidate
 from models.document import Document
 from repositories.candidate_repository import CandidateRepository
 from schemas.candidate import (
@@ -56,11 +56,11 @@ logger = logging.getLogger(__name__)
 DOCUMENT_EXTRACTION_CONCURRENCY = 2
 SAMPLE_DATA_ROOT = Path(__file__).resolve().parents[1] / "sample_data"
 _JOB_CODE_TO_POSITION = {
-    "STRATEGY_PLANNING": JobPosition.STRATEGY_PLANNING,
-    "HR": JobPosition.HR,
-    "MARKETING": JobPosition.MARKETING,
-    "AI_DEV_DATA": JobPosition.AI_DEV_DATA,
-    "SALES": JobPosition.SALES,
+    "STRATEGY_PLANNING": "STRATEGY_PLANNING",
+    "HR": "HR",
+    "MARKETING": "MARKETING",
+    "AI_DEV_DATA": "AI_DEV_DATA",
+    "SALES": "SALES",
 }
 _SAMPLE_DOCUMENT_SUFFIX_MAP = {
     "_bundle.pdf": "RESUME",
@@ -312,7 +312,7 @@ class CandidateService:
                     name=name,
                     email=email,
                     phone=phone,
-                    job_position=_JOB_CODE_TO_POSITION[job_code].value,
+                    job_position=_JOB_CODE_TO_POSITION[job_code],
                     birth_date=_build_birth_date(source_payload),
                     apply_status=ApplyStatus.APPLIED.value,
                     created_by=actor_id,
@@ -482,7 +482,7 @@ class CandidateService:
             name=request.name.strip(),
             email=str(request.email).strip(),
             phone=request.phone.strip(),
-            job_position=request.job_position.value if request.job_position else None,
+            job_position=request.job_position.strip() if request.job_position else None,
             birth_date=request.birth_date,
             apply_status=ApplyStatus.APPLIED.value,
             created_by=actor_id,
@@ -542,14 +542,9 @@ class CandidateService:
             for status_item in ApplyStatus
         ]
         job_rows = await repo.count_by_target_job_distinct_candidates()
-        job_map = {job: count for job, count in job_rows}
-        job_rows_sorted = [
-            (job_item.value, job_map.get(job_item.value, 0))
-            for job_item in JobPosition
-        ]
         by_target_job = [
             TargetJobCountRow(target_job=job, count=count)
-            for job, count in job_rows_sorted
+            for job, count in job_rows
         ]
         with_session = await repo.count_distinct_active_candidates_with_session()
         without_session = max(0, total - with_session)
@@ -638,7 +633,7 @@ class CandidateService:
         entity.name = request.name.strip()
         entity.email = str(request.email).strip()
         entity.phone = request.phone.strip()
-        entity.job_position = request.job_position.value if request.job_position else None
+        entity.job_position = request.job_position.strip() if request.job_position else None
         entity.birth_date = request.birth_date
         entity.updated_at = datetime.now(timezone.utc)
 
