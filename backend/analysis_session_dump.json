@@ -1,0 +1,1329 @@
+{
+  "session_count": 10,
+  "question_count": 50,
+  "sessions": [
+    {
+      "session_id": 150,
+      "candidate_id": 34,
+      "candidate_name": "김소현",
+      "created_at": "2026-04-30 09:00:45.561526+00:00",
+      "questions": [
+        {
+          "question_id": 375,
+          "category": "TECH",
+          "question_text": "FastAPI와 Docker로 모델 API를 배포하셨는데, 프로덕션에서 동시 요청·추론 지연·모니터링 문제를 어떻게 발견하고 해결하셨나요?",
+          "evaluation_guide": "구체적으로 봐야 할 내용: 동시성 처리(uvicorn/gunicorn 설정, worker 수 등), 비동기 설계 여부, 배치/실시간 추론 전략, 요청 큐잉·배칭, 타임아웃·리트라이 정책, 메트릭·로그·헬스체크 구성, 모니터링(예: Prometheus/Grafana) 및 문제 발생 시 대응 절차. 답변에 수치·구성값·사례가 포함되면 우수.",
+          "question_rationale": "포트폴리오 및 이력서에서 FastAPI·Docker 기반 모델 API 서버 설계·배포 경험을 밝힘(문서 #72, #70). 채용기준상 Python·FastAPI 필수 역량 검증과 함께 MLOps 운영 역량(모니터링·성능·로깅)을 실제 사례로 확인하기 위해 질문을 생성함.",
+          "document_evidence": [
+            "문서 #72: FastAPI와 Docker를 활용한 모델 API 서버 직접 설계 및 배포",
+            "문서 #70: FastAPI, Docker로 공정 센서 데이터 수집·전처리·모델 추론 자동화 플로우 구현"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "질문은 채용 직무( Python, FastAPI )와 문서 근거에 잘 맞으며 운영(MLOps) 전문성(동시성·모니터링·티켓 추적)을 검증하기에 적절합니다. 평가 가이드가 수치·설정값을 요구하도록 구체적이라 면접에서 실무 능력을 판별하기에 유효합니다. 문서 상 세부 설정값 근거가 부족하므로 후속 검증이 필요합니다.",
+          "risk_tags": [
+            "ProductionRisk",
+            "Scalability"
+          ],
+          "competency_tags": [
+            "Python",
+            "FastAPI",
+            "MLOps",
+            "Deployment"
+          ]
+        },
+        {
+          "question_id": 376,
+          "category": "TECH",
+          "question_text": "Spark 클러스터 장애로 데이터 누락이 발생했을 때 원인 분석 과정과, 분산 스케줄링 구조를 개선하며 내린 핵심 기술적 결정과 트레이드오프는 무엇이었나요?",
+          "evaluation_guide": "평가 포인트: 장애 원인 도출 방법(로그·메트릭·리소스 추적), 스케줄링 변경 내용(태스크 병렬성, 재시도, 체크포인트, 파티셔닝 등), 성능·신뢰성·운영 복잡도 간 트레이드오프 인식, 재발 방지 조치 및 검증 방법. 구체 수치·예시가 있으면 높은 점수.",
+          "question_rationale": "포트폴리오에서 Spark 클러스터 장애로 인한 데이터 누락을 로그 분석 및 분산 스케줄링 구조 개선으로 해결한 경험을 기술(문서 #72). 데이터 신뢰성·운영 안정성 관련 실무 판단 능력을 확인하기 위해 생성.",
+          "document_evidence": [
+            "문서 #72: Spark 클러스터 장애로 데이터 누락 발생 → 로그 분석 및 분산 스케줄링 구조 개선으로 해결",
+            "문서 #70: Spark 기반 배치 처리 시스템 구축 및 성능 개선 경험"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "Spark 장애 원인 분석·스케줄링 개선의 의사결정과 트레이드오프를 묻는 질문으로 데이터 엔지니어링 역량을 검증하기에 적합합니다. 평가 가이드가 로그·메트릭·구체 옵션을 요구해 답변의 구체성 판단에 도움됩니다. 다만 문서상 실제 장애의 근거(로그·메트릭 스냅샷)가 약해 후속 증빙이 필요합니다.",
+          "risk_tags": [
+            "DataLoss",
+            "OperationalRisk"
+          ],
+          "competency_tags": [
+            "Spark",
+            "ETL",
+            "Debugging",
+            "ProblemSolving"
+          ]
+        },
+        {
+          "question_id": 377,
+          "category": "JOB_SKILL",
+          "question_text": "현장 환경에서 데이터 스키마가 바뀌었을 때 가동 중단 없이 적응 로직을 추가하셨다 했는데, 스키마 변화 감지·버전 관리·무결성 보장을 어떻게 구현하셨나요?",
+          "evaluation_guide": "관심 포인트: 스키마 변경 감지(스키마 레지스트리·버전링·샘플링), 호환성 전략(후방/전방 호환, 변환 레이어), 데이터 유효성 검증(스키마 검증·테스트 케이스), 롤백·알림 정책, 자동화 수준과 현업 커뮤니케이션 방식. 예시 코드·플로우가 있으면 우수.",
+          "question_rationale": "포트폴리오와 경력기술서에 현장 환경 변화로 인한 스키마 변경에 적응 로직을 추가해 가동 중단 없이 운영했다고 명시(문서 #72, #71). 데이터 품질·무결성 유지 방식 확인을 위해 질문 생성.",
+          "document_evidence": [
+            "문서 #72: 현장 환경변화로 데이터 스키마 변경 발생 시 적응 로직 추가 → 가동 중단 없는 운영 달성",
+            "문서 #71: 공장 설비 IoT 데이터 취합·ETL 경험과 현업과의 협업을 통한 대응 경험"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "스키마 변경 대응(감지·버전관리·무결성 유지)을 묻는 질문으로 데이터 품질·운영 역량을 잘 점검할 수 있습니다. 평가 가이드는 검사·호환성·롤백 등 핵심 포인트를 명확히 제시합니다. 다만 문서에 사용한 도구/구현 예시가 부족하여 면접에서 구체적 증빙을 요구해야 합니다.",
+          "risk_tags": [
+            "DataIntegrity"
+          ],
+          "competency_tags": [
+            "DataEngineering",
+            "DataQuality",
+            "SchemaManagement",
+            "SQL"
+          ]
+        },
+        {
+          "question_id": 378,
+          "category": "COMMUNICATION",
+          "question_text": "현장 엔지니어·IT팀·매니저와 조율하며 우선순위를 정해 문제를 해결한 구체적 사례와 본인이 맡은 역할을 말씀해 주세요.",
+          "evaluation_guide": "평가 요소: 문제 정의·해결을 위한 이해관계자 식별, 조율 과정(데모·회의·자료), 우선순위 결정 기준(리스크·가치·노력), 결과(정량적·정성적 개선) 및 본인의 커뮤니케이션 역할. 갈등 조정 방식과 문서화 관행 제시 시 가산.",
+          "question_rationale": "이력서와 경력기술서에 현장 엔지니어, IT개발팀, 매니저와의 협업으로 구조적 이슈를 대응했다고 기재(문서 #70, #71). 팀 내 조율·소통 능력 및 우선순위 결정 역량을 평가하기 위해 질문함.",
+          "document_evidence": [
+            "문서 #71: 협업 방식에서 현장 엔지니어, IT개발팀, 매니저와의 협업으로 구조적 이슈에 빠르게 대응",
+            "문서 #70: 현업 테스트 운영 및 BI 도입 등 현업과의 협업 경험"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "이해관계자 조율·우선순위 결정 역량을 직접적으로 검증하는 좋은 행동면접 질문입니다. 평가 가이드는 검증 대상(문제정의·우선순위 기준·결과 지표)을 명확히 제시해 답변 해상도를 높입니다. 문서상 수치적 결과가 부족하므로 답변의 정량적 근거를 후속으로 요구하세요.",
+          "risk_tags": [
+            "CollaborationRisk"
+          ],
+          "competency_tags": [
+            "Communication",
+            "StakeholderManagement",
+            "Collaboration"
+          ]
+        },
+        {
+          "question_id": 379,
+          "category": "CULTURE_FIT",
+          "question_text": "사수가 없고 즉시 결과물을 내야 하는 환경에서, 부족한 기술을 빠르게 보완하고 우선순위를 정해 데드라인을 맞춘 경험과 방법을 설명해 주세요.",
+          "evaluation_guide": "검증 포인트: 학습 우선순위 설정 방식, 학습 자원(문서·강의·실험) 활용법, 시간 관리(데드라인 준수 사례), 스트레스·심리 회복 방법, 실제 결과물 예시. '스스로 학습해서 바로 적용한' 구체적 사례가 있으면 적합성 높음.",
+          "question_rationale": "부서 내부 상황(사수 없음, 높은 업무 강도)을 고려해 자생력·우선순위 관리·스트레스 대응 역량을 확인할 필요가 있음. 지원자는 공백기 이후 독학·부트캠프·프로젝트로 역량을 보강했다고 표기되어 있어 해당 경험 근거로 질문 생성(문서 #70, #71, 내부 운영 맥락 참조).",
+          "document_evidence": [
+            "문서 #70: 공백기 동안 온라인 학습·부트캠프·프로젝트로 실무 역량 보강",
+            "문서 #71: 즉각적 결과물 산출 경험과 독학으로 도구·프로세스 학습한 내용"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "부서 현실(사수 없음·높은 업무 강도)에 맞춘 자생력·우선순위·학습능력 검증 질문으로 적합합니다. 평가 가이드가 학습 우선순위·시간관리·성과 증빙을 요구해 실무 적합성 판단에 유효합니다. 다만 후보자 문서에 구체적 프로젝트·시간·성과 수치가 부족해 추가 증빙 요청이 필요합니다.",
+          "risk_tags": [
+            "AttritionRisk",
+            "WorkloadRisk"
+          ],
+          "competency_tags": [
+            "Autonomy",
+            "LearningAbility",
+            "TimeManagement",
+            "Resilience"
+          ]
+        }
+      ]
+    },
+    {
+      "session_id": 151,
+      "candidate_id": 33,
+      "candidate_name": "이세윤",
+      "created_at": "2026-04-30 09:00:45.573750+00:00",
+      "questions": [
+        {
+          "question_id": 405,
+          "category": "TECH",
+          "question_text": "Python과 FastAPI로 학습된 모델을 서비스로 배포할 때 API 구조와 핵심 컴포넌트(모델 직렬화·입력 검증·로깅·헬스체크 등) 및 재현성 확보 방안을 간단히 설명해 주세요.",
+          "evaluation_guide": "좋은 답변에서는 모델 직렬화(joblib/pickle/ONNX), 입력 스키마 검증(pydantic 등), 로깅/모니터링, 헬스체크·버전관리, 컨테이너화(Docker)와 의존성 관리(requirements.txt), 배포 자동화(CI/CD 또는 간단한 스크립트)를 명확히 언급해야 함. 구현 우선순위와 트레이드오프(지연·용량·보안)에 대해 간단히 언급하면 높은 점수.",
+          "question_rationale": "지원자는 이직 준비 과정에서 FastAPI, Docker, requirements.txt 등으로 환경 재현성 실습을 진행했다고 기술했습니다(이력서). 채용 기준에 FastAPI·Python 역량이 필수이므로, 모델 서빙 및 재현성 관련 실무 설계를 확인해야 합니다.",
+          "document_evidence": [
+            "AI_개발_데이터_07_이세윤_bundle (이력서) — FastAPI, Docker 언급",
+            "AI_개발_데이터_07_이세윤_portfolio — 모델 시범 적용 및 재현성 관리(requirements.txt) 관련 경험"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "질문은 채용 기준( Python, FastAPI )과 직접적으로 연관되며, 문서 근거가 있어 응답 검증이 가능함. 실무 설계·트레이드오프 확인에 적합해 면접 활용도가 높음.",
+          "risk_tags": [
+            "incomplete_service_experience",
+            "deployment_risk"
+          ],
+          "competency_tags": [
+            "Python",
+            "FastAPI",
+            "Deployment",
+            "Reproducibility"
+          ]
+        },
+        {
+          "question_id": 406,
+          "category": "TECH",
+          "question_text": "이상거래 탐지 프로젝트에서 라벨이 불완전했을 때 라벨 품질을 개선하거나 보완하기 위해 어떤 접근(수동규칙·약한지도·검증절차 등)을 택했고, 그 이유와 효과는 무엇이었나요?",
+          "evaluation_guide": "기대 답변은 라벨링 규칙 설계 근거, 검증(샘플 검사·교차검증·agreement 지표), 약한지도(heuristic/labeling functions)나 active learning 적용 여부, 라벨 품질 개선에 따른 성능 변화(혹은 검증 지표)를 제시하는 것. 단순 서술보다 구체적 사례(숫자·프로세스)가 있으면 좋음.",
+          "question_rationale": "포트폴리오에 라벨 불완전성 문제를 해결하기 위해 수동 라벨링 규칙을 만들고 검증 과정을 수행했다고 기술되어 있어, 라벨링 전략과 검증 방법의 구체성을 확인합니다.",
+          "document_evidence": [
+            "AI_개발_데이터_07_이세윤_portfolio — 라벨링 방식 정의 및 수동 라벨링 규칙 적용",
+            "AI_개발_데이터_07_이세윤_bundle (프로젝트 요약) — 이상거래 탐지 데이터셋 구축 경험"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "라벨 품질 문제는 데이터 직무 핵심이며, 문서(포트폴리오)에 관련 경험이 있어 답변 근거 확인이 가능함. follow-up으로 정량적 지표를 요구하는 흐름도 적절함.",
+          "risk_tags": [
+            "label_quality",
+            "overfitting_to_rules"
+          ],
+          "competency_tags": [
+            "Data_labeling",
+            "Feature_engineering",
+            "Validation",
+            "Problem_solving"
+          ]
+        },
+        {
+          "question_id": 407,
+          "category": "EXPERIENCE",
+          "question_text": "부트캠프·Kaggle에서 낸 모델(F1 0.63)의 핵심 전처리·피처엔지니어링 결정과 그 결정이 성능에 미친 영향(예: 샘플링, 인코딩, 스케일링 등)을 구체적으로 설명해 주세요.",
+          "evaluation_guide": "응답에서 어떤 전처리(결측치 처리, 이상치 처리), 인코딩·스케일링 방식, 샘플링 전략(언더/오버샘플링, SMOTE 등), 피처 선택 기준(feature importance, 상관관계 검토), 그리고 각 결정이 성능에 미친 영향을 수치나 비교 방식으로 설명하면 높은 점수. 단순 기술 나열은 낮게 평가.",
+          "question_rationale": "이력서와 포트폴리오에 Kaggle 성과(F1 0.63)와 피처 엔지니어링, 샘플링·오버샘플링 적용 경험이 있으므로, 실무에서의 의사결정 근거와 성능 영향도를 확인합니다.",
+          "document_evidence": [
+            "AI_개발_데이터_07_이세윤_portfolio — 피처 엔지니어링·샘플링 설계",
+            "AI_개발_데이터_07_이세윤_bundle (프로젝트 요약) — Kaggle 성과 및 모델 실험"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "Kaggle 성과와 피처 엔지니어링 관련 실무 능력을 검증하기에 적절한 질문임. 후보 이력과 연계되어 있고, follow-up으로 ablation 수치 요구가 가능해 검증력이 있음.",
+          "risk_tags": [
+            "limited_experiment_analysis"
+          ],
+          "competency_tags": [
+            "Feature_engineering",
+            "Model_evaluation",
+            "Data_processing",
+            "Experimentation"
+          ]
+        },
+        {
+          "question_id": 408,
+          "category": "CULTURE_FIT",
+          "question_text": "사수 없이 과제를 수행할 때 우선순위를 어떻게 정하시나요? 최근 사례를 핵심만 2분 내로 요약해(문제 분해·학습·프로토타입·도움 요청 시점 포함) 말씀해 주세요. 상세 코드·로그 증빙은 포트폴리오 링크나 이메일로 제출하실 수 있습니다.",
+          "evaluation_guide": "좋은 답변은 문제 분해, 우선순위 판단 기준(비즈니스 임팩트·리스크·소요시간·검증가능성)을 명확히 제시하고, 학습 자료 선정·빠른 프로토타입 제작·검증 루프를 사례 중심으로 설명해야 함. '언제·어떤 근거로' 도움을 요청했는지와 그때 제출한 증빙(요약된 코드 스니펫·커밋 해시·스크린샷·로그 또는 포트폴리오 링크·이메일 제출 계획)을 함께 제시하면 가산점. 면접 중 상세 원문 제출이 어렵다면, 요약된 증빙(핵심 코드 5~10라인, 결과 스크린샷, 커밋 해시)을 제출하겠다는 계획으로도 허용함.",
+          "question_rationale": "지원자는 공백기 동안 독학과 부트캠프·오픈 프로젝트로 실무 역량을 쌓았다고 밝히며 자발적 학습 역량을 강조함. 부서 현실상 사수 부재 및 자생력이 요구되므로 자율성·우선순위 판단 역량을 확인합니다.",
+          "document_evidence": [
+            "AI_개발_데이터_07_이세윤_bundle (자기소개서) — 공백기 동안 독학 및 부트캠프 수료",
+            "AI_개발_데이터_07_이세윤_career_description — 빠르게 적응하고 배우는 성향"
+          ],
+          "score": 3,
+          "review_status": "needs_revision",
+          "review_reason": "핵심 주제(사수 부재 시 우선순위·자율성)는 매우 중요하나, 현 문항과 가이드에서 면접 실무성과 증빙 요구가 다소 모호하거나 인터뷰 흐름상 부담(증빙 제출 방식 등)이 될 여지가 있어 개선 필요. 이미 요청된 수정 항목(question_text, follow_up_question, evaluation_guide)을 반영해 더 명확한 기대치와 증빙 범위를 제시해야 함.",
+          "risk_tags": [
+            "low_autonomy",
+            "overwork_tendency"
+          ],
+          "competency_tags": [
+            "Self-learning",
+            "Prioritization",
+            "Autonomy",
+            "Problem_solving"
+          ]
+        },
+        {
+          "question_id": 409,
+          "category": "JOB_SKILL",
+          "question_text": "과거 SAP·Tableau·Python을 연동해 리포트 자동화를 구현하셨는데, 자동화 코드의 재현성·유지보수성을 높이기 위해 어떤 코드 구조·환경관리·테스트를 적용하셨나요?",
+          "evaluation_guide": "기대 답변에는 모듈화·함수화, config/환경 분리(env vars, config files), 의존성 관리(requirements.txt, virtualenv), 스케줄러(Airflow 등) 도입, 간단한 테스트(유닛/통합), 로깅·모니터링·오류처리 전략이 포함되어야 함. 구체 툴·예시와 운영 시 고려한 사례가 있으면 좋음.",
+          "question_rationale": "경영기획팀에서 여러 데이터 소스 연동과 리포트 자동화를 주도했다고 기술했고, 포트폴리오에서 requirements.txt와 코드 모듈화로 재현성 향상 경험을 언급함. 자동화 유지보수 역량을 확인할 필요가 있음.",
+          "document_evidence": [
+            "AI_개발_데이터_07_이세윤_bundle (경력기술서) — KPI 리포트 자동화, SAP·Tableau 연동 경험",
+            "AI_개발_데이터_07_이세윤_portfolio — 코드 모듈화 및 requirements.txt 적용 경험"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "SAP/Tableau/Python 연동 및 리포트 자동화 관련 경험을 적절히 검증하는 질문으로, 문서 근거와 연계되어 있으며 follow-up으로 장애 대응 등을 묻는 흐름이 타당함.",
+          "risk_tags": [
+            "maintenance_risk"
+          ],
+          "competency_tags": [
+            "Automation",
+            "Code_quality",
+            "Environment_management",
+            "Testing"
+          ]
+        }
+      ]
+    },
+    {
+      "session_id": 152,
+      "candidate_id": 40,
+      "candidate_name": "조민수",
+      "created_at": "2026-04-30 09:00:45.544936+00:00",
+      "questions": [
+        {
+          "question_id": 420,
+          "category": "TECH",
+          "question_text": "모델을 프로덕션 API로 배포해 본 경험이 있나요? FastAPI(또는 유사 프레임워크)로 엔드포인트 설계·모델 직렬화·성능 고려사항을 어떻게 결정했는지 설명해 주세요.",
+          "evaluation_guide": "좋은 답변: FastAPI(또는 유사 프레임워크) 사용 사례(엔드포인트 설계: 입력/출력 스키마, pydantic 등), 모델 직렬화 방법(joblib/pickle/ONNX 등) 선택 근거, 동시성·성능 고려(uvicorn/gunicorn 워커 설정·로드밸런싱), 컨테이너화·배포·모니터링(헬스체크·로그) 예시를 구체적으로 제시. 경험이 없다면 Docker·CI·배치 파이프라인 등 유사 경험과 빠른 실습 계획(단계별) 제시 시 보완 가능. 추상적이거나 용어 나열만 하면 구현 세부(예: Dockerfile 핵심, 워커 수 산정 근거)를 요구할 것.",
+          "question_rationale": "채용 기준에 FastAPI·Python이 필수 스택으로 포함되어 있어, 지원자의 포트폴리오·이력서에서 실제 API 배포·서빙 경험 유무와 FastAPI 적용 가능성을 확인하기 위해 질문을 설계함. 운영 관점(성능·직렬화·버전관리·모니터링) 설명 능력을 평가.",
+          "document_evidence": [
+            "문서 #88 '보유 역량' 항목: Python / Pandas / SQL / scikit-learn / Airflow / Docker",
+            "문서 #90 포트폴리오: End-to-End 데이터 수집부터 배치 파이프라인 자동화 및 결과 시각화 경험 기술"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "직무(파이프라인·MLOps)와 필수 스택(FastAPI·Python)에 직접 연관되는 실무 질문으로, 검증 가능한 구현 세부(엔드포인트 설계·직렬화·성능 설정)를 요구해 유효한 검증력이 있음. 다만 문서상 후보자의 FastAPI 직접 경험이 불명확하므로 후속 증빙 질문과 병행하면 좋음.",
+          "risk_tags": [
+            "lack_of_experience",
+            "tech_gap"
+          ],
+          "competency_tags": [
+            "TECH",
+            "MLOPS",
+            "IMPLEMENTATION"
+          ]
+        },
+        {
+          "question_id": 421,
+          "category": "EXPERIENCE",
+          "question_text": "식당 예약 예측 프로젝트에서 파이프라인의 스케줄링, 에러 처리·재시도·idempotency 설계와 장애 복구 절차를 구체적으로 설명해 주세요.",
+          "evaluation_guide": "좋은 답변: 파이프라인 전체 구성(스케줄 빈도·DAG 구조), 각 Task의 재시도 정책(retries·retry_delay·백오프), 에러 감지 방식(로그·SLA·알림), idempotency 설계(중복 키·업서트 정책), 알림 체계와 장애 시 자동·수동 복구 절차(스냅샷·롤백 기준)을 구체적 사례나 설정값 예시(Airflow 설정 샘플, 알림 콜백 흐름)로 설명해야 함. 모호하면 Airflow 설정 예시나 DB upsert 쿼리 샘플을 추가로 요청.",
+          "question_rationale": "지원자가 포트폴리오에서 End-to-End 파이프라인 구축·자동화·에러 로그·장애복구 루틴을 언급했으므로, 실제 운영성(스케줄·재시도·로그·알림·롤백 등) 설계 능력과 Airflow/Docker 경험 적용 능력을 검증하기 위해 질문을 구성함.",
+          "document_evidence": [
+            "문서 #90 포트폴리오: 배치 파이프라인 자동화, 에러 로그 집중 관리, 장애 시 복구 루틴 마련 기술",
+            "문서 #88 '보유 역량' 항목: Airflow / Docker"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "Airflow·배치 파이프라인 운영 능력을 직접 검증하는 구체적 질문으로, 문서(포트폴리오)에 기재된 경험과 잘 연결됨. 설정값·코드·쿼리 예시를 요구해 실제 적용 역량을 분명히 판별할 수 있음.",
+          "risk_tags": [
+            "overclaim",
+            "operational_risk"
+          ],
+          "competency_tags": [
+            "MLOPS",
+            "OPERATIONS",
+            "PROBLEM_SOLVING"
+          ]
+        },
+        {
+          "question_id": 422,
+          "category": "CULTURE_FIT",
+          "question_text": "마감 압박 상황에서 본인이 단독으로 프로젝트를 완료한 최근 사례를 말씀해 주세요. 우선순위 결정 근거, 피크 기간의 업무 집중 방식(핵심 행동 2가지 및 하루 작업 블록 예시), 체력·심리 관리 방법과 정량적 성과를 간단히 설명해 주세요.",
+          "evaluation_guide": "필수 포함 항목(답변에서 반드시 제시): 1) 사례명·기간(예: 프로젝트명·월), 2) 우선순위 결정 기준(핵심 지표·납기·실사용 가치 등, 한두 문장), 3) 피크 기간의 업무 집중 방식(반드시 '핵심 행동 2가지'와 '하루 작업 블록 예시'로 설명), 4) 체력·심리 관리 방법(짧게), 5) 정량적 성과(예: RMSE 개선치, 자동화로 절감한 작업 범주 등) 및 지속 가능성 평가. 추가 확인 항목(면접 시 보충 가능): 본인이 소유한 산출물(리포지터리 경로·주요 파일명·리포트·대시보드명), 산출물의 검토·승인자(직책 수준), 사용 도구(Python 등), 피크 강도에 대한 대략 분류(예: 보통/높음/매우 높음)와 필요 시 증빙 제공 가능 여부. 면접관 지침: 민감한 정확한 주간 시간(숫자)을 직접 요구하지 말고, 대신 하루 작업 블록·핵심 행동·피크 강도 분류로 확인하라. 답변이 추상적이면 리포지터리 경로·대시보드명·검토자 직책 수준을 제시하도록 요청하라.",
+          "question_rationale": "내부 운영 맥락(단독 책임·마감 압박 등)과 지원자의 부트캠프·독학 경험을 바탕으로 직무 적응력·우선순위 설정 능력·지구력·자기관리 역량을 확인하기 위해 설계함. 면접에서는 근로시간 수치 요구를 피하고, 사례의 기간·업무량·대응 전략 중심으로 검증하려는 목적임.",
+          "document_evidence": [
+            "내부 메모 Q1/Q2/Q3: 몰입 중심·사수 부재·상명하복 등 팀 운영 특성 (면접 시 내부 맥락을 그대로 인용하지 말 것)",
+            "문서 #88 '실패 및 학습 경험' 및 자기소개: 부트캠프 압박 극복·독학으로 역량을 쌓은 경험",
+            "문서 #90 포트폴리오: 식당 예약 예측 프로젝트(파이프라인 자동화, RMSE 개선 등) 관련 기술"
+          ],
+          "score": 3,
+          "review_status": "needs_revision",
+          "review_reason": "직무 적합성·지구력 검증에 유용하나, 현재 문항과 가이드가 근로시간·세부 일정 요구 및 내부 운영 맥락을 노출하는 요소를 포함해 면접상 민감·과도한 정보(정확한 근로시간 수치, 리포지터리 경로 등)를 요구할 위험이 있음. 질문을 재구성해 민감 정보를 피하고, 증빙은 '제공 가능 여부' 수준으로 묻되 구체적 산출물명(예: 대시보드명, 주요 파일명)만 요구하도록 조정 권장.",
+          "risk_tags": [
+            "workload_tolerance",
+            "cultural_mismatch"
+          ],
+          "competency_tags": [
+            "RESILIENCE",
+            "SELF_LEARNING",
+            "CULTURE_FIT"
+          ]
+        },
+        {
+          "question_id": 423,
+          "category": "COMMUNICATION",
+          "question_text": "유통사 재직 시 IT·기획·현업 간 조율 경험이 있다고 하셨는데, 기술적 제약이 있을 때 이해관계자와 우선순위를 조정하고 합의를 이끌어낸 구체적 사례를 말씀해 주세요.",
+          "evaluation_guide": "좋은 답변: 문제 발생 배경, 각 이해관계자의 핵심 요구사항, 후보자가 제시한 대안(트레이드오프 포함), 설득 방식(데이터·프로토타입·비용·일정 근거), 최종 합의 결과(누가 승인했는지·일정·범위 변경 내용)와 정량적 성과를 구체적으로 설명할 것. 답변이 모호하면 관련 문서·프로토타입 예시 또는 승인자 직책 수준을 요청해 확인하라.",
+          "question_rationale": "경력기술서에서 지원자가 부서 간 요구사항 조율·중재 경험을 강조했으므로, 실제 갈등 해결 과정·우선순위 산정 방식과 설득 방법을 검증하기 위해 설계함.",
+          "document_evidence": [
+            "문서 #89 '협업 방식': IT팀·기획팀과 협업하며 요구사항 수집 및 실무 피드백 조율 경험 기술",
+            "문서 #88 '협업 및 갈등 경험': 각 부서 입장 정리·중재 사례 기술"
+          ],
+          "score": 5,
+          "review_status": "approved",
+          "review_reason": "이해관계자 조율·설득 역량을 구체적 근거(데이터·프로토타입·승인자·정량적 성과)로 확인하도록 설계되어 있으며, 문서 근거와도 일치함. 면접에서 실무형 커뮤니케이션 역량을 잘 검증할 수 있음.",
+          "risk_tags": [
+            "communication_risk"
+          ],
+          "competency_tags": [
+            "COMMUNICATION",
+            "STAKEHOLDER_MANAGEMENT",
+            "NEGOTIATION"
+          ]
+        },
+        {
+          "question_id": 424,
+          "category": "TECH",
+          "question_text": "운영 중인 모델 성능 저하(데이터 드리프트 등)를 감지하고 대응한 경험이 있나요? 없다면 실서비스에서 모니터링·알림·재학습 파이프라인을 어떻게 설계하실지 설명해 주세요.",
+          "evaluation_guide": "좋은 답변: 모니터링 지표(RMSE 등 성능지표·잔차 분포·입력 피처 분포(PSI/KS) 등), 임계값 설정 방법(예: 허용 오차·알림 임계치), 자동화된 데이터 검증(스키마·범위 체크), 알림·대시보드 구성, 자동/수동 재학습 워크플로(트리거 조건·검증 절차·스테이징 테스트·롤백 기준) 등을 사례나 설계도로 제시할 것. 추상적이면 임계값 예시(RMSE 변화량, PSI 기준 등), 주기, 트리거 조건과 쿼리/지표명 예시를 요구해 확인하라.",
+          "question_rationale": "지원서에 MLOps·모델 모니터링에 도전한 경험을 기재했고 포트폴리오에 에러 로그·안정성 목표를 언급했으므로, 운영 관점의 모니터링·재학습 설계 능력을 확인하기 위해 질문을 구성함.",
+          "document_evidence": [
+            "문서 #90 포트폴리오: 에러 로그 집중 관리 및 실무 수준 안정성 목표 관련 기술",
+            "문서 #88 '입사 후 포부' 및 '보유 역량': MLOps와 모델 성능 모니터링에 대한 학습 의지와 관련 스킬 기재"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "모델 운영·모니터링·재학습 워크플로를 점검하기 위한 핵심 질문으로, 포트폴리오의 목표와 일치함. 임계값·알림 룰·DAG 단계 등 구체적 수치를 요구해 실무 적용 능력을 효과적으로 검증할 수 있음. 후보자의 직접 운영 경험이 불명확하므로 후속 심층질문과 실례 요청을 병행하면 좋음.",
+          "risk_tags": [
+            "tech_risk",
+            "lack_of_monitoring_experience"
+          ],
+          "competency_tags": [
+            "MLOPS",
+            "MONITORING",
+            "PROBLEM_SOLVING"
+          ]
+        }
+      ]
+    },
+    {
+      "session_id": 153,
+      "candidate_id": 39,
+      "candidate_name": "김민재",
+      "created_at": "2026-04-30 09:00:45.571850+00:00",
+      "questions": [
+        {
+          "question_id": 380,
+          "category": "TECH",
+          "question_text": "FastAPI로 실시간 예측 API를 운영할 때 응답속도(레이턴시)와 모델 정확도 사이의 트레이드오프를 어떻게 판단·조정했는지 구체 사례와 수치로 설명해 주세요.",
+          "evaluation_guide": "좋은 답변은(1) 성능·정확도 간 구체적 트레이드오프 예시(예: 모델 경량화로 응답속도 개선 시 F1 변화 수치), (2) 적용한 기술(모델 경량화, 서빙 옵션, 캐싱, 배치 vs 실시간), (3) 의사결정 기준(서비스 SLA·비즈니스 영향), (4) 검증 방법(벤치마크 수치, A/B 등)을 포함해야 함.",
+          "question_rationale": "포트폴리오와 이력서에서 FastAPI 기반 예측 API 개발 및 응답속도 최적화 경험(문서 #87, #85)을 근거로, 실서비스 관점의 성능·정확도 균형을 평가하는 기술 질문을 생성함. 또한 부서의 운영 강도·운영 자동화 요구(Q1,Q2)를 반영해 실무 우선순위 판단 능력 확인 목적.",
+          "document_evidence": [
+            "문서 #87: '예측 API 평균 응답속도 250ms 기록'",
+            "문서 #87: 'XGBoost 기반 분류 모델 개발 및 예측 API 구현'",
+            "문서 #85: 'FastAPI 자격/경험 표기'"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "질문이 직무·포트폴리오 근거와 강하게 연결되어 있으며( FastAPI, XGBoost, 응답속도 수치) 답변을 수치·방법론으로 검증할 수 있는 높은 검증력을 가짐. 면접 활용성이 우수함.",
+          "risk_tags": [
+            "latency",
+            "model_accuracy",
+            "deployment"
+          ],
+          "competency_tags": [
+            "FastAPI",
+            "model_serving",
+            "performance_tuning"
+          ]
+        },
+        {
+          "question_id": 381,
+          "category": "JOB_SKILL",
+          "question_text": "약 10만 건 규모의 거래 데이터 크롤링·전처리 과정에서 중복·노이즈를 발견했을 때 파이프라인 차원에서 어떻게 검증·정리하고 자동화했는지 단계별로 설명해 주세요.",
+          "evaluation_guide": "우수 답변은(1) 데이터 수집 단계의 예외처리 및 스키마 설계(무결성 체크포인트), (2) 중복 검출·정제 알고리즘 또는 기준, (3) 자동화 도구(스케줄러, Airflow 등) 및 테스트·롤백 절차, (4) 데이터 품질 지표(정합성 비율 등)를 제시해야 함.",
+          "question_rationale": "포트폴리오에서 대용량 크롤링과 데이터 정제·검증 파이프라인 구축 경험을 언급(문서 #87, #85). 데이터 품질관리와 자동화 능력은 해당 직무의 핵심 역량이므로, 구체적 절차와 도구 사용을 확인하기 위한 질문.",
+          "document_evidence": [
+            "문서 #87: '거래 데이터 크롤링 및 전처리 자동화 스크립트 개발'",
+            "문서 #87: '중복/노이즈 문제 대응: 데이터 스키마 정리 및 검증 파이프라인 도입'",
+            "문서 #85: '대용량 텍스트 데이터 처리 경험'"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "대용량 데이터 파이프라인 관련 핵심 역량(크롤링·정제·자동화)을 직접 검증할 수 있는 구체적 단계·지표 요구로 직무 적합도가 높음.",
+          "risk_tags": [
+            "data_quality",
+            "data_loss",
+            "scale"
+          ],
+          "competency_tags": [
+            "data_engineering",
+            "automation",
+            "Python"
+          ]
+        },
+        {
+          "question_id": 382,
+          "category": "RISK",
+          "question_text": "AWS EC2에서 메모리 부족으로 서비스 장애가 발생했을 때 현장 우선 조치와 그 후 근본 원인 분석·영구 대책 수립 과정을 순서대로 설명해 주세요.",
+          "evaluation_guide": "모범 답변은(1) 장애 인지·격리·임시 복구(예: 서비스 리스타트, 스케일링) 순서, (2) 로그·모니터링 지표(메모리·GC·메트릭) 분석 방법, (3) 근본 원인(메모리 누수·과도한 배치·모델 사이즈 등)과 장기 대책(리소스 설정·자동 스케일링·모니터링 알림), (4) 재현·검증 절차 포함 여부를 확인.",
+          "question_rationale": "포트폴리오에 'AWS EC2 메모리 부족' 장애 대응 및 자동화 스크립트 적용 경험이 명시(문서 #87). 운영 중 장애 대응 역량과 로그·모니터링 활용 능력, 근본 원인 분석·재발방지 조치 능력을 확인하기 위해 설계함. 내부 운영 환경의 높은 가동성과 신속한 대응 요구(Q1,Q3)를 반영.",
+          "document_evidence": [
+            "문서 #87: 'AWS EC2 기반 배포… 메모리 부족 발생: swap 설정 및 서버 리스타트 자동화 스크립트로 대응'",
+            "문서 #86: '장애 발생시 신속한 원인 파악 및 임시 유닛테스트 제안 등으로 협업 시너지를 높였음'"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "운영·온콜 역량(장애 대응, 근본원인 분석, 재발 방지)을 검증하기에 적절한 순서·검증 항목을 묻고 있어 실무평가에 유효함.",
+          "risk_tags": [
+            "operational_risk",
+            "incident_response",
+            "availability"
+          ],
+          "competency_tags": [
+            "oncall",
+            "monitoring",
+            "troubleshooting"
+          ]
+        },
+        {
+          "question_id": 383,
+          "category": "LEADERSHIP",
+          "question_text": "팀장으로서 모델 복잡도(성능 향상)와 배포 일정(납기) 간 충돌이 있었을 때 어떻게 우선순위를 정하고 팀 역할을 재조정했는지 구체 사례와 결과를 말씀해 주세요.",
+          "evaluation_guide": "기대 답변은(1) 문제 상황 설명과 이해관계자 고려(비즈니스 영향·리스크), (2) 대안 제시(경량 모델·임시 서빙·퍼포먼스 가드레일), (3) 역할 재분배·스케줄 조정 방식, (4) 결과(납기 준수 여부·성능 영향·교훈)를 구체 수치나 사례로 제시하는지 확인.",
+          "question_rationale": "경력기술서와 이력서에서 팀장 역할·일정 관리·의사결정 경험을 강조(문서 #86, #85). 프로젝트 진행 중 발생하는 트레이드오프 상황에서 리더십·조율 능력과 비즈니스 우선순위 판단을 평가하기 위해 질문을 구성함. 내부는 속도 중시 문화(Q3)와 유연 협업(Q4)을 고려.",
+          "document_evidence": [
+            "문서 #86: '팀장 및 주력 데이터 엔지니어… 일정 준수 및 실험 리포트 관리'",
+            "문서 #85: '부트캠프 팀 프로젝트에서 팀장으로 일정 관리·의사결정·갈등 중재 수행'",
+            "문서 #87: '모델 복잡도와 배포 일정 간 균형 논의 사례 언급'"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "리더십·우선순위 결정 능력과 역할 재조정 역량을 검증하는 데 적합하며, 내부 속도 중시·유연 협업 맥락을 반영함. 다만 구체적 인원·성과 수치 보강이 필요함.",
+          "risk_tags": [
+            "delivery_risk",
+            "project_management",
+            "stakeholder"
+          ],
+          "competency_tags": [
+            "leadership",
+            "prioritization",
+            "communication"
+          ]
+        },
+        {
+          "question_id": 384,
+          "category": "COMMUNICATION",
+          "question_text": "사수가 없고 스스로 학습해 바로 결과물을 내야 하는 상황에서 새로운 기술을 익히고 실무에 적용한 구체적 학습 전략과 검증 절차를 예시로 설명해 주세요.",
+          "evaluation_guide": "우수 답변은(1) 구체적 학습 루틴(자료·코스·실습 노트), (2) 적용 사례와 시행착오, (3) 검증 절차(유닛테스트·모킹·샘플 테스트), (4) 학습 성과를 빠르게 서비스화한 결과(성과 지표나 배포 사례)를 포함해야 함. 자율성·재현 가능성·리스크 인지 여부를 중점 평가.",
+          "question_rationale": "이력서와 자기소개서에서 비전공자로 빠르게 기술을 습득하고 독자적으로 배포·운영까지 수행한 경험을 강조(문서 #85, #86). 부서의 '사수 부재·자생력' 요구(Q2)와 높은 업무 강도(Q1)를 고려해 자율 학습·검증 능력을 확인하려는 질문임.",
+          "document_evidence": [
+            "문서 #85: '비전공자로 빠르게 데이터와 AI 역량을 쌓음… 스스로 학습해 실무 산출물 작성'",
+            "문서 #86: '입사 즉시 독학으로 결과물을 내야 하며… 실무 감각을 쌓았다'",
+            "문서 #87: 'Docker·MLflow·MLOps 적용 등 자가 학습으로 파이프라인 구성'"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "사수 부재·자생력 요구가 강한 조직 특성(Q2)에 잘 부합하는 질문으로, 학습 루틴·검증 절차·적용 사례를 구체적으로 검증할 수 있음.",
+          "risk_tags": [
+            "onboarding_risk",
+            "knowledge_gap",
+            "self_management"
+          ],
+          "competency_tags": [
+            "self_learning",
+            "testing",
+            "MLOps"
+          ]
+        }
+      ]
+    },
+    {
+      "session_id": 154,
+      "candidate_id": 31,
+      "candidate_name": "박채은",
+      "created_at": "2026-04-30 09:00:46.344194+00:00",
+      "questions": [
+        {
+          "question_id": 395,
+          "category": "TECH",
+          "question_text": "프로젝트 코드의 재현성과 유지보수성을 위해 데이터 파이프라인과 실험 관리를 어떻게 구조화했는지 핵심 설계(폴더 구조, 설정 관리, 실험로그 등)로 설명해 주세요.",
+          "evaluation_guide": "우수: 버전·환경 관리(venv/requirements, Docker), 모듈화된 파이프라인, 시드 고정·데이터 분할 명시, 실험 추적(MLOps/로그, 엑페리먼트 툴)과 재현 매뉴얼 제시. 보통: 일부 모듈화와 기본 의존성 관리, 수동 실험기록. 미흡: 재현성 고려 미흡, 일회성 스크립트 의존.",
+          "question_rationale": "지원서류에서 후보자가 '코드 구조화·보고서 작성'과 '재현성'을 강조했음(포트폴리오·이력서). 채용기준상 Python 기반 작업 품질(모듈화, 의존성 관리, 실험 추적)이 중요하므로 실무 수준의 재현성·코드 관리 역량을 확인하기 위함.",
+          "document_evidence": [
+            "문서 #63: AI_개발_데이터_05_박채은_portfolio (코드 구조화 및 결과 재현성 강조)",
+            "문서 #61: AI_개발_데이터_05_박채은_bundle (핵심 역량에 코드 품질·재현성 명시)"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "질문은 직무·서류 근거에 잘 맞춰져 있고, 실무 재현성 확인을 위한 후속(아티팩트/명령어)도 구체적이라 면접에서 바로 사용 가능함.",
+          "risk_tags": [
+            "REPRODUCIBILITY",
+            "MAINTAINABILITY"
+          ],
+          "competency_tags": [
+            "Python",
+            "Code_Quality",
+            "Reproducibility"
+          ]
+        },
+        {
+          "question_id": 396,
+          "category": "TECH",
+          "question_text": "FastAPI로 ML 모델을 서빙할 때 핵심 엔드포인트 설계와 모델 로딩·성능·오류 관리 전략을 간단 설계(또는 짧은 코드 스니펫)로 설명해 주세요.",
+          "evaluation_guide": "우수: 입력 검증·스키마(pydantic), 모델 캐싱/한번 로드, 비동기 처리·배치 요청 고려, 헬스체크·메트릭·로깅·버전관리와 컨테이너화(Docker) 및 간단한 성능 튜닝 계획 제시. 보통: 기본 엔드포인트·모델로드 설명, 일부 운영 고려 부족. 미흡: 단순 스크립트 실행만 설명, 에러·성능 고려 없음.",
+          "question_rationale": "채용 기준상 FastAPI 사용 역량이 필수이나 지원서에는 FastAPI 경험이 명시되어 있지 않음. 면접 시간 제약을 고려해 우선 '간단 설계(핵심 엔드포인트·모델 로딩 방식·운영 고려사항)' 또는 '짧은 코드 스니펫' 형태로 숙련도 수준을 확인하고, 응답이 설계 수준일 경우 동시성·메모리·모니터링 등 심화 항목은 후속질문으로 검증할 계획임.",
+          "document_evidence": [
+            "채용기준: 필수 기술 스택 - Python, FastAPI",
+            "문서 #61: AI_개발_데이터_05_박채은_bundle (Python 등 개발 도구 보유, 배포 경험은 기재 없음)"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "질문은 필수 스택(FastAPI)과 직접 연결되어 있으며 설계·코드 스니펫 형태로 후보자의 실무역량을 효과적으로 검증합니다. 평가 가이드도 우수/보통/미흡 기준으로 명확하게 제시되어 있어 인터뷰에서 즉시 활용 가능함.",
+          "risk_tags": [
+            "DEPLOYMENT_RISK",
+            "SCALABILITY"
+          ],
+          "competency_tags": [
+            "FastAPI",
+            "Deployment",
+            "API_Design"
+          ]
+        },
+        {
+          "question_id": 397,
+          "category": "CULTURE_FIT",
+          "question_text": "사수가 없고 마감이 촉박한 상황에서 독학으로 결과물을 내야 한다면, 우선순위와 학습 계획, 그리고 불확실성으로 인한 리스크를 어떻게 관리하시겠습니까?",
+          "evaluation_guide": "우수: 우선순위 판단기준(비즈니스 임팩트·단계적 납품), 학습자료·시간박스 전략, 빠른 프로토타입→검증 루프, 리스크 커뮤니케이션(상사·팀에 보고·요청)과 백업 플랜 제시. 보통: 자기주도 학습 사례는 있으나 우선순위·리스크 완화 구체성 부족. 미흡: 학습 의지만 언급, 실무 대응 절차 부재.",
+          "question_rationale": "내부 부서 상황(사수 부재·높은 업무 강도·속도 중시)을 고려해 자율성·우선순위 설정·리스크 관리 능력을 확인할 필요가 있음. 지원자는 포부에서 '단기간 내 빠르게 숙지'·'적극적 학습'을 언급하므로 실제 대응 방식을 검증하기 위함.",
+          "document_evidence": [
+            "내부(부서 실무 상황): Q1-Q3(사수 없음·높은 업무 강도·속도 중시) — 내부 참고자료(면접에서 직접 인용 금지)",
+            "문서 #61: AI_개발_데이터_05_박채은_bundle (입사 후 단기간 적응 의지 및 독학 의지 표명)",
+            "문서 #62: AI_개발_데이터_05_박채은_career_description (부트캠프 등 짧은 기간 집중 학습 경험)"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "팀 현실(Q1-Q3)에 밀착된 우수한 행동면접 질문으로, 후속에서 구체적 사례·타임라인을 요구해 실제 자율성·우선순위·리스크 대응 역량을 검증하기에 적합함.",
+          "risk_tags": [
+            "AUTONOMY_RISK",
+            "TIME_MANAGEMENT"
+          ],
+          "competency_tags": [
+            "Self-Learning",
+            "Prioritization",
+            "Resilience"
+          ]
+        },
+        {
+          "question_id": 398,
+          "category": "COMMUNICATION",
+          "question_text": "팀에서 전처리 방식이나 변수 선정으로 이견이 있었을 때 본인이 맡은 역할과 주장 근거, 최종 합의 도출 과정을 구체적 사례로 말씀해 주세요.",
+          "evaluation_guide": "우수: 구체적 상황, 본인 역할(데이터 수집·시각화·검증), 제시한 근거(통계/시각화)와 토론 방식, 결과(합의된 변경·성능 개선)까지 명확히 설명. 보통: 사례는 있으나 본인의 기여·검증 방식이 모호. 미흡: 충돌이나 해결 과정 설명 부족.",
+          "question_rationale": "이력서에 학부 연구와 팀 프로젝트에서 변수 선정 갈등을 데이터로 설득해 합의한 경험이 기술되어 있음(협업·의사소통 역량 확인). 실제 사례를 통해 데이터 기반 설득력과 협업 자세를 검증하려는 질문.",
+          "document_evidence": [
+            "문서 #61: AI_개발_데이터_05_박채은_bundle (협업 및 갈등 경험 상세 기술)",
+            "문서 #62: AI_개발_데이터_05_박채은_career_description (팀 내 코드 리뷰·결과 공유 경험)"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "협업·데이터 기반 설득력을 검증하는 적절한 사례 질문이며, 평가 가이드가 행동·정량적 증거를 요구해 신뢰도 높은 검증이 가능함.",
+          "risk_tags": [
+            "COLLABORATION_RISK"
+          ],
+          "competency_tags": [
+            "Communication",
+            "Teamwork",
+            "Data_Driven_Decision"
+          ]
+        },
+        {
+          "question_id": 399,
+          "category": "JOB_SKILL",
+          "question_text": "결측치와 이상치가 많은 데이터에서 모델 성능을 개선하기 위해 시도한 방법 중 가장 효과적이었던 2~3가지와 그 선택 근거(지표·검증 방법)를 설명해 주세요.",
+          "evaluation_guide": "우수: 구체적 기법(도메인 기반 파생변수, 통계적·모델 기반 임퓨테이션, 이상치 탐지·대체), 검증(교차검증, A/B, 지표 개선 수치)과 트레이드오프(데이터 손실 vs 바이어스) 설명. 보통: 기법 나열 및 일부 검증 결과 제시. 미흡: 방법 및 검증 근거 부족, 단순 설명에 그침.",
+          "question_rationale": "포트폴리오에서 결측치·이상치 처리와 파생변수 설계, 교차검증을 통한 최적화 경험을 언급함. 실무 데이터 핸들링 능력과 방법 선택 근거(검증 방식)를 확인할 필요가 있음.",
+          "document_evidence": [
+            "문서 #63: AI_개발_데이터_05_박채은_portfolio (결측치·이상치 처리, 파생변수 설계 경험)",
+            "문서 #62: AI_개발_데이터_05_박채은_career_description (데이터 정제·피처 도출·성능 평가 경험)"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "데이터 정제·임퓨테이션 관련 실무 역량을 직접 검증할 수 있는 우수한 기술 질문으로, 후속에서 CV 결과 제시를 요구해 선택 근거의 타당성을 확인할 수 있음.",
+          "risk_tags": [
+            "DATA_QUALITY"
+          ],
+          "competency_tags": [
+            "Data_Preprocessing",
+            "Feature_Engineering",
+            "Model_Evaluation"
+          ]
+        }
+      ]
+    },
+    {
+      "session_id": 155,
+      "candidate_id": 32,
+      "candidate_name": "송예진",
+      "created_at": "2026-04-30 09:00:46.422210+00:00",
+      "questions": [
+        {
+          "question_id": 370,
+          "category": "TECH",
+          "question_text": "학습된 모델을 FastAPI로 서비스해야 한다면, 핵심 엔드포인트 설계(예: 예측·헬스체크), 입력 검증, 배포·모니터링 고려사항을 간단히 설명해 주세요.",
+          "evaluation_guide": "우수답변: 예측(endpoint)/헬스체크/메타데이터(버전) 엔드포인트 제시, pydantic 등 입력 검증 방법 언급, 비동기·배치 처리·동시성 고려, 로깅·지표(지연시간, 오류율)·알림·모델 버전 관리·컨테이너화(예: Docker) 등 모니터링 방안 제시. 보통답변: 엔드포인트만 언급하거나 단편적 배포 방안 제시. 미흡답변: 구체적 구현·운영 고려사항이 빠짐. 구현 경험이 없으면 학습 계획과 우선순위(간단한 PoC→모니터링 추가)를 제시했는지 확인.",
+          "question_rationale": "채용 직무(IT·AI·개발·데이터)는 Python과 FastAPI 활용 능력이 필수임. 지원자는 TensorFlow 기반 모델 개발 경험이 있으나 FastAPI 사용 경험은 명시되어 있지 않아, 모델 개발 능력을 운영·배포 역량으로 연결할 수 있는지 평가하고자 함.",
+          "document_evidence": [
+            "문서 #66: AI_개발_데이터_06_송예진_portfolio — TensorFlow로 CNN 모델 설계·학습 및 성능 개선 경험",
+            "문서 #64: AI_개발_데이터_06_송예진_bundle — Python 기반 모델 개발 프로젝트 기술",
+            "채용 기준: 필수 기술 스택에 FastAPI 포함"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "직무(필수 FastAPI) 및 포트폴리오상의 갭(FastAPI 경험 미기재)을 직접적으로 검사하는 실무적이고 구체적인 질문입니다. follow-up도 운영·동시성·모니터링을 심도 있게 검증해 지원자의 운영 역량 확인에 적절합니다.",
+          "risk_tags": [
+            "배포",
+            "운영",
+            "성능"
+          ],
+          "competency_tags": [
+            "Python",
+            "FastAPI",
+            "MLOps",
+            "API설계"
+          ]
+        },
+        {
+          "question_id": 371,
+          "category": "TECH",
+          "question_text": "관람객 동선 프로젝트에서 센서 로그의 결측·이상치를 TTA 평균으로 대체했다고 했는데, 그 방법의 한계와 더 나은 대안·검증 절차를 어떻게 설계하겠습니까?",
+          "evaluation_guide": "우수답변: MCAR/MAR/MNAR 차이 인식, 평균 대체의 편향 가능성 지적, 시계열 보간·모델 기반(imputation)·다중대체법·결측 플래그 활용 등 대안 제시, 대체 전후 분포 비교·민감도 분석·실제 KPI(예: 혼잡 감지 정확도) 영향 검증 절차 설명. 보통답변: 단순 대안 나열만 하거나 검증방법 누락. 미흡답변: 결측 처리의 영향이나 한계를 인지하지 못함.",
+          "question_rationale": "포트폴리오에 센서 로그 결측치를 TTA 평균으로 대체해 문제를 완화했다고 기술되어 있음. 실제 서비스 데이터에서의 대체방법 영향과 검증 절차를 통해 데이터 품질 관리 역량을 확인하려는 목적.",
+          "document_evidence": [
+            "문서 #66: AI_개발_데이터_06_송예진_portfolio — 센서 로그 결측치 TTA 평균 대체 사례",
+            "문서 #65: AI_개발_데이터_06_송예진_career_description — 관람객 데이터 수집·DB화 및 현장 운영자와 협의 경험"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "포트폴리오에서 사용한 결측 처리법(TTA 평균)에 대한 통계적 한계와 대안·검증 설계를 요구해 데이터 품질 관리 역량을 잘 평가합니다. follow-up도 실험 설계 및 평가 지표를 구체적으로 요구해 검증력이 높습니다.",
+          "risk_tags": [
+            "데이터품질",
+            "편향",
+            "검증부재"
+          ],
+          "competency_tags": [
+            "데이터전처리",
+            "통계적검증",
+            "문제해결"
+          ]
+        },
+        {
+          "question_id": 372,
+          "category": "TECH",
+          "question_text": "식물 이미지 분류에서 과적합과 특정 클래스 편향이 발생했을 때 적용한 기법과 그 효과를 구체적으로 설명하고, 추가로 시도해볼 방법을 말씀해 주세요.",
+          "evaluation_guide": "우수답변: 각 기법이 편향·분산에 어떻게 작용하는지(예: Dropout은 과적합 완화, 클래스 가중치는 손실에서 편향 보정), 증강으로 클래스 불균형 완화 방법과 주의점, 추가 기법(예: focal loss, 오버/언더샘플링, 클래스별 augmentation, 앙상블, 교차검증, 평가지표(precision/recall/F1, per-class) 모니터링) 제시. 실험 설계와 검증 방법(데이터 분리, 재현성) 언급 시 우수. 단순 기술 나열은 보통, 원리 미설명은 미흡.",
+          "question_rationale": "포트폴리오에서 EarlyStopping, Dropout, 증강, 클래스 가중치 조정, confusion matrix 분석 등을 통해 문제를 해결했다고 밝힘. 적용 이유와 추가 개선 방안을 확인해 모델링 깊이를 평가하고자 함.",
+          "document_evidence": [
+            "문서 #66: AI_개발_데이터_06_송예진_portfolio — 과적합 대응(EarlyStopping, Dropout), 증강 실험, confusion matrix 기반 분석 및 클래스 가중치 적용"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "과적합·클래스 편향 대응 기법의 원리와 효과를 묻고 추가 개선안을 요구해 모델링 깊이와 실험적 판단력을 검증하기에 적절합니다. follow-up에서 정량적 성과를 요구하는 점도 유효합니다.",
+          "risk_tags": [
+            "과적합",
+            "불균형",
+            "평가리스크"
+          ],
+          "competency_tags": [
+            "모델링",
+            "하이퍼파라미터",
+            "평가지표"
+          ]
+        },
+        {
+          "question_id": 373,
+          "category": "CULTURE_FIT",
+          "question_text": "사수 없이 독학으로 결과를 내야 하는 상황에서 새 데이터 파이프라인 구축 과제가 주어지면, 우선순위와 학습·실행 계획을 단계별로 어떻게 세우고 진행하시겠습니까? 실제 사례를 포함해 말해 주세요.",
+          "evaluation_guide": "우수답변: 문제 스코핑→MVP 정의(최소 기능)→우선순위(데이터 확보→검증→파이프라인 자동화)→학습자원(문서·패키지·예제)과 시간 박스 설정→테스트·검증·배포 계획 제시 및 과거 사례(예: Kaggle에서의 문제 해결 과정)로 근거 제시. 보통답변: 일반적 순서만 제시. 미흡답변: 구체적 단계·사례·시간관리 언급 없음.",
+          "question_rationale": "내부 실무 환경은 사수 부재·독학 필요성이 높음(내부 문서). 지원자는 부트캠프·Kaggle·자체 프로젝트를 통해 독학으로 역량을 쌓아온 이력이 있어, 자율적 학습·우선순위 설정 능력을 확인하려는 목적.",
+          "document_evidence": [
+            "문서 #65: AI_개발_데이터_06_송예진_career_description — 부트캠프 수료, Kaggle 참가, 자체 프로젝트 경험 등 독학 기반 학습 이력",
+            "문서 #64: AI_개발_데이터_06_송예진_bundle — 공백기 동안 독학으로 프로젝트 수행 및 기술 습득 기술"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "내부 실무 맥락(사수 부재·독학 필요)에 정확히 부합하는 행동계획·우선순위·실제 사례를 요구하는 질문입니다. 후보자의 자율성·우선순위 설정·실행 능력을 검증하기에 적합합니다.",
+          "risk_tags": [
+            "자기주도성",
+            "시간관리"
+          ],
+          "competency_tags": [
+            "자기주도학습",
+            "우선순위",
+            "실행력"
+          ]
+        },
+        {
+          "question_id": 374,
+          "category": "COMMUNICATION",
+          "question_text": "비전공자 이해관계자에게 분석 결과를 전달할 때 어떤 시각화·설명 방식으로 설득했으며, 그 결과 어떤 결정·성과로 이어졌는지 구체적 예를 들어 설명해 주세요.",
+          "evaluation_guide": "우수답변: 시각화 선택 이유(예: 히트맵·동선 애니메이션), 핵심 메시지 단순화(요약 지표, 행동 권고), 이해관계자 피드백 반영 과정, 실제 의사결정·적용 결과(예: 전시 구성 변경, 만족도 개선 수치) 명시. 보통답변: 시각화 툴만 언급. 미흡답변: 결과의 영향이나 구체적 방법 부재.",
+          "question_rationale": "포트폴리오에 Tableau 시각화와 별도 안내서 제작을 통해 비전공자에게 결과를 공유하고 전시 개선안이 실제 적용되었다고 기술되어 있음. 비기술적 대상과의 커뮤니케이션 역량과 영향력을 평가하려는 목적.",
+          "document_evidence": [
+            "문서 #66: AI_개발_데이터_06_송예진_portfolio — Tableau 시각화로 결과 공유, 안내서 제작으로 이해관계자 용어 갭 해결",
+            "문서 #64: AI_개발_데이터_06_송예진_bundle — 전시 동선 개선안 적용 및 전시 만족도 향상(성과)"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "비전공자 대상 커뮤니케이션과 실제 성과(전시 개선·만족도 향상)를 연결해 후보자의 설득력·영향력·기여도를 확인하기에 적절합니다. follow-up도 기여도 증빙을 요구해 유효합니다.",
+          "risk_tags": [
+            "커뮤니케이션",
+            "이해관계자"
+          ],
+          "competency_tags": [
+            "시각화",
+            "설득력",
+            "도메인지식"
+          ]
+        }
+      ]
+    },
+    {
+      "session_id": 156,
+      "candidate_id": 37,
+      "candidate_name": "이승재",
+      "created_at": "2026-04-30 09:00:49.675886+00:00",
+      "questions": [
+        {
+          "question_id": 385,
+          "category": "TECH",
+          "question_text": "FastAPI로 모델 서빙·버전관리·롤백을 포함한 배포 파이프라인을 설계·운영한 경험을 구체적으로 설명해 주세요. 자동화는 어떻게 구성했나요?",
+          "evaluation_guide": "좋은 답변: 구체적 아키텍처(예: CI/CD 도구, 이미지 빌드·배포 흐름), 버전 관리·롤백 트리거, 모니터링·알림 연동, 자동화 스크립트·테스트 포함 여부 및 정량적 효과 제시. 개선 여지·한계 및 대안도 언급하면 우수. 미흡: 개념적 설명만, 자동화·모니터링 구현 경험 부재.",
+          "question_rationale": "지원자는 포트폴리오와 이력서에서 FastAPI, Docker, AWS 기반으로 실서비스 파이프라인과 모델 버전관리·롤백 자동화를 구축했다고 기술함. 실제 배포·롤백 절차와 자동화 수준을 확인하기 위해 질문을 생성함.",
+          "document_evidence": [
+            "문서 #81: PORTFOLIO: AI_개발_데이터_11_이승재_portfolio (헬스케어 프로젝트에서 FastAPI로 파이프라인 구축, 모델 버전관리·A/B 테스트, 배포 후 품질 지표 자동수집 담당)",
+            "문서 #80: CAREER_DESCRIPTION: AI_개발_데이터_11_이승재_career_description (FastAPI, Docker, AWS ECS 기반 실시간 추론·배포 구조 설계)",
+            "문서 #79: RESUME: AI_개발_데이터_11_이승재_bundle (FastAPI 기반 딥러닝 모델 서빙 및 서빙 자동화 기술 명시)"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "직무(MLOps, FastAPI) 관련성이 높고 문서 근거도 명확합니다. 질문·추적 질의(도구, 롤백 조건, 세션/데이터 안정성)를 통해 지원자의 실제 구현 능력과 운영 리스크 대응력을 잘 검증할 수 있습니다.",
+          "risk_tags": [
+            "배포위험",
+            "회귀"
+          ],
+          "competency_tags": [
+            "MLOps",
+            "FastAPI",
+            "배포자동화"
+          ]
+        },
+        {
+          "question_id": 386,
+          "category": "EXPERIENCE",
+          "question_text": "Kafka·Spark 기반의 대용량 스트림 처리에서 병목을 발견하고 해결한 사례를 구체적으로 설명해 주세요. 어떤 분석 방법과 조정을 했나요?",
+          "evaluation_guide": "좋은 답변: 병목 식별 방식(로그·프로파일링·지연 측정), 적용한 파라미터/아키텍처 변경(파티션 수, 배치크기, 병렬도 등), 테스트·롤아웃 절차 및 정량적 개선 수치 제시. 트레이드오프(자원비용·일관성 등) 언급 시 높은 점수. 미흡: 원인 불명확·정량적 효과 미제시.",
+          "question_rationale": "포트폴리오와 이력서에서 Kafka와 Spark Streaming으로 대용량 스트림 아키텍처를 설계하고 파티션·처리 순서 조정으로 병목을 제거했다고 기술함. 문제 진단 방법과 성능 개선 조치를 검증하기 위해 질문을 구성함.",
+          "document_evidence": [
+            "문서 #81: PORTFOLIO: AI_개발_데이터_11_이승재_portfolio (실시간 금융 이상거래 탐지 시스템: Kafka 기반 스트림 아키텍처 설계, Spark Streaming 처리 순서·파티션 조정으로 병목 제거)",
+            "문서 #79: RESUME: AI_개발_데이터_11_이승재_bundle (Kafka, Spark Streaming 활용 대용량 스트림 처리 구조 설계 경험)"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "Kafka/Spark 스트리밍 성능 튜닝 관련 문서 근거가 있어 경험 검증에 적합합니다. 병목 진단·파라미터 조정·검증 절차을 묻는 점이 실무 검증에 유효합니다.",
+          "risk_tags": [
+            "확장성",
+            "지연"
+          ],
+          "competency_tags": [
+            "스트리밍",
+            "성능튜닝",
+            "분산시스템"
+          ]
+        },
+        {
+          "question_id": 387,
+          "category": "JOB_SKILL",
+          "question_text": "의료 영상 프로젝트에서 라벨 오류를 자동 탐지·관리한 로직과 그 효과(지표)를 어떻게 설계하고 측정했는지 설명해 주세요.",
+          "evaluation_guide": "좋은 답변: 자동 탐지 알고리즘(통계적 이상치, 모델 기반 예측 불일치 등), 검출 정밀도·재현율 등 지표, 오탐·누락에 대한 처리 정책, 파이프라인 통합 방식 및 운영 중 모니터링 방법 제시. 단순 설명만 있으면 보통, 지표·운영방법 없으면 미흡.",
+          "question_rationale": "지원자는 헬스케어 프로젝트에서 라벨 품질 평가 툴과 자동 탐지 로직을 설계해 오류율을 크게 낮췄다고 기술함. 실제 적용된 검증 로직과 성과 측정을 확인하기 위해 질문을 생성함.",
+          "document_evidence": [
+            "문서 #81: PORTFOLIO: AI_개발_데이터_11_이승재_portfolio (의료 영상 데이터 라벨 품질 평가 툴 설계, 라벨 오류 자동 탐지 및 품질 로그 자동 수집 도입)",
+            "문서 #79: RESUME: AI_개발_데이터_11_이승재_bundle (라벨링 품질 자동화로 오류율 4% 이하 유지)"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "의료영상 라벨 품질 관리 경험을 직접 검증하는 좋은 질문입니다. 다층 탐지 전략(규칙·통계·모델)과 성과(오류율)를 문서에서 주장하고 있어 심층 검증에 적합합니다.",
+          "risk_tags": [
+            "데이터무결성",
+            "오탐"
+          ],
+          "competency_tags": [
+            "데이터품질",
+            "검증자동화",
+            "의료데이터"
+          ]
+        },
+        {
+          "question_id": 388,
+          "category": "CULTURE_FIT",
+          "question_text": "사수 없이 스스로 학습해 결과물을 내야 할 때 우선순위와 학습 계획을 어떻게 세워 일정을 맞췄는지 실제 사례로 말씀해 주세요.",
+          "evaluation_guide": "좋은 답변: 구체적 계획(학습목표·주요자료·타임라인), 우선순위 기준(리스크·가치·실행속도), 중간검증(프로토타입·피드백) 사례와 결과(시간 대비 성과) 제시. 단순 의지 표명만 있으면 보통, 계획·검증 없는 답은 미흡.",
+          "question_rationale": "자기소개서와 경력기술서에서 입사 즉시 자율적으로 결과물을 내고 독학으로 문제를 해결해왔다는 점을 강조함. 사수 부재·자기주도 역량을 검증하기 위해 질문을 만듦.",
+          "document_evidence": [
+            "문서 #79: RESUME: AI_개발_데이터_11_이승재_bundle (자기주도적 학습과 실무 적용 경험 서술)",
+            "문서 #80: CAREER_DESCRIPTION: AI_개발_데이터_11_이승재_career_description (현장 문제를 스스로 해결하고 결과물을 주도적으로 낸 사례 기술)"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "사수 부재·자기주도 역량을 확인하는 문화적 적합성 질문으로, 부서 현실(정글 생존)에 직접 대응하는 매우 적절한 질문입니다. 구체적 타임라인·검증 루틴을 요구해 실행력을 잘 검증합니다.",
+          "risk_tags": [
+            "온보딩리스크",
+            "자율성과책임"
+          ],
+          "competency_tags": [
+            "자기주도학습",
+            "우선순위설정",
+            "실행력"
+          ]
+        },
+        {
+          "question_id": 389,
+          "category": "LEADERSHIP",
+          "question_text": "운영·QA·의료진 등 다양한 이해관계자와 우선순위를 조율해 합의를 이끌어낸 경험을 사례와 결과로 설명해 주세요.",
+          "evaluation_guide": "좋은 답변: 합의 대상·이슈 정의, 데이터·시뮬레이션으로 근거 제시한 방식, 상대방 우려 해소 전략, 최종 합의 내용과 계량적/정성적 결과 제시. 갈등·타협 상황에서의 역할 분담 언급 시 우수. 모호한 서술은 감점.",
+          "question_rationale": "이력서와 경력기술서에서 다부서 협업, SLA 협상, 현장 요구 반영을 통해 합의를 도출했다고 기술함. 협상 방식·근거 제시 능력과 결과를 확인하기 위해 질문을 설계함.",
+          "document_evidence": [
+            "문서 #80: CAREER_DESCRIPTION: AI_개발_데이터_11_이승재_career_description (운영·QA·보안·의료진과의 협업 및 정책 수립 경험 기술)",
+            "문서 #79: RESUME: AI_개발_데이터_11_이승재_bundle (현장 요구를 수렴해 개발 방향을 유연하게 조정한 경험 서술)",
+            "문서 #81: PORTFOLIO: AI_개발_데이터_11_이승재_portfolio (프로젝트 리딩 시 이해관계자 간 합의 과정 언급)"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "다부서 조율 및 합의 도출 역량을 검증하는 질문으로 직무·문서 근거와 잘 맞습니다. 데이터 근거 제시·결과 수치화를 요구해 실무 리더십을 평가하기에 적절합니다.",
+          "risk_tags": [
+            "이해관계갈등",
+            "합의실패"
+          ],
+          "competency_tags": [
+            "이해관계관리",
+            "협상력",
+            "리더십"
+          ]
+        }
+      ]
+    },
+    {
+      "session_id": 157,
+      "candidate_id": 38,
+      "candidate_name": "이도윤",
+      "created_at": "2026-04-30 09:00:50.205675+00:00",
+      "questions": [
+        {
+          "question_id": 410,
+          "category": "TECH",
+          "question_text": "FastAPI로 실시간 예측 API를 구축할 때 SLA 99.9%를 달성하기 위해 어떤 아키텍처·운영 조치를 우선 적용하시겠습니까?",
+          "evaluation_guide": "확인 포인트: 무상태 설계 판단·비동기 처리 사용 여부, 서버 워커(uvicorn/gunicorn) 설정과 타임아웃/keepalive 정책, 오토스케일 전략(쿠버네티스 HPA/클라우드 오토스케일 등), 헬스체크·리드니스, DB 커넥션 풀링·재시도 정책, 큐/캐시 도입 유무, 모니터링(메트릭/로그/알람), 배포 전략(블루그린/카나리/롤백) 및 성능 테스트 계획을 구체적으로 말하는지 평가. 또한 비용·복잡도 대비 우선순위 설정 합리성도 관찰할 것.",
+          "question_rationale": "이도윤 지원자는 이력서와 포트폴리오에서 실시간 모델 배포 및 SLA 99.9% 달성 경험을 기재했고(FastAPI는 보유 기술에 포함됨). 면접에서는 실제 설계·운영상의 결정 근거와 트레이드오프 판단 능력을 검증할 필요가 있음.",
+          "document_evidence": [
+            "RESUME #82: '실시간 예측 모델이 서비스 인프라에서 장애 없이 배포될 수 있도록 약 99.9% 가용성 수준의 인프라 이관을 직접 조율'",
+            "CAREER_DESCRIPTION #83: '실시간 수요예측, 실서비스 배포 등 실무 경험'",
+            "PORTFOLIO #84: '실시간 장애 발생 시 즉각적인 API 장애 탐지 및 대처 체계 마련'"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "질문은 FastAPI 기반 실시간 예측 서비스의 가용성(SLA 99.9%) 확보를 위해 요구되는 아키텍처·운영 의사결정과 트레이드오프 판단을 직접적으로 검증하므로 직무 연관성과 검증력이 매우 높습니다. 문서 근거(이력서·포트폴리오)와도 잘 맞고 면접에서 바로 활용 가능함.",
+          "risk_tags": [
+            "availability",
+            "infra_risk"
+          ],
+          "competency_tags": [
+            "fastapi",
+            "system_design",
+            "reliability",
+            "deployment"
+          ]
+        },
+        {
+          "question_id": 411,
+          "category": "EXPERIENCE",
+          "question_text": "여러 데이터 소스의 스키마 불일치와 적재 지연 문제를 어떻게 우선순위화하고 기술적으로 해결했는지 구체 사례로 말해 주세요.",
+          "evaluation_guide": "기대 답변: 문제 파악(샘플링·로그·스키마 분석) 방법, 핵심 필드 우선 선정 기준, 스키마 매핑·변환 로직 설계, 사용한 포맷·레지스트리(예: Avro/Protobuf/JSON Schema/Schema Registry) 여부, Airflow 내 정합성 검사 도구(Deequ/Great Expectations/커스텀)와 알람 설계, 성능·일정 트레이드오프 및 개선 결과를 설명하는지 확인. 구현 세부사항과 시행착오·개선 포인트가 있으면 가산점.",
+          "question_rationale": "포트폴리오와 경력기술서에서 대규모 트랜잭션 통합 과정에서 스키마 불일치와 적재 지연 문제를 발견하고 표준화 및 모니터링으로 해결한 경험을 언급함. 현업에서의 접근 방식과 구현 도구를 확인할 필요가 있음.",
+          "document_evidence": [
+            "PORTFOLIO #84: '데이터 소스 간 스키마 불일치', '각 소스별 데이터 표준화', 'Airflow DAG 기반 데이터 모니터링 자동화'",
+            "CAREER_DESCRIPTION #83: '대용량 데이터 전처리·품질 관리 총괄', '데이터레이크 설계 경험'"
+          ],
+          "score": 5,
+          "review_status": "approved",
+          "review_reason": "스키마 불일치·적재 지연이라는 데이터 엔지니어링 핵심 문제에 대해 우선순위화와 기술적 해결책(도구·검증 로직·모니터링)을 요구하므로 직무 적합성 및 재현 가능한 증거(구현 사례)를 확인하는 데 적합합니다. 문서 증거와도 잘 연계되어 있음.",
+          "risk_tags": [
+            "data_quality",
+            "delivery_delay"
+          ],
+          "competency_tags": [
+            "data_engineering",
+            "etl",
+            "airflow",
+            "problem_solving"
+          ]
+        },
+        {
+          "question_id": 412,
+          "category": "TECH",
+          "question_text": "하이퍼파라미터 자동 튜닝 시스템을 설계·운영한 경험을 구체적으로 설명하고, 성능 개선과 자원·시간 비용 사이의 트레이드오프를 어떻게 조정했는지 말씀해 주세요.",
+          "evaluation_guide": "검증 포인트: 사용한 탐색 알고리즘(랜덤/베이지안/Hyperband 등)과 라이브러리(Optuna/Ray Tune/Hyperopt 등), 분산 오케스트레이션(Spark/Ray/K8s)과 병렬성 설정, 조기종료·다단계 샘플링의 정량적 기준(예: 개선률 임계치·연속 비개선 에폭 수·1단계 샘플 비율), 실험 전후 성능 개선 수치(예: AUC 증가), 실험당 시간·비용 절감률, 실험 추적 도구(MLflow 등) 및 재현성 확보 방법, 본인의 역할 범위를 확인할 것.",
+          "question_rationale": "포트폴리오와 이력서에서 하이퍼파라미터 자동 튜닝·AutoML 도입 경험을 언급함. 면접에서는 탐색 알고리즘·분산 실행·조기종료 정책·실험 추적·정량적 개선 효과를 검증해야 함.",
+          "document_evidence": [
+            "PORTFOLIO #84: '하이퍼파라미터 자동 튜닝 시스템 추가'",
+            "RESUME #82: 'AutoML 기반 하이퍼파라미터 튜닝 자동화, CatBoost/Spark ML 이용 대량 트랜잭션 처리'"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "하이퍼파라미터 자동 튜닝·AutoML 관련한 구체적 검증 포인트(탐색 알고리즘, 분산 실행, 조기종료, 실험 추적, 정량적 효과)를 요구하므로 ML/Ops 역량을 평가하기에 적절합니다. 문서 근거와도 부합합니다.",
+          "risk_tags": [
+            "cost_risk",
+            "performance_risk"
+          ],
+          "competency_tags": [
+            "mlops",
+            "auto_ml",
+            "hyperparameter_tuning",
+            "spark"
+          ]
+        },
+        {
+          "question_id": 413,
+          "category": "RISK",
+          "question_text": "최근 타이트한 마감 상황에서 서비스 복구나 기능 배포 중 어떤 기준으로 우선순위를 정해 목표를 달성하셨는지 사례로 설명해 주세요. 판단 근거(KPI·비즈니스 영향)와 결과를 포함해 말씀해 주세요.",
+          "evaluation_guide": "확인 항목: (1) 우선순위 판단 근거(명시된 KPI·고객·비즈니스 영향)와 의사결정 흐름(누가 승인·에스컬레이션했는지)을 설명하는지, (2) 구체적 기술적·운영적 조치(롤백·트래픽 분리·임시대체 등)와 그 타이밍, (3) 결과(복구·배포 여부 및 정량적 지표 가능 시 수치) 여부, (4) 제시한 방안의 지속가능성(팀·조직 차원에서 실현 가능한지) 평가. 주의사항: 면접관은 응답자가 초과근무를 미화하거나 과도한 개인 희생을 자랑하지 않도록 유도할 것(법적·윤리적 근로 한계 인지 여부 확인 포함). 필요 시 예방조치·온콜·개인 가용성 관련 내용은 별도 후속 질문으로 상세 확인할 것.",
+          "question_rationale": "내부 운영 맥락에서는 '정글 생존'과 높은 업무 강도(야근·주말 포함), 사수 부재 등이 현실임. 지원자 이력에서는 '빠른 실행력'과 독립적 업무 수행을 강조하므로 실제 적응력을 확인하기 위함.",
+          "document_evidence": [
+            "내부(Department Reality): 업무 강도·사수 부재·상명하복·직무 유연성에 관한 운영 맥락",
+            "RESUME #82 / CAREER_DESCRIPTION #83: '빠른 실행력', '현장의 문제에 직접 뛰어들며 기술과 비즈니스의 접점에서 최상의 결과물을 만들어내는 전문가'"
+          ],
+          "score": 4,
+          "review_status": "needs_revision",
+          "review_reason": "질문 내용과 평가 가이드는 전반적으로 직무 연관성·검증력·구체성이 높아 면접에서 유용하지만, 후속 질문이 지나치게 세부적이고 긴 점은 실무 면접 시간 제약과 지원자 개인정보·근로조건(온콜·초과근무) 관련 공정성 이슈를 유발할 수 있어 일부 수정 권장. 또한 평가 가이드에 '우수/미흡' 예시(평가 신호별 기대치)를 명시하면 면접관 일관성 향상에 도움이 됨.",
+          "risk_tags": [
+            "burnout",
+            "attrition_risk"
+          ],
+          "competency_tags": [
+            "autonomy",
+            "time_management",
+            "resilience"
+          ]
+        },
+        {
+          "question_id": 414,
+          "category": "COMMUNICATION",
+          "question_text": "IT운영·기획·BI 등 여러 이해관계자와 목표가 충돌할 때 우선순위와 타협안을 어떻게 도출하고 의사결정을 이끌었는지 사례로 말씀해 주세요.",
+          "evaluation_guide": "기대 답변: 이해관계자 매핑, 각 측의 핵심 요구(KPI) 도출, 데이터 기반 근거 제시, 제안한 타협안(단계적 롤아웃·대체 지표 등)과 합의 도출 과정 및 결과(정량적 성과 포함)를 설명하는지 확인. 갈등 조정 과정에서의 중재 스킬과 실적(프로젝트 기간 단축·비용 절감 등)을 제시하면 가산점.",
+          "question_rationale": "지원자는 여러 부서와의 교차 협업·조정 경험을 반복적으로 강조함. 현업 반영 능력과 커뮤니케이션 스타일, 갈등 조정 역량을 검증할 필요가 있음.",
+          "document_evidence": [
+            "CAREER_DESCRIPTION #83: 'IT운영, 기획, 마케팅, 영업 등 전 부서·외부 파트너와 평행·교차로 협업', '이해관계자 의견을 설계와 모델 평가·배포 과정마다 반영'",
+            "RESUME #82: '전사적 리포팅을 위한 대시보드 UI를 BI팀과 협업해 설계/구현'"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "이해관계자 조정·우선순위 도출 역량을 검증하는 데 적합한 질문입니다. 문서 근거와 일치하고 면접에서 실무 사례·정량적 결과를 확인하기에 유효합니다.",
+          "risk_tags": [
+            "stakeholder_risk"
+          ],
+          "competency_tags": [
+            "collaboration",
+            "communication",
+            "leadership",
+            "stakeholder_management"
+          ]
+        }
+      ]
+    },
+    {
+      "session_id": 158,
+      "candidate_id": 36,
+      "candidate_name": "박서현",
+      "created_at": "2026-04-30 09:00:50.196148+00:00",
+      "questions": [
+        {
+          "question_id": 415,
+          "category": "TECH",
+          "question_text": "일간 실시간 추천 파이프라인에서 병목을 찾아 병렬 처리와 Airflow 재설계를 통해 지연을 크게 줄였다고 하셨는데, 당시 아키텍처 변경의 핵심 결정사항과 트레이드오프를 설명해 주세요.",
+          "evaluation_guide": "지원자가 병목 식별(프로파일링 지표), 병렬화 전략(DAG 분해·동시성 조정), 일관성 처리(idempotency·백필), 리소스·비용 트레이드오프 및 검증 방법(테스트·모니터링 지표)을 구체적으로 설명하는지 확인합니다. 설계 선택의 장단점과 대안, 적용 결과(정량적 수치·사례)를 제시하면 높은 평가.",
+          "question_rationale": "포트폴리오 및 이력서에서 일간 실시간 추천 시스템의 ETL 자동화·Airflow 재설계·처리 지연 감소 성과를 근거로, 아키텍처 설계·성능 관점의 기술질문을 생성함.",
+          "document_evidence": [
+            "PORTFOLIO #78: AI 상품 추천 플랫폼 데이터파이프라인 개선(ETL 자동화, Airflow 재설계, 지연 비율 11%→2%)",
+            "RESUME #76: Airflow로 단계별 ETL 설계 및 일간 처리시간 45% 단축 기술"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "질문은 직무(데이터 파이프라인, Airflow)와 이력서 근거에 잘 부합하며 설계·성능·검증 관점에서 지원자의 기술적 깊이를 검증할 수 있음. follow-up도 정밀한 검증을 가능하게 함.",
+          "risk_tags": [
+            "technical_depth",
+            "overclaim"
+          ],
+          "competency_tags": [
+            "DataPipeline",
+            "Airflow",
+            "Performance",
+            "Architecture"
+          ]
+        },
+        {
+          "question_id": 416,
+          "category": "JOB_SKILL",
+          "question_text": "야간 ETL 장애가 타부서 데이터 업로드 실패에서 발생했을 때, 원인 탐지·격리·자동 복구를 위해 어떤 모니터링·알림·복구 로직을 설계·구현했는지 단계별로 말씀해 주세요.",
+          "evaluation_guide": "탐지(데이터 무결성 체크포인트, SLA 임계값), 알림(유형별 알림·에스컬레이션), 자동복구(재시도·우회·백필 정책), 휴먼·사전대응(런북·롤백 절차), 모니터링 지표(처리시간·오류율) 등을 구체적 예시와 함께 설명하는지 확인합니다. 스크립트/도구 예시(Python 의사코드, 재시도 로직 등) 제시 여부도 중요.",
+          "question_rationale": "포트폴리오에서 야간 ETL 장애 진단 및 자동복구 스크립트 개발 경험을 근거로, 운영 자동화·장애대응 역량을 검증하는 실무 질문을 생성함.",
+          "document_evidence": [
+            "PORTFOLIO #78: 야간 ETL 장애 발생 시 주요 원인 진단 및 복구 방안 제시, 자동 복구 스크립트 신규 개발",
+            "CAREER_DESCRIPTION #77: 야간 장애 복구 등 실시간 트러블슈팅 우수 실적"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "운영·장애대응 역량을 직접적으로 검증하는 문항으로 문서 근거와 잘 맞음. 단계별 설계·자동화 구현 능력을 확인하기에 적절함.",
+          "risk_tags": [
+            "operational_risk",
+            "burnout_risk"
+          ],
+          "competency_tags": [
+            "ETL",
+            "Monitoring",
+            "Automation",
+            "ProblemSolving"
+          ]
+        },
+        {
+          "question_id": 417,
+          "category": "TECH",
+          "question_text": "FastAPI로 내부 REST API를 구축하셨다고 했는데, 동시성·입력검증·오류처리·배포 관점에서 설계한 핵심 패턴과 성능·안정성 확보 방안을 알려주세요.",
+          "evaluation_guide": "비동기 처리(async/uvicorn), pydantic 스키마를 이용한 입력검증, 공통 예외핸들러·정형화된 오류응답 전략, I/O가 긴 작업의 비동기/백그라운드 분리 등을 확인합니다. 인증·권한 구현, 배포·오케스트레이션(컨테이너·워크수·리소스), CI/CD, 모니터링(p95·에러율)과 부하테스트 결과(가능 시 수치)를 제시하면 가산점입니다.",
+          "question_rationale": "이력서와 포트폴리오에서 FastAPI 기반 내부 API 구축 경험을 확인하고, API 설계·운영 능력을 평가하고자 기술질문을 생성함.",
+          "document_evidence": [
+            "RESUME #76: FastAPI 기반 내부 REST API 구축 경험",
+            "PORTFOLIO #78: 콜센터 이탈 예측 데이터셋 구축( FastAPI / GCP 표기 )"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "FastAPI·배포·동시성 관련 필수 역량을 점검하는 좋은 기술질문입니다. 이력서 근거와 연결되어 실무 확인에 유효합니다.",
+          "risk_tags": [
+            "security",
+            "stability"
+          ],
+          "competency_tags": [
+            "FastAPI",
+            "Python",
+            "API",
+            "Deployment"
+          ]
+        },
+        {
+          "question_id": 418,
+          "category": "COMMUNICATION",
+          "question_text": "타부서의 반복적 SLA 미준수로 본인이 추가 업무를 맡게 되었을 때, 개인적 해결 외에 합의·SLA 재정립·책임 분담 등 조직적·구조적 개선을 어떻게 추진했고, 그 효과를 어떤 지표로 측정했는지 구체적으로 말씀해 주세요.",
+          "evaluation_guide": "지원자가 이해관계자 설득(비즈니스 영향 수치 제시), 개선 실행(자동화 도구·리포트 설계), 공식화된 합의·SLA 재정립 과정(회의 횟수·참석자·결정사항), 책임 분담(데이터 소유권·유지 담당자 지정)과 변화 측정(예: SLA 준수율 %, 수동 개입 건수/주, 평균 지연시간 감소)을 구체적 수치로 설명하는지 확인합니다. 또한 문제를 개인이 감당하는 방식만으로 해결했는지, 조직적 구조 변경을 이뤘는지를 중점 평가하며, 과도한 개인 부담을 정상화하는 태도는 감점 요인으로 판단합니다.",
+          "question_rationale": "이력서·자기소개서에서 타부서 비협조로 추가 업무를 수행하고 자동화 리포트로 협업 품질을 개선한 사례를 근거로 협업·커뮤니케이션 역량을 묻는 질문을 생성함.",
+          "document_evidence": [
+            "RESUME #76: 타부서(마케팅) 데이터 요청 건 SLA 미준수시 현황 리포트 자동화 과정 설계",
+            "CAREER_DESCRIPTION #77: 협업 시 실무 중심으로 전달하고 문제 기재 문서화, 자동화 리포트로 협업 품질 개선"
+          ],
+          "score": 3,
+          "review_status": "needs_revision",
+          "review_reason": "질문은 협업·프로세스 개선 역량을 확인하는 데 적절하나 현재 문항과 평가가 '개인이 떠맡은 상황'을 미화하거나 과도한 개인 부담을 정당화하는 답변을 유도할 수 있음. 또한 문항 길이가 길어 면접 환경에서 응답 시간이 늘어날 위험이 있음.",
+          "risk_tags": [
+            "team_fit",
+            "ownership_bias"
+          ],
+          "competency_tags": [
+            "Collaboration",
+            "ProcessImprovement",
+            "Communication"
+          ]
+        },
+        {
+          "question_id": 419,
+          "category": "RISK",
+          "question_text": "사수 없이 제한된 기한 내 새로운 도구로 결과물을 만든 최근 사례를 말씀해 주세요. 목표·우선순위·학습원천·총 소요기간과 산출물, 인수인계·문서화 등 지속가능성 조치를 수치로 설명해 주세요.",
+          "evaluation_guide": "평가는 두 축으로 합니다. (A) 사례 설명: 목표·MVP 결정 근거, 학습원천(공식문서·레거시·샘플·커뮤니티), 총 소요기간(일/주 단위), 스프린트 수·각 스프린트 산출물, 테스트 범위(유닛·통합) 및 피크 주간 작업시간(평균/최대)을 가능한 수치로 제시했는지 확인합니다. (B) 지속가능성: 문서화·인수인계 횟수·인수자 수, 유지보수 계획(담당자·유지시간/주), 외부 도움 여부(code review·컨설팅) 등을 검증합니다. 면접에서 개인의 건강정보(수면 패턴·병력 등)는 묻지 마십시오; 장기간의 과도한 초과근무를 미화하는 답변은 리스크로 간주합니다.",
+          "question_rationale": "부서 실무 상황(사수 없음·높은 마감 강도)과 지원자의 자기소개·경력에서 '빠른 학습·자기주도'를 주장한 점을 바탕으로, 자생력·우선순위·품질관리 역량을 검증함.",
+          "document_evidence": [
+            "Department Reality: 정글 생존(사수 없음), 몰입 중심(야근·주말 필요) — 내부정보(면접에서 직접 인용 금지하되 평가 근거로 사용)",
+            "RESUME #76 / CAREER_DESCRIPTION #77: 단기간에 새로운 업무와 기술을 익히는 속도, 주도적 실행 사례 다수"
+          ],
+          "score": 4,
+          "review_status": "needs_revision",
+          "review_reason": "자기주도성·학습 민첩성을 검증하는 적절한 질문이지만, 현재 문항 및 평가가 '피크 주간 작업시간'처럼 개인의 건강·수면 관련 민감 정보를 유도할 수 있어 면접 윤리·법적 측면에서 문제 소지가 있음. 또한 질문이 매우 상세하여 면접 중 답변 시간이 과다할 수 있음.",
+          "risk_tags": [
+            "burnout_risk",
+            "adaptability"
+          ],
+          "competency_tags": [
+            "Autonomy",
+            "LearningAgility",
+            "Prioritization"
+          ]
+        }
+      ]
+    },
+    {
+      "session_id": 159,
+      "candidate_id": 35,
+      "candidate_name": "정은재",
+      "created_at": "2026-04-30 09:00:50.707940+00:00",
+      "questions": [
+        {
+          "question_id": 400,
+          "category": "TECH",
+          "question_text": "FastAPI로 모델 추론 API를 운영 환경에 배포할 때 성능·확장성 문제를 어떻게 설계하고 검증하셨나요? 구체 기술·측정 지표를 포함해 설명해 주세요.",
+          "evaluation_guide": "검증 포인트: 엔드포인트 설계(동기/비동기), 서버 실행환경(Uvicorn/Gunicorn 조합 등), 부하테스트 결과(지연시간 p95/p99, TPS/RPS), 캐싱·배치·비동기 처리 전략, 자동스케일·모니터링 지표(오류율, CPU/메모리 임계값), 장애 시 롤백·버전관리 방식과 사용한 도구(Locust/JMeter, Prometheus, Grafana 등). 구현 세부(워커수·스레드·TTL 등)와 정량 수치 제시 여부를 중점 평가.",
+          "question_rationale": "지원자는 FastAPI를 활용한 추천 시스템 연동 경험과 실서비스 배포 경험을 보유하며(포트폴리오·이력서), AI·개발·데이터 직무에서 API 성능·확장성 검증 역량이 필수임.",
+          "document_evidence": [
+            "문서 #75: 프로젝트2(커머스 추천)에 FastAPI 기반 추천 요청 구조 설계 기여",
+            "문서 #73: 이력서에 'FastAPI 기반 백엔드 서비스 공동 구축' 명시",
+            "문서 #74: 경력기술서 전반에서 실서비스 연동 및 운영 경험 기술"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "질문이 포지션 요구(FastAPI 기반 모델 서빙·운영 성능 검증)에 아주 적합하고, 문서 근거와 연계되어 있으며 평가 가이드가 구체적(메트릭·도구·구현 세부)이라 면접에서 실무 역량을 정확히 검증할 수 있음.",
+          "risk_tags": [
+            "성능저하",
+            "서비스중단"
+          ],
+          "competency_tags": [
+            "FastAPI",
+            "API설계",
+            "운영성능"
+          ]
+        },
+        {
+          "question_id": 401,
+          "category": "EXPERIENCE",
+          "question_text": "운영 중 데이터 누락이나 예기치 않은 모델 성능 저하가 발생했을 때 로그·모니터링으로 원인을 규명하고 롤백까지 진행한 실제 사례를 단계별로 설명해 주세요.",
+          "evaluation_guide": "검증 포인트: 탐지·알림 체계(어떤 로그·지표로 인지했는지), 원인분석 절차(가설 설정·검증·사용한 도구), 롤백 조건·구체 절차(이미지 태그, 피처플래그, 데이터 백필 방식), MTTR(감지→복구 소요시간), 이해관계자 커뮤니케이션 방식과 사후 조치(포스트모텀·예방책). 복구 시간·사용 툴·롤백 메커니즘을 수치·절차로 제시했는지 확인.",
+          "question_rationale": "포트폴리오와 경력기술서에서 지원자가 MLOps 자동화, 이상탐지·오류 탐지 및 롤백 프로세스 구축 경험을 기재했음. 운영 장애 대응 역량 확인이 필요함.",
+          "document_evidence": [
+            "문서 #75: 프로젝트1에서 '중간 데이터 오류 탐지 및 롤백 프로세스' 참여",
+            "문서 #74: 에어메트릭스 경력에 MLOps 도입·운영·서비스 중단율 감소 기술",
+            "문서 #73: 실서비스 모니터링 및 운영 자동화 경험 기재"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "운영 장애 탐지·원인규명·롤백 프로세스를 단계별·정량적으로 묻고 있어 MLOps·운영 역량 검증에 적합함. 문서 근거가 있어 예비 판단에도 유효함.",
+          "risk_tags": [
+            "데이터무결성",
+            "장애대응"
+          ],
+          "competency_tags": [
+            "MLOps",
+            "운영모니터링",
+            "문제해결"
+          ]
+        },
+        {
+          "question_id": 402,
+          "category": "CULTURE_FIT",
+          "question_text": "사수 없이 투입될 경우, 입사 첫 4주간 주별 핵심 우선순위와 산출물(각 산출물의 통과 기준 포함) 및 번아웃 방지용 업무 규칙(체크인·재조정 기준)을 1~2분 내로 요약해 주세요. 가능하다면 주별 산출물·검증 기준·증빙(링크/스크린샷) 제출 가능 여부도 알려주세요.",
+          "evaluation_guide": "목표: 면접(구두)에서 1~2분 요약으로 적응력과 우선순위 판단 능력 확인, 필요시 서면 증빙으로 실행력·지속성 검증. 핵심 체크리스트(각 항목 0–3점, 총점 12점) — 1) 주별 계획·산출물·검증기준 제시 여부(0:무,1:모호,2:충분,3:구체·정량 포함), 2) 우선순위 근거 및 데드라인 충돌 시 재조정 규칙(0:무,1:일반론,2:사례 포함,3:수치·트리거 포함), 3) 지속 가능한 업무 규칙·번아웃 대응(체크인 빈도·집중블록·재조정 프로세스)(0:무,1:추상적,2:구체,3:사례·효과 포함), 4) 증빙 제출 가능성 및 형태(리포지토리/스크린샷/회의록/파일·혹은 상세 서면 설명 허용)(0:불가,1:가능하나 미제출,2:제출 약속·형태 명시,3:즉시 제출 가능). 합격 기준: 총점 ≥8(우수 11–12, 보통 8–10, 부족 <8). 증빙 지침: 리포지토리 링크·스샷·회의록·주간 산출물 표 등 허용(민감정보는 익명화), 제출 불가 시 상세 서면 설명(주별 표 형태)을 3영업일 내 제출하도록 요청하세요. 면접 팁: 구두 답변은 간결히(주별 한줄 요약 + 핵심 재조정 트리거), 추가 증빙은 요청 수준에 따라 받으세요.",
+          "question_rationale": "내부 조직 특성상 자율적 학습과 높은 업무 강도가 요구되며, 지원자는 자기주도 학습·빠른 러닝을 강점으로 표명함(이력서·자기소개서). 적응 가능성 평가 필요.",
+          "document_evidence": [
+            "문서 #73: 자기소개서에 '신속한 러닝과 체계적 문서화' 강점 기술",
+            "문서 #74: 여러 프로젝트에서 주도적 역할 수행 및 빠른 투입 경험 명시",
+            "문서 #75: 다양한 실서비스 프로젝트에서 독립적 기여 사례 기재"
+          ],
+          "score": 4,
+          "review_status": "needs_revision",
+          "review_reason": "질문은 직무·부서 현실(무사수·높은 자율성·업무강도)과 잘 연계되어 있으며, 지원자의 실무 적응력·증빙 가능성을 검증할 수 있는 구조적 강점을 가집니다. 다만 질문 문장이 길고 인터뷰에서 구두로 요청하기에는 부담이 되며, 증빙 요청이 내부·민감 정보와 충돌할 수 있어 공정성·실행 가능성(증빙 제출 불가 시 처리 절차)을 평가 가이드에 명확히 보완할 필요가 있습니다. 또한 평가 가이드는 전반적으로 구체적이나, 증빙 불가 상황에 대한 대체 검증 흐름과 구두답변 시간 제한(면접 현실 반영)을 명시하면 실무 활용도가 높아집니다.",
+          "risk_tags": [
+            "연속근무부담",
+            "자기주도성부족"
+          ],
+          "competency_tags": [
+            "셀프러닝",
+            "우선순위설정",
+            "시간관리"
+          ]
+        },
+        {
+          "question_id": 403,
+          "category": "COMMUNICATION",
+          "question_text": "IT·데이터관리·현업 간 우선순위 충돌이 있을 때 어떤 방식으로 합의를 이끌어 프로젝트 일정을 맞추었나요? 구체 행동과 결과(수치 포함)를 알려주세요.",
+          "evaluation_guide": "검증 포인트: 1) 제시한 근거의 형태(데이터 지표·대시보드 스냅샷·쿼리 결과·회의록)와 출처 명시 여부, 2) 수용 가능한 정량 증거 예시 — 일정 변경(단축·연기) 일수 또는 %; 지연량 감소(초/분/%) ; 사용자 영향(전환율/에러율 등 변화값), 3) 중재 방법(워크숍·옵션 테이블·문서화)과 책임자·데드라인 지정 방식, 4) 결과 검증 방식(전·후 비교 지표) 및 문서 산출물(합의문/회의록/이메일) 제시 여부. 인터뷰어 체크리스트: 후보자가 제시한 지표의 출처를 요청했는가(쿼리·대시보드), before/after 수치가 있는가, 합의 문서(또는 메일·회의록) 존재 여부, 책임자·데드라인이 명확히 기재되었는지 확인해 점수화하세요.",
+          "question_rationale": "지원자는 다양한 부서와 협업하며 우선순위 조율 경험을 여러 차례 언급했음(경력기술서·자소서). 스테이크홀더 관리 능력과 설득 근거 확인이 필요함.",
+          "document_evidence": [
+            "문서 #75: 프로젝트1에서 BI팀과 데이터 owner 구조 재정립 협업(협의·합의 사례)",
+            "문서 #74: '타부서와의 주기적 스크럼·일정 조율' 경험 기술(협업 방식 근거)",
+            "문서 #73: IT팀과 기술적 한계를 수치로 시각화해 합의 도출한 경험 기재(설득 근거 예시)"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "스테이크홀더 조율 능력과 증거 기반 설득 역량을 수치·문서 근거와 함께 요구해 실무 적합성 평가에 유용합니다. 다만 근거 자료(쿼리·대시보드·합의문)에 대한 문서 증빙 요청을 명확히 하면 더 좋습니다.",
+          "risk_tags": [
+            "조율실패",
+            "의사소통오해"
+          ],
+          "competency_tags": [
+            "협업",
+            "커뮤니케이션",
+            "스테이크홀더관리"
+          ]
+        },
+        {
+          "question_id": 404,
+          "category": "LEADERSHIP",
+          "question_text": "대용량 실시간 데이터 파이프라인을 설계할 때 일관성·지연·운영비용 사이의 트레이드오프는 어떻게 판단해 어떤 선택을 하셨나요? 사례와 수치를 함께 설명해 주세요.",
+          "evaluation_guide": "검증 포인트: 판단 기준(목표 지연시간·SLA·데이터 일관성 수준·비용 한도), 선택한 아키텍처(스트리밍 vs 배치 vs 하이브리드), 구체 기술 스택(예: Kafka/Flink/Spark/Airflow 등)과 일관성 모델(at-least-once/exactly-once) 선택 이유, 정량적 결과(지연 개선치·처리량 TPS·운영비용 절감 비율 또는 금액), 그리고 재처리(백필)·모니터링·롤백 계획 포함 여부를 확인하세요. 기술 선택의 장단점과 대안 고려를 수치 근거와 함께 설명했는지 중점 평가합니다.",
+          "question_rationale": "지원자는 항공사 통합 수요 예측 등 대규모 실시간 파이프라인 설계 및 비용·성능 개선 성과를 보유함(포트폴리오·이력서). 아키텍처 의사결정 역량 검증이 필요함.",
+          "document_evidence": [
+            "문서 #75: 프로젝트1에서 '실시간 데이터 수집·분석 및 파이프라인 구조 설계' 주도",
+            "문서 #73: 대용량 처리 효율 2배 향상, 배치 마이그레이션으로 비용 절감 등 수치 제시",
+            "문서 #74: MLOps·운영 효율화로 서비스 중단율·비용 절감 성과 기술"
+          ],
+          "score": 4,
+          "review_status": "approved",
+          "review_reason": "대용량 실시간 파이프라인의 트레이드오프(일관성·지연·비용)를 수치와 사례로 묻는 점이 아키텍처 의사결정 능력 검증에 적합하며 문서 근거와 일치합니다.",
+          "risk_tags": [
+            "비용증가",
+            "데이터일관성"
+          ],
+          "competency_tags": [
+            "데이터파이프라인",
+            "아키텍처설계",
+            "비용관리"
+          ]
+        }
+      ]
+    }
+  ],
+  "node_counts": {
+    "150": {
+      "jh_driller": 1,
+      "jh_predictor": 1,
+      "jh_questioner": 1,
+      "jh_reviewer": 1
+    },
+    "151": {
+      "jh_driller": 4,
+      "jh_predictor": 4,
+      "jh_questioner": 4,
+      "jh_reviewer": 4
+    },
+    "152": {
+      "jh_driller": 4,
+      "jh_predictor": 4,
+      "jh_questioner": 4,
+      "jh_reviewer": 4
+    },
+    "153": {
+      "jh_driller": 1,
+      "jh_predictor": 1,
+      "jh_questioner": 1,
+      "jh_reviewer": 1
+    },
+    "154": {
+      "jh_driller": 3,
+      "jh_predictor": 3,
+      "jh_questioner": 3,
+      "jh_reviewer": 3
+    },
+    "155": {
+      "jh_driller": 1,
+      "jh_predictor": 1,
+      "jh_questioner": 1,
+      "jh_reviewer": 1
+    },
+    "156": {
+      "jh_driller": 1,
+      "jh_predictor": 1,
+      "jh_questioner": 1,
+      "jh_reviewer": 1
+    },
+    "157": {
+      "jh_driller": 4,
+      "jh_predictor": 4,
+      "jh_questioner": 4,
+      "jh_reviewer": 4
+    },
+    "158": {
+      "jh_driller": 4,
+      "jh_predictor": 4,
+      "jh_questioner": 4,
+      "jh_reviewer": 4
+    },
+    "159": {
+      "jh_driller": 4,
+      "jh_predictor": 4,
+      "jh_questioner": 4,
+      "jh_reviewer": 4
+    }
+  }
+}
