@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Download,
@@ -24,6 +24,13 @@ import type {
   DocumentBulkImportPreviewJobResponse,
   DocumentBulkUploadMode,
 } from "../types";
+import {
+  formatScreeningRecommendation,
+  getDefaultScreeningSelectedRowIds,
+  getScreeningPillClassName,
+  getScreeningSummary,
+} from "../utils/screening";
+import { ScreeningPreviewDetails } from "./ScreeningPreviewDetails";
 
 type ValidationErrors = Partial<Record<keyof CandidateFormState, string>>;
 
@@ -309,18 +316,22 @@ export function CandidateDetailModal({
   const documentBulkSummary = documentBulkPreview?.summary ?? null;
   const importableBulkRows =
     documentBulkPreview?.rows.filter((row) => row.status === "READY") ?? [];
-  const selectedImportableBulkRowIds =
-    selectedBulkRowIds.length > 0
-      ? selectedBulkRowIds.filter((rowId) =>
-          importableBulkRows.some((row) => row.rowId === rowId),
-        )
-      : importableBulkRows.map((row) => row.rowId);
+  const selectedImportableBulkRowIds = selectedBulkRowIds.filter((rowId) =>
+    importableBulkRows.some((row) => row.rowId === rowId),
+  );
+  const bulkScreeningSummary = getScreeningSummary(documentBulkPreview?.rows ?? []);
   const canConfirmBulkImport =
     Boolean(documentBulkPreview) &&
     !isDocumentBulkJobRunning &&
     !isDocumentBulkPreviewing &&
     !isDocumentBulkImporting &&
     selectedImportableBulkRowIds.length > 0;
+
+  useEffect(() => {
+    setSelectedBulkRowIds(
+      getDefaultScreeningSelectedRowIds(documentBulkPreview?.rows ?? []),
+    );
+  }, [documentBulkPreview?.jobId, documentBulkPreview?.rows]);
 
   return (
     <div className="space-y-6">
@@ -567,184 +578,327 @@ export function CandidateDetailModal({
               </div>
             </section>
 
+            {/* 수정 start  */}
             {documentBulkPreview ? (
-              <section className="rounded-[28px] border border-white/70 bg-[var(--panel-strong)] p-5">
-                <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500">작업 상태</p>
-                      <p className="mt-1 text-sm font-bold text-slate-900">
-                        {formatBulkStatus(documentBulkPreview.status)}
-                        {documentBulkPreview.currentStep
-                          ? ` / ${formatBulkStep(documentBulkPreview.currentStep)}`
-                          : ""}
-                      </p>
+              <section className="rounded-[28px] border border-white/70 bg-[var(--panel-strong)] p-4 sm:p-5">
+                {/* 작업 상태 / 요약 영역 */}
+                <div className="rounded-[26px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+                    {/* 좌측: 작업 상태 */}
+                    <div className="min-w-0">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                              작업 상태
+                            </span>
+                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                              Job #{documentBulkPreview.jobId}
+                            </span>
+                          </div>
+
+                          <h3 className="mt-3 text-xl font-bold text-slate-950 sm:text-2xl">
+                            {formatBulkStatus(documentBulkPreview.status)}
+                            {documentBulkPreview.currentStep ? (
+                              <span className="ml-2 text-sm font-semibold text-slate-500">
+                                / {formatBulkStep(documentBulkPreview.currentStep)}
+                              </span>
+                            ) : null}
+                          </h3>
+
+                          <p className="mt-2 text-sm text-slate-500">
+                            총 {documentBulkSummary?.totalGroups ?? 0}개 그룹 중{" "}
+                            {documentBulkSummary?.processedGroups ?? 0}개 처리가 완료되었습니다.
+                          </p>
+                        </div>
+
+                        <div className="shrink-0 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-left sm:text-right">
+                          <p className="text-xs font-bold text-emerald-700">진행률</p>
+                          <p className="mt-1 text-2xl font-black text-emerald-900">
+                            {documentBulkPreview.progress}%
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-5">
+                        <div className="mb-2 flex items-center justify-between text-xs font-semibold text-slate-500">
+                          <span>
+                            {documentBulkSummary?.processedGroups ?? 0} /{" "}
+                            {documentBulkSummary?.totalGroups ?? 0} 그룹 완료
+                          </span>
+                          <span>{documentBulkPreview.progress}%</span>
+                        </div>
+
+                        <div
+                          className="h-3 overflow-hidden rounded-full bg-slate-100"
+                          role="progressbar"
+                          aria-valuenow={documentBulkPreview.progress}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                        >
+                          <div
+                            className="h-full rounded-full bg-linear-to-r from-emerald-500 to-teal-500 transition-all duration-500"
+                            style={{
+                              width: `${Math.max(
+                                0,
+                                Math.min(100, documentBulkPreview.progress),
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                          <p className="text-xs font-semibold text-slate-500">추천</p>
+                          <p className="mt-1 text-lg font-black text-slate-900">
+                            {bulkScreeningSummary.recommended}건
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                          <p className="text-xs font-semibold text-amber-700">보류</p>
+                          <p className="mt-1 text-lg font-black text-amber-900">
+                            {bulkScreeningSummary.hold}건
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+                          <p className="text-xs font-semibold text-rose-700">비추천</p>
+                          <p className="mt-1 text-lg font-black text-rose-900">
+                            {bulkScreeningSummary.notRecommended}건
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-sm font-semibold text-slate-900">
-                      {documentBulkPreview.progress}%
-                    </p>
+
+                    {/* 우측: 등록 상태 요약 카드 */}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-xs font-bold text-slate-500">그룹 수</p>
+                        <p className="mt-2 text-2xl font-black text-slate-950">
+                          {documentBulkSummary?.totalGroups ?? 0}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">파싱 대상 그룹</p>
+                      </div>
+
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                        <p className="text-xs font-bold text-emerald-700">등록 가능</p>
+                        <p className="mt-2 text-2xl font-black text-emerald-900">
+                          {documentBulkSummary?.readyCount ?? 0}
+                        </p>
+                        <p className="mt-1 text-xs text-emerald-700">확정 저장 가능</p>
+                      </div>
+
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                        <p className="text-xs font-bold text-amber-700">검토 필요</p>
+                        <p className="mt-2 text-2xl font-black text-amber-900">
+                          {documentBulkSummary?.needsReviewCount ?? 0}
+                        </p>
+                        <p className="mt-1 text-xs text-amber-700">관리자 확인 필요</p>
+                      </div>
+
+                      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                        <p className="text-xs font-bold text-rose-700">등록 불가</p>
+                        <p className="mt-2 text-2xl font-black text-rose-900">
+                          {documentBulkSummary?.invalidCount ?? 0}
+                        </p>
+                        <p className="mt-1 text-xs text-rose-700">오류 또는 필수값 누락</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-emerald-500 transition-all"
-                      style={{
-                        width: `${Math.max(0, Math.min(100, documentBulkPreview.progress))}%`,
-                      }}
-                    />
-                  </div>
-                  {documentBulkSummary ? (
-                    <p className="mt-2 text-xs text-slate-500">
-                      총 {documentBulkSummary.totalGroups}개 그룹 중{" "}
-                      {documentBulkSummary.processedGroups}개 처리 완료
+
+                  <div className="mt-4 flex flex-col gap-2 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-xs text-teal-800 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="font-semibold">
+                      기본 확정 저장 대상은 등록 가능 상태이면서 추천인 row입니다.
                     </p>
-                  ) : null}
-                </div>
-                <div className="grid gap-3 md:grid-cols-5">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <p className="text-xs font-semibold text-slate-500">작업 ID</p>
-                    <p className="mt-1 text-lg font-bold text-slate-900">
-                      {documentBulkPreview.jobId}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <p className="text-xs font-semibold text-slate-500">그룹 수</p>
-                    <p className="mt-1 text-lg font-bold text-slate-900">
-                      {documentBulkSummary?.totalGroups ?? 0}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                    <p className="text-xs font-semibold text-emerald-700">등록 가능</p>
-                    <p className="mt-1 text-lg font-bold text-emerald-900">
-                      {documentBulkSummary?.readyCount ?? 0}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                    <p className="text-xs font-semibold text-amber-700">검토 필요</p>
-                    <p className="mt-1 text-lg font-bold text-amber-900">
-                      {documentBulkSummary?.needsReviewCount ?? 0}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
-                    <p className="text-xs font-semibold text-rose-700">등록 불가</p>
-                    <p className="mt-1 text-lg font-bold text-rose-900">
-                      {documentBulkSummary?.invalidCount ?? 0}
+                    <p className="font-bold">
+                      선택됨 {selectedImportableBulkRowIds.length}건
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-                  <table className="w-full border-collapse text-sm">
-                    <thead className="bg-slate-50">
-                      <tr>
-                        {[
-                          "상태",
-                          "선택",
-                          "그룹",
-                          "이름",
-                          "이메일",
-                          "전화번호",
-                          "생년월일",
-                          "직무",
-                          "문서",
-                          "문서 파싱",
-                          "신뢰도",
-                          "비고",
-                        ].map((label) => (
-                          <th
-                            key={label}
-                            className="border-b border-slate-200 px-3 py-3 text-left font-bold text-slate-500"
-                          >
-                            {label}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {documentBulkPreview.rows.map((row) => (
-                        <tr key={row.rowId} className="align-top">
-                          <td className="border-b border-slate-200 px-3 py-3 font-semibold">
-                            {formatBulkRowStatus(row.status)}
-                          </td>
-                          <td className="border-b border-slate-200 px-3 py-3">
-                            <input
-                              type="checkbox"
-                              className="h-4 w-4"
-                              checked={selectedBulkRowIds.includes(row.rowId)}
-                              disabled={row.status !== "READY" || isDocumentBulkImporting}
-                              onChange={(event) => {
-                                setSelectedBulkRowIds((current) =>
-                                  event.target.checked
-                                    ? [...current, row.rowId]
-                                    : current.filter((rowId) => rowId !== row.rowId),
-                                );
-                              }}
-                            />
-                          </td>
-                          <td className="border-b border-slate-200 px-3 py-3">
-                            {row.groupKey}
-                          </td>
-                          <td className="border-b border-slate-200 px-3 py-3">
-                            {row.candidate.name || "-"}
-                          </td>
-                          <td className="border-b border-slate-200 px-3 py-3">
-                            {row.candidate.email || "-"}
-                          </td>
-                          <td className="border-b border-slate-200 px-3 py-3">
-                            {row.candidate.phone || "-"}
-                          </td>
-                          <td className="border-b border-slate-200 px-3 py-3">
-                            {row.candidate.birth_date || "-"}
-                          </td>
-                          <td className="border-b border-slate-200 px-3 py-3">
-                            {row.candidate.job_position
-                              ? getJobPositionLabel(row.candidate.job_position)
-                              : "-"}
-                          </td>
-                          <td className="border-b border-slate-200 px-3 py-3">
-                            {row.documentCount}
-                          </td>
-                          <td className="max-w-sm border-b border-slate-200 px-3 py-3">
-                            <div className="space-y-2">
-                              {row.documents.map((document) => (
-                                <details
-                                  key={document.storedFileName}
-                                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
-                                >
-                                  <summary className="cursor-pointer text-xs font-semibold text-slate-700">
-                                    {document.originalFileName} ·{" "}
-                                    {formatBulkStatus(document.extractStatus)} ·{" "}
-                                    {formatPercent(document.extractQualityScore)}
-                                  </summary>
-                                  <div className="mt-2 space-y-1 text-xs text-slate-600">
-                                    <p>문서 유형: {formatDocumentType(document.documentType)}</p>
-                                    <p>추출 방식: {formatExtractStrategy(document.extractStrategy)}</p>
-                                    <p>원본 유형: {formatExtractSource(document.extractSourceType)}</p>
-                                    <p>감지 유형: {formatDocumentType(document.detectedDocumentType)}</p>
-                                    <p>추출 글자 수: {document.extractedTextLength.toLocaleString()}자</p>
-                                    {document.errorMessage ? <p>오류: {document.errorMessage}</p> : null}
-                                    {document.extractedTextPreview ? (
-                                      <p className="line-clamp-3">
-                                        미리보기: {document.extractedTextPreview}
-                                      </p>
-                                    ) : null}
-                                  </div>
-                                </details>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="border-b border-slate-200 px-3 py-3">
-                            {formatPercent(row.confidenceScore)}
-                          </td>
-                          <td className="max-w-xs border-b border-slate-200 px-3 py-3">
-                            {[...row.errors, ...row.warnings].join(" / ") || "-"}
-                          </td>
+                {/* 미리보기 테이블 */}
+                <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-[1180px] w-full border-collapse text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          {[
+                            "상태",
+                            "선택",
+                            "사전평가",
+                            "그룹",
+                            "이름",
+                            "이메일",
+                            "전화번호",
+                            "생년월일",
+                            "직무",
+                            "문서",
+                            "문서 파싱",
+                            "신뢰도",
+                            "비고",
+                          ].map((label) => (
+                            <th
+                              key={label}
+                              className="whitespace-nowrap border-b border-slate-200 px-3 py-3 text-left font-bold text-slate-500"
+                            >
+                              {label}
+                            </th>
+                          ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+
+                      <tbody>
+                        {documentBulkPreview.rows.map((row) => (
+                          <tr key={row.rowId} className="align-top hover:bg-slate-50/70">
+                            <td className="border-b border-slate-200 px-3 py-3 font-semibold">
+                              {formatBulkRowStatus(row.status)}
+                            </td>
+
+                            <td className="border-b border-slate-200 px-3 py-3">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4"
+                                checked={selectedBulkRowIds.includes(row.rowId)}
+                                disabled={row.status !== "READY" || isDocumentBulkImporting}
+                                onChange={(event) => {
+                                  setSelectedBulkRowIds((current) =>
+                                    event.target.checked
+                                      ? [...current, row.rowId]
+                                      : current.filter((rowId) => rowId !== row.rowId),
+                                  );
+                                }}
+                              />
+                            </td>
+
+                            <td className="border-b border-slate-200 px-3 py-3">
+                              <div className="space-y-2">
+                                <span
+                                  className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getScreeningPillClassName(
+                                    row.screeningPreview,
+                                  )}`}
+                                >
+                                  {formatScreeningRecommendation(
+                                    row.screeningPreview?.recommendation,
+                                  )}
+                                  {row.screeningPreview
+                                    ? ` · ${row.screeningPreview.score}점`
+                                    : ""}
+                                </span>
+
+                                {row.screeningPreview?.fitReasons[0] ? (
+                                  <p className="max-w-[220px] text-xs text-slate-600">
+                                    {row.screeningPreview.fitReasons[0]}
+                                  </p>
+                                ) : null}
+
+                                {row.screeningPreview?.riskFactors.length ? (
+                                  <p className="text-xs font-medium text-rose-600">
+                                    Risk {row.screeningPreview.riskFactors.length}
+                                  </p>
+                                ) : null}
+
+                                <ScreeningPreviewDetails screening={row.screeningPreview} />
+                              </div>
+                            </td>
+
+                            <td className="border-b border-slate-200 px-3 py-3">
+                              {row.groupKey}
+                            </td>
+
+                            <td className="border-b border-slate-200 px-3 py-3">
+                              {row.candidate.name || "-"}
+                            </td>
+
+                            <td className="border-b border-slate-200 px-3 py-3">
+                              {row.candidate.email || "-"}
+                            </td>
+
+                            <td className="border-b border-slate-200 px-3 py-3">
+                              {row.candidate.phone || "-"}
+                            </td>
+
+                            <td className="border-b border-slate-200 px-3 py-3">
+                              {row.candidate.birth_date || "-"}
+                            </td>
+
+                            <td className="border-b border-slate-200 px-3 py-3">
+                              {row.candidate.job_position
+                                ? getJobPositionLabel(row.candidate.job_position)
+                                : "-"}
+                            </td>
+
+                            <td className="border-b border-slate-200 px-3 py-3">
+                              {row.documentCount}
+                            </td>
+
+                            <td className="max-w-sm border-b border-slate-200 px-3 py-3">
+                              <div className="space-y-2">
+                                {row.documents.map((document) => (
+                                  <details
+                                    key={document.storedFileName}
+                                    className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+                                  >
+                                    <summary className="cursor-pointer break-words text-xs font-semibold text-slate-700">
+                                      {document.originalFileName} ·{" "}
+                                      {formatBulkStatus(document.extractStatus)} ·{" "}
+                                      {formatPercent(document.extractQualityScore)}
+                                    </summary>
+
+                                    <div className="mt-2 space-y-1 text-xs text-slate-600">
+                                      <p>문서 유형: {formatDocumentType(document.documentType)}</p>
+                                      <p>
+                                        추출 방식:{" "}
+                                        {formatExtractStrategy(document.extractStrategy)}
+                                      </p>
+                                      <p>
+                                        원본 유형:{" "}
+                                        {formatExtractSource(document.extractSourceType)}
+                                      </p>
+                                      <p>
+                                        감지 유형:{" "}
+                                        {formatDocumentType(document.detectedDocumentType)}
+                                      </p>
+                                      <p>
+                                        추출 글자 수:{" "}
+                                        {document.extractedTextLength.toLocaleString()}자
+                                      </p>
+
+                                      {document.errorMessage ? (
+                                        <p>오류: {document.errorMessage}</p>
+                                      ) : null}
+
+                                      {document.extractedTextPreview ? (
+                                        <p className="line-clamp-3">
+                                          미리보기: {document.extractedTextPreview}
+                                        </p>
+                                      ) : null}
+                                    </div>
+                                  </details>
+                                ))}
+                              </div>
+                            </td>
+
+                            <td className="border-b border-slate-200 px-3 py-3">
+                              {formatPercent(row.confidenceScore)}
+                            </td>
+
+                            <td className="max-w-xs border-b border-slate-200 px-3 py-3">
+                              <p className="break-words text-xs leading-5 text-slate-600">
+                                {[...row.errors, ...row.warnings].join(" / ") || "-"}
+                              </p>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </section>
             ) : null}
+
+
           </div>
         ) : isDetailLoading ? (
           <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-[var(--muted)]">
