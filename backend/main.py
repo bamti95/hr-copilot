@@ -19,6 +19,7 @@ origins = [
     "http://192.168.239.20:5173",
     "https://hr-copilot-sage.vercel.app",
     "https://hr-agent.kr",
+    "https://www.hr-agent.kr",
 ]
 _extra = os.getenv("CORS_ORIGINS", "")
 if _extra.strip():
