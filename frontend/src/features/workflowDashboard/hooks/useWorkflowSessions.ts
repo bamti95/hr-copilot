@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchWorkflowSessions } from "../services/workflowDashboardApi";
-import type { LlmUsageSummaryResponse } from "../types/workflowDashboard.types";
+import type {
+  LlmUsageSummaryResponse,
+  WorkflowPipelineType,
+} from "../types/workflowDashboard.types";
 
-export function useWorkflowSessions() {
+export function useWorkflowSessions(
+  pipelineType: WorkflowPipelineType = "INTERVIEW_QUESTION",
+) {
   const [data, setData] = useState<LlmUsageSummaryResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -11,7 +16,7 @@ export function useWorkflowSessions() {
     setIsLoading(true);
     setError(null);
     try {
-      setData(await fetchWorkflowSessions());
+      setData(await fetchWorkflowSessions(pipelineType));
     } catch (err) {
       setError(
         err instanceof Error
@@ -21,7 +26,7 @@ export function useWorkflowSessions() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [pipelineType]);
 
   useEffect(() => {
     void reload();

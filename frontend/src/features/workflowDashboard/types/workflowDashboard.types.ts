@@ -1,3 +1,26 @@
+export type WorkflowPipelineType =
+  | "INTERVIEW_QUESTION"
+  | "JOB_POSTING_COMPLIANCE";
+
+export interface WorkflowPipelineOption {
+  value: WorkflowPipelineType;
+  label: string;
+  description: string;
+}
+
+export const workflowPipelineOptions: WorkflowPipelineOption[] = [
+  {
+    value: "INTERVIEW_QUESTION",
+    label: "질문 생성",
+    description: "면접 질문 생성 LangGraph 실행 흐름",
+  },
+  {
+    value: "JOB_POSTING_COMPLIANCE",
+    label: "채용공고 점검",
+    description: "Agentic RAG 기반 채용공고 컴플라이언스 흐름",
+  },
+];
+
 export interface LlmUsageMetric {
   totalCalls: number;
   totalInputTokens: number;
@@ -20,10 +43,17 @@ export interface LlmUsageNodeSummary {
 }
 
 export interface LlmUsageSessionSummary {
-  sessionId: number;
-  candidateId: number;
-  candidateName: string;
-  targetJob: string;
+  sessionId: number | null;
+  candidateId: number | null;
+  candidateName: string | null;
+  targetJob: string | null;
+  pipelineType?: WorkflowPipelineType | string;
+  targetType?: string | null;
+  targetId?: number | null;
+  jobPostingId?: number | null;
+  jobPostingAnalysisReportId?: number | null;
+  jobTitle?: string | null;
+  riskLevel?: string | null;
   callCount: number;
   totalTokens: number;
   estimatedCost: number;
@@ -33,9 +63,16 @@ export interface LlmUsageSessionSummary {
 
 export interface LlmUsageCallLog {
   id: number;
-  sessionId: number;
-  candidateId: number;
-  candidateName: string;
+  sessionId: number | null;
+  candidateId: number | null;
+  candidateName: string | null;
+  pipelineType?: WorkflowPipelineType | string;
+  targetType?: string | null;
+  targetId?: number | null;
+  jobPostingId?: number | null;
+  jobPostingAnalysisReportId?: number | null;
+  jobTitle?: string | null;
+  riskLevel?: string | null;
   nodeName: string | null;
   modelName: string;
   inputTokens: number;
@@ -59,10 +96,16 @@ export interface LlmUsageSummaryResponse {
 export interface LlmCallLog {
   id: number;
   managerId: number | null;
-  candidateId: number;
+  candidateId: number | null;
   documentId: number | null;
   promptProfileId: number | null;
-  interviewSessionsId: number;
+  interviewSessionsId: number | null;
+  pipelineType?: WorkflowPipelineType | string;
+  targetType?: string | null;
+  targetId?: number | null;
+  jobPostingId?: number | null;
+  jobPostingAnalysisReportId?: number | null;
+  knowledgeSourceId?: number | null;
   modelName: string;
   nodeName: string | null;
   runId: string | null;
@@ -89,12 +132,18 @@ export interface LlmCallLog {
 }
 
 export interface LlmCallLogListResponse {
-  sessionId: number;
+  sessionId: number | null;
   traceId: string | null;
   items: LlmCallLog[];
 }
 
-export type DetailTab = "feedback" | "input" | "output" | "state" | "router" | "meta";
+export type DetailTab =
+  | "feedback"
+  | "input"
+  | "output"
+  | "state"
+  | "router"
+  | "meta";
 export type SessionFilter = "all" | "success" | "failed";
 export type SessionSort = "recent" | "latency" | "cost" | "tokens";
 
@@ -112,6 +161,46 @@ export const emptyWorkflowSummary: LlmUsageSummaryResponse = {
   bySession: [],
   recentCalls: [],
 };
+
+export function getWorkflowExecutionId(
+  session: LlmUsageSessionSummary,
+): number | null {
+  return (
+    session.sessionId ??
+    session.jobPostingAnalysisReportId ??
+    session.targetId ??
+    null
+  );
+}
+
+export function getCallExecutionId(call: LlmUsageCallLog): number | null {
+  return (
+    call.sessionId ??
+    call.jobPostingAnalysisReportId ??
+    call.targetId ??
+    null
+  );
+}
+
+export function getWorkflowExecutionTitle(
+  session: LlmUsageSessionSummary,
+): string {
+  return (
+    session.candidateName ??
+    session.jobTitle ??
+    session.targetJob ??
+    `Execution #${getWorkflowExecutionId(session) ?? "-"}`
+  );
+}
+
+export function getWorkflowExecutionSubtitle(
+  session: LlmUsageSessionSummary,
+): string {
+  if (session.pipelineType === "JOB_POSTING_COMPLIANCE") {
+    return `${session.riskLevel ?? "RISK"} · ${session.jobTitle ?? session.targetJob ?? "채용공고"}`;
+  }
+  return session.targetJob ?? "면접 질문 생성";
+}
 
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat("ko-KR").format(value);
@@ -173,7 +262,10 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function getArray(value: Record<string, unknown> | null, key: string): unknown[] {
+export function getArray(
+  value: Record<string, unknown> | null,
+  key: string,
+): unknown[] {
   const nested = value?.[key];
   return Array.isArray(nested) ? nested : [];
 }
@@ -189,7 +281,12 @@ export function getNestedRecord(
 export function getFinalResponse(logs: LlmCallLog[]): Record<string, unknown> | null {
   const finalLog = [...logs]
     .reverse()
-    .find((log) => log.nodeName === "final_formatter" || log.outputJson?.final_response);
+    .find(
+      (log) =>
+        log.nodeName === "final_formatter" ||
+        log.nodeName === "finalize_report" ||
+        log.outputJson?.final_response,
+    );
   const finalResponse = finalLog?.outputJson?.final_response;
   if (isRecord(finalResponse)) return finalResponse;
   return finalLog?.outputJson ?? null;

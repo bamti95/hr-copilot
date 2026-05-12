@@ -8,6 +8,7 @@ import type {
   LlmUsageNodeSummary,
   LlmUsageSessionSummary,
   LlmUsageSummaryResponse,
+  WorkflowPipelineType,
 } from "../types/workflowDashboard.types";
 
 interface ApiEnvelope<T> {
@@ -38,10 +39,17 @@ interface LlmUsageNodeApiResponse {
 }
 
 interface LlmUsageSessionApiResponse {
-  session_id: number;
-  candidate_id: number;
-  candidate_name: string;
-  target_job: string;
+  session_id?: number | null;
+  candidate_id?: number | null;
+  candidate_name?: string | null;
+  target_job?: string | null;
+  pipeline_type?: string | null;
+  target_type?: string | null;
+  target_id?: number | null;
+  job_posting_id?: number | null;
+  job_posting_analysis_report_id?: number | null;
+  job_title?: string | null;
+  risk_level?: string | null;
   call_count: number;
   total_tokens: number;
   estimated_cost: string | number;
@@ -51,9 +59,16 @@ interface LlmUsageSessionApiResponse {
 
 interface LlmUsageCallApiResponse {
   id: number;
-  session_id: number;
-  candidate_id: number;
-  candidate_name: string;
+  session_id?: number | null;
+  candidate_id?: number | null;
+  candidate_name?: string | null;
+  pipeline_type?: string | null;
+  target_type?: string | null;
+  target_id?: number | null;
+  job_posting_id?: number | null;
+  job_posting_analysis_report_id?: number | null;
+  job_title?: string | null;
+  risk_level?: string | null;
   node_name: string | null;
   model_name: string;
   input_tokens: number;
@@ -80,14 +95,26 @@ interface LlmCallLogApiResponse {
   id: number;
   managerId?: number | null;
   manager_id?: number | null;
-  candidateId?: number;
-  candidate_id?: number;
+  candidateId?: number | null;
+  candidate_id?: number | null;
+  pipelineType?: string | null;
+  pipeline_type?: string | null;
+  targetType?: string | null;
+  target_type?: string | null;
+  targetId?: number | null;
+  target_id?: number | null;
+  jobPostingId?: number | null;
+  job_posting_id?: number | null;
+  jobPostingAnalysisReportId?: number | null;
+  job_posting_analysis_report_id?: number | null;
+  knowledgeSourceId?: number | null;
+  knowledge_source_id?: number | null;
   documentId?: number | null;
   document_id?: number | null;
   promptProfileId?: number | null;
   prompt_profile_id?: number | null;
-  interviewSessionsId?: number;
-  interview_sessions_id?: number;
+  interviewSessionsId?: number | null;
+  interview_sessions_id?: number | null;
   modelName?: string;
   model_name?: string;
   nodeName?: string | null;
@@ -174,10 +201,17 @@ function mapNode(response: LlmUsageNodeApiResponse): LlmUsageNodeSummary {
 
 function mapSession(response: LlmUsageSessionApiResponse): LlmUsageSessionSummary {
   return {
-    sessionId: response.session_id,
-    candidateId: response.candidate_id,
-    candidateName: response.candidate_name,
-    targetJob: response.target_job,
+    sessionId: response.session_id ?? null,
+    candidateId: response.candidate_id ?? null,
+    candidateName: response.candidate_name ?? null,
+    targetJob: response.target_job ?? null,
+    pipelineType: response.pipeline_type ?? undefined,
+    targetType: response.target_type ?? null,
+    targetId: response.target_id ?? null,
+    jobPostingId: response.job_posting_id ?? null,
+    jobPostingAnalysisReportId: response.job_posting_analysis_report_id ?? null,
+    jobTitle: response.job_title ?? null,
+    riskLevel: response.risk_level ?? null,
     callCount: response.call_count,
     totalTokens: response.total_tokens,
     estimatedCost: toNumber(response.estimated_cost),
@@ -189,9 +223,16 @@ function mapSession(response: LlmUsageSessionApiResponse): LlmUsageSessionSummar
 function mapCall(response: LlmUsageCallApiResponse): LlmUsageCallLog {
   return {
     id: response.id,
-    sessionId: response.session_id,
-    candidateId: response.candidate_id,
-    candidateName: response.candidate_name,
+    sessionId: response.session_id ?? null,
+    candidateId: response.candidate_id ?? null,
+    candidateName: response.candidate_name ?? null,
+    pipelineType: response.pipeline_type ?? undefined,
+    targetType: response.target_type ?? null,
+    targetId: response.target_id ?? null,
+    jobPostingId: response.job_posting_id ?? null,
+    jobPostingAnalysisReportId: response.job_posting_analysis_report_id ?? null,
+    jobTitle: response.job_title ?? null,
+    riskLevel: response.risk_level ?? null,
     nodeName: response.node_name,
     modelName: response.model_name,
     inputTokens: response.input_tokens,
@@ -210,11 +251,21 @@ function mapWorkflowLog(response: LlmCallLogApiResponse): LlmCallLog {
   return {
     id: response.id,
     managerId: response.managerId ?? response.manager_id ?? null,
-    candidateId: response.candidateId ?? response.candidate_id ?? 0,
+    candidateId: response.candidateId ?? response.candidate_id ?? null,
     documentId: response.documentId ?? response.document_id ?? null,
     promptProfileId: response.promptProfileId ?? response.prompt_profile_id ?? null,
     interviewSessionsId:
-      response.interviewSessionsId ?? response.interview_sessions_id ?? 0,
+      response.interviewSessionsId ?? response.interview_sessions_id ?? null,
+    pipelineType: response.pipelineType ?? response.pipeline_type ?? undefined,
+    targetType: response.targetType ?? response.target_type ?? null,
+    targetId: response.targetId ?? response.target_id ?? null,
+    jobPostingId: response.jobPostingId ?? response.job_posting_id ?? null,
+    jobPostingAnalysisReportId:
+      response.jobPostingAnalysisReportId ??
+      response.job_posting_analysis_report_id ??
+      null,
+    knowledgeSourceId:
+      response.knowledgeSourceId ?? response.knowledge_source_id ?? null,
     modelName: response.modelName ?? response.model_name ?? "unknown",
     nodeName: response.nodeName ?? response.node_name ?? null,
     runId: response.runId ?? response.run_id ?? null,
@@ -244,9 +295,12 @@ function mapWorkflowLog(response: LlmCallLogApiResponse): LlmCallLog {
   };
 }
 
-export async function fetchWorkflowSessions(): Promise<LlmUsageSummaryResponse> {
+export async function fetchWorkflowSessions(
+  pipelineType: WorkflowPipelineType = "INTERVIEW_QUESTION",
+): Promise<LlmUsageSummaryResponse> {
   const response = await api.get<ApiEnvelope<LlmUsageSummaryApiResponse>>(
     "/llm-usage/summary",
+    { params: { pipelineType } },
   );
 
   const data = response.data.data;

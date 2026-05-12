@@ -2,6 +2,7 @@ import { BarChart3, RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 import {
   formatCost,
+  getWorkflowExecutionId,
   formatMs,
   formatNumber,
   type LlmUsageMetric,
@@ -96,8 +97,10 @@ export function WorkflowChartSection({
             {bySession
               .slice(0, 8)
               .reverse()
-              .map((session) => (
-                <div key={session.sessionId} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+              .map((session) => {
+                const executionId = getWorkflowExecutionId(session);
+                return (
+                <div key={executionId ?? session.lastCalledAt} className="flex min-w-0 flex-1 flex-col items-center gap-2">
                   <div
                     className="w-full rounded-t bg-[#315fbc]"
                     style={{
@@ -106,10 +109,11 @@ export function WorkflowChartSection({
                     title={formatCost(session.estimatedCost)}
                   />
                   <span className="max-w-full truncate text-[10px] text-slate-500">
-                    #{session.sessionId}
+                    #{executionId ?? "-"}
                   </span>
                 </div>
-              ))}
+              );
+              })}
           </div>
         </ChartCard>
 
