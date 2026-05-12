@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -15,8 +16,13 @@ settings = get_settings()
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://192.168.239.20:5173",  # 현재 사용 중인 프론트엔드 IP 명시
+    "http://192.168.239.20:5173",
+    "https://hr-copilot-sage.vercel.app",
+    "https://hr-agent.kr",
 ]
+_extra = os.getenv("CORS_ORIGINS", "")
+if _extra.strip():
+    origins.extend(o.strip() for o in _extra.split(",") if o.strip())
 
 
 if settings.DB_ECHO:

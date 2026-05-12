@@ -2,9 +2,14 @@ import axios, { type InternalAxiosRequestConfig } from "axios";
 import { authStorage } from "./authStorage";
 import { useGlobalLoadingStore } from "../store/useGlobalLoadingStore";
 
-const API_BASE_URL = "http://127.0.0.1:8000/api/v1";
-// npm run dev -- --host 0.0.0.0
-// const API_BASE_URL = "http://192.168.239.20:8000/api/v1" 
+/** 로컬 기본값. 배포 시 Vite `VITE_API_URL` — origin만 주면 `/api/v1` 자동 추가 */
+function resolveApiBaseUrl(): string {
+  const raw = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+  const root = (raw || "http://127.0.0.1:8000").replace(/\/$/, "");
+  return root.endsWith("/api/v1") ? root : `${root}/api/v1`;
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 const api = axios.create({
   baseURL: API_BASE_URL,
