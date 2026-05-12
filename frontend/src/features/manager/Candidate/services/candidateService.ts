@@ -24,6 +24,7 @@ import type {
   DocumentBulkImportPreviewJobResponse,
   DocumentBulkImportPreviewResponse,
   DocumentBulkImportPreviewStartResponse,
+  ScreeningPreviewResult,
 } from "../types";
 
 interface CandidateRequestOptions {
@@ -66,6 +67,7 @@ interface CandidateDocumentDetailApiResponse extends CandidateDocumentApiRespons
 
 interface CandidateDetailApiResponse extends CandidateApiResponse {
   documents: CandidateDocumentApiResponse[];
+  screening_result: ScreeningPreviewApiResponse | null;
 }
 
 interface CandidateListApiResponse {
@@ -140,6 +142,22 @@ interface CandidateProfileExtractionApiOutput {
   warnings: string[];
 }
 
+interface ScreeningPreviewApiResponse {
+  recommendation: string;
+  score: number;
+  confidence: number;
+  summary: string | null;
+  fit_reasons: string[];
+  risk_factors: string[];
+  missing_evidence: string[];
+  interview_focus: string[];
+  suggested_next_action: string;
+  score_breakdown: Record<string, unknown>;
+  evidence_refs: Record<string, unknown>[];
+  warnings: string[];
+  decision_status: string | null;
+}
+
 interface DocumentBulkImportPreviewDocumentApiResponse {
   original_file_name: string;
   stored_file_name: string;
@@ -172,6 +190,7 @@ interface DocumentBulkImportPreviewRowApiResponse {
   duplicate_candidate_id: number | null;
   errors: string[];
   warnings: string[];
+  screening_preview: ScreeningPreviewApiResponse | null;
 }
 
 interface DocumentBulkImportPreviewApiResponse {
@@ -297,6 +316,30 @@ function mapCandidateSampleFolder(
   };
 }
 
+function mapScreeningPreview(
+  response: ScreeningPreviewApiResponse | null | undefined,
+): ScreeningPreviewResult | null {
+  if (!response) {
+    return null;
+  }
+
+  return {
+    recommendation: response.recommendation,
+    score: response.score,
+    confidence: response.confidence,
+    summary: response.summary,
+    fitReasons: response.fit_reasons,
+    riskFactors: response.risk_factors,
+    missingEvidence: response.missing_evidence,
+    interviewFocus: response.interview_focus,
+    suggestedNextAction: response.suggested_next_action,
+    scoreBreakdown: response.score_breakdown,
+    evidenceRefs: response.evidence_refs,
+    warnings: response.warnings,
+    decisionStatus: response.decision_status,
+  };
+}
+
 function mapDocumentBulkPreview(
   response: DocumentBulkImportPreviewApiResponse,
 ): DocumentBulkImportPreviewResponse {
@@ -351,6 +394,7 @@ function mapDocumentBulkPreview(
       duplicateCandidateId: row.duplicate_candidate_id,
       errors: row.errors,
       warnings: row.warnings,
+      screeningPreview: mapScreeningPreview(row.screening_preview),
     })),
   };
 }
@@ -437,6 +481,7 @@ export async function fetchCandidateDetail(
   return {
     ...mapCandidate(response.data),
     documents: response.data.documents.map(mapDocument),
+    screeningResult: mapScreeningPreview(response.data.screening_result),
   };
 }
 

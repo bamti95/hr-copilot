@@ -1,5 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getJobPositionLabel } from "../../common/candidateJobPosition";
+import {
+  formatScreeningRecommendation,
+  getDefaultScreeningSelectedRowIds,
+  getScreeningPillClassName,
+  getScreeningSummary,
+} from "../utils/screening";
+import { ScreeningPreviewDetails } from "./ScreeningPreviewDetails";
 import type {
   CandidateApplyStatus,
   DocumentBulkImportPreviewRequest,
@@ -66,28 +73,30 @@ export function CandidateDocumentBulkImportModal({
     useState<CandidateApplyStatus>("APPLIED");
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
 
-  if (!open) {
-    return null;
-  }
-
   const canSubmit =
     !isSubmitting && (mode === "ZIP" ? Boolean(zipFile) : files.length > 0);
   const summary = preview?.summary;
   const isJobRunning =
     preview?.status === "QUEUED" || preview?.status === "RUNNING" || preview?.status === "RETRYING";
   const importableRows = preview?.rows.filter((row) => row.status === "READY") ?? [];
-  const selectedImportableRowIds =
-    selectedRowIds.length > 0
-      ? selectedRowIds.filter((rowId) =>
-          importableRows.some((row) => row.rowId === rowId),
-        )
-      : importableRows.map((row) => row.rowId);
+  const selectedImportableRowIds = selectedRowIds.filter((rowId) =>
+    importableRows.some((row) => row.rowId === rowId),
+  );
+  const screeningSummary = getScreeningSummary(preview?.rows ?? []);
   const canConfirmImport =
     Boolean(preview) &&
     !isJobRunning &&
     !isSubmitting &&
     !isImporting &&
     selectedImportableRowIds.length > 0;
+
+  useEffect(() => {
+    setSelectedRowIds(getDefaultScreeningSelectedRowIds(preview?.rows ?? []));
+  }, [preview?.jobId, preview?.rows]);
+
+  if (!open) {
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
@@ -241,7 +250,7 @@ export function CandidateDocumentBulkImportModal({
                 </p>
               ) : null}
             </div>
-            <div className="grid gap-3 md:grid-cols-5">
+            <div className="grid gap-3 md:grid-cols-6">
               <div className="rounded-2xl border border-[var(--line)] bg-white p-4">
                 <p className="text-xs font-semibold text-[var(--muted)]">Job ID</p>
                 <p className="mt-1 text-lg font-bold text-[var(--text)]">
@@ -272,6 +281,15 @@ export function CandidateDocumentBulkImportModal({
                   {summary?.invalidCount ?? 0}
                 </p>
               </div>
+              <div className="rounded-2xl border border-teal-200 bg-teal-50 p-4">
+                <p className="text-xs font-semibold text-teal-700">Recommended</p>
+                <p className="mt-1 text-lg font-bold text-teal-900">
+                  {screeningSummary.recommended}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-xs text-[var(--muted)]">
+              Default import selects READY + Recommended rows. Hold or Not Recommended rows can be selected manually when they are READY.
             </div>
 
             <div className="mt-4 overflow-x-auto rounded-2xl border border-[var(--line)]">
@@ -281,6 +299,7 @@ export function CandidateDocumentBulkImportModal({
                     {[
                       "Status",
                       "Select",
+                      "Screening",
                       "Group",
                       "Name",
                       "Email",
@@ -321,6 +340,27 @@ export function CandidateDocumentBulkImportModal({
                             );
                           }}
                         />
+                      </td>
+                      <td className="border-b border-[var(--line)] px-3 py-3">
+                        <div className="space-y-2">
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getScreeningPillClassName(row.screeningPreview)}`}
+                          >
+                            {formatScreeningRecommendation(row.screeningPreview?.recommendation)}
+                            {row.screeningPreview ? ` · ${row.screeningPreview.score}점` : ""}
+                          </span>
+                          {row.screeningPreview?.fitReasons[0] ? (
+                            <p className="max-w-[220px] text-xs text-slate-600">
+                              {row.screeningPreview.fitReasons[0]}
+                            </p>
+                          ) : null}
+                          {row.screeningPreview?.riskFactors.length ? (
+                            <p className="text-xs font-medium text-rose-600">
+                              Risk {row.screeningPreview.riskFactors.length}
+                            </p>
+                          ) : null}
+                          <ScreeningPreviewDetails screening={row.screeningPreview} />
+                        </div>
                       </td>
                       <td className="border-b border-[var(--line)] px-3 py-3">
                         {row.groupKey}
@@ -378,7 +418,7 @@ export function CandidateDocumentBulkImportModal({
                   {preview.rows.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={12}
+                        colSpan={13}
                         className="px-3 py-8 text-center text-[var(--muted)]"
                       >
                         No preview rows.

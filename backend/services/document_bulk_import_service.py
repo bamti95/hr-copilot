@@ -29,7 +29,7 @@ from common.file_util import (
     resolve_document_dir,
     strip_extension,
 )
-from common.job_position import normalize_job_position
+from common.job_position import normalize_job_position, normalize_job_position_code
 from core.config import settings
 from core.database import AsyncSessionLocal
 from models.ai_job import AiJob, AiJobStatus, AiJobTargetType, AiJobType
@@ -49,12 +49,14 @@ from schemas.candidate import (
     DocumentBulkImportPreviewRow,
     DocumentBulkImportPreviewStartResponse,
     DocumentBulkImportPreviewSummary,
+    ScreeningPreviewResult,
 )
 
 logger = logging.getLogger(__name__)
 
 DOCUMENT_BULK_ROOT_DIR = "document_bulk_previews"
 DOCUMENT_BULK_LLM_TEXT_LIMIT = 12000
+SCREENING_TEXT_LIMIT = 16000
 SUPPORTED_EXTRACTION_EXTENSIONS = {"pdf", "docx", "txt"}
 DOCUMENT_TYPE_KEYWORDS = {
     "RESUME": (
@@ -93,6 +95,118 @@ DOCUMENT_TYPE_KEYWORDS = {
         "경력소개서",
     ),
 }
+SCREENING_JOB_KEYWORDS = {
+    "AI_DEV_DATA": (
+        "python",
+        "java",
+        "javascript",
+        "typescript",
+        "react",
+        "vue",
+        "node",
+        "spring",
+        "fastapi",
+        "django",
+        "sql",
+        "postgresql",
+        "mysql",
+        "aws",
+        "docker",
+        "kubernetes",
+        "ci/cd",
+        "머신러닝",
+        "딥러닝",
+        "데이터",
+        "개발",
+        "백엔드",
+        "프론트엔드",
+        "모델",
+        "분석",
+        "배포",
+        "아키텍처",
+    ),
+    "HR": (
+        "채용",
+        "인사",
+        "hr",
+        "교육",
+        "평가",
+        "보상",
+        "노무",
+        "조직문화",
+        "온보딩",
+        "면접",
+        "인재",
+        "성과관리",
+    ),
+    "MARKETING": (
+        "마케팅",
+        "광고",
+        "캠페인",
+        "콘텐츠",
+        "브랜드",
+        "퍼포먼스",
+        "crm",
+        "seo",
+        "sns",
+        "전환율",
+        "고객",
+        "매출",
+        "md",
+    ),
+    "SALES": (
+        "영업",
+        "세일즈",
+        "고객",
+        "매출",
+        "계약",
+        "제안",
+        "거래처",
+        "crm",
+        "파이프라인",
+        "수주",
+        "b2b",
+        "b2c",
+    ),
+    "STRATEGY_PLANNING": (
+        "기획",
+        "전략",
+        "사업",
+        "시장",
+        "분석",
+        "프로젝트",
+        "로드맵",
+        "kpi",
+        "지표",
+        "운영",
+        "프로세스",
+        "개선",
+    ),
+}
+SENSITIVE_SCREENING_TERMS = (
+    "출신지역",
+    "본적",
+    "가족관계",
+    "부모",
+    "형제",
+    "배우자",
+    "자녀",
+    "혼인",
+    "미혼",
+    "기혼",
+    "키",
+    "체중",
+    "외모",
+    "재산",
+    "부동산",
+    "종교",
+    "정치",
+)
+CONCRETE_EVIDENCE_PATTERNS = (
+    r"\d+\s*%",
+    r"\d+\s*(?:명|건|회|개|년|개월|만원|억원|원)",
+    r"(?:성과|매출|전환율|개선|절감|증가|감소|수상|리드|담당|구축|운영|개발|출시)",
+)
 
 @dataclass(slots=True)
 class StagedDocument:
@@ -281,6 +395,329 @@ def _build_text_preview(text: str | None, limit: int = 240) -> str | None:
     if len(normalized) <= limit:
         return normalized
     return f"{normalized[:limit].rstrip()}..."
+
+
+def _normalize_for_screening(value: str | None) -> str:
+    return re.sub(r"\s+", " ", value or "").strip().lower()
+
+
+def _screening_document_readiness(
+    documents: list[DocumentBulkImportPreviewDocument],
+) -> tuple[int, list[str], list[str], dict]:
+    document_types = {document.document_type for document in documents}
+    success_documents = [
+        document for document in documents if document.extract_status == "SUCCESS"
+    ]
+    quality_scores = [
+        float(document.extract_quality_score or 0) for document in success_documents
+    ]
+    average_quality = (
+        sum(quality_scores) / len(quality_scores) if quality_scores else 0
+    )
+    extracted_text_length = sum(
+        int(document.extracted_text_length or 0) for document in documents
+    )
+
+    score = 0
+    fit_reasons: list[str] = []
+    missing_evidence: list[str] = []
+
+    if "RESUME" in document_types:
+        score += 6
+        fit_reasons.append("이력서 문서가 포함되어 기본 경력 검토가 가능합니다.")
+    else:
+        missing_evidence.append("이력서 문서가 확인되지 않았습니다.")
+
+    if "CAREER_DESCRIPTION" in document_types:
+        score += 5
+        fit_reasons.append("경력기술서가 포함되어 직무 경험을 검토할 수 있습니다.")
+    if "PORTFOLIO" in document_types:
+        score += 4
+        fit_reasons.append("포트폴리오가 포함되어 프로젝트 근거를 확인할 수 있습니다.")
+
+    if success_documents:
+        score += 3
+    else:
+        missing_evidence.append("텍스트 추출에 성공한 문서가 없습니다.")
+
+    if average_quality >= 70:
+        score += 2
+    elif average_quality < 30:
+        missing_evidence.append("문서 추출 품질이 낮아 근거 신뢰도가 제한됩니다.")
+
+    if extracted_text_length < 500:
+        missing_evidence.append("추출 텍스트가 짧아 직무 적합도 판단 근거가 부족합니다.")
+
+    warnings = [
+        f"{document.original_file_name}: 텍스트 추출 실패"
+        for document in documents
+        if document.extract_status == "FAILED"
+    ]
+    breakdown = {
+        "document_types": sorted(document_types),
+        "successful_document_count": len(success_documents),
+        "average_extract_quality_score": round(average_quality, 2),
+        "extracted_text_length": extracted_text_length,
+    }
+    return min(20, score), fit_reasons, missing_evidence, breakdown
+
+
+def _screening_profile_completeness(
+    profile: CandidateProfileExtractionOutput,
+    candidate: dict,
+) -> tuple[int, list[str], list[str], dict]:
+    score = 0
+    missing_evidence: list[str] = []
+    warnings: list[str] = []
+
+    if candidate.get("name"):
+        score += 5
+    else:
+        missing_evidence.append("지원자 이름이 확인되지 않았습니다.")
+    if candidate.get("email") or candidate.get("phone"):
+        score += 5
+    else:
+        missing_evidence.append("이메일 또는 연락처가 확인되지 않았습니다.")
+    if candidate.get("job_position"):
+        score += 5
+    else:
+        missing_evidence.append("지원 직무가 확인되지 않았습니다.")
+    if profile.summary:
+        score += 3
+    if profile.confidence_score >= 0.8:
+        score += 2
+    elif profile.confidence_score < 0.5:
+        warnings.append("지원자 기본정보 추론 신뢰도가 낮습니다.")
+
+    breakdown = {
+        "profile_confidence_score": profile.confidence_score,
+        "missing_fields": profile.missing_fields,
+    }
+    return min(20, score), warnings, missing_evidence, breakdown
+
+
+def _screening_job_fit(
+    *,
+    merged_text: str,
+    job_position: str | None,
+) -> tuple[int, list[str], list[str], dict]:
+    normalized_text = _normalize_for_screening(merged_text)
+    normalized_job = normalize_job_position(job_position) or (job_position or "").strip()
+    job_code = normalize_job_position_code(normalized_job)
+    keywords = SCREENING_JOB_KEYWORDS.get(job_code or "", ())
+    matched_keywords = [
+        keyword for keyword in keywords if keyword.lower() in normalized_text
+    ]
+
+    score = min(24, len(set(matched_keywords)) * 4)
+    fit_reasons: list[str] = []
+    missing_evidence: list[str] = []
+
+    if matched_keywords:
+        fit_reasons.append(
+            "지원 직무와 관련된 키워드가 문서에서 확인됩니다: "
+            + ", ".join(matched_keywords[:5])
+        )
+    else:
+        missing_evidence.append("지원 직무와 직접 연결되는 키워드 근거가 부족합니다.")
+
+    if _infer_experience_suffix(merged_text) == "경력":
+        score += 4
+        fit_reasons.append("경력 지원자로 볼 수 있는 근무/프로젝트 신호가 있습니다.")
+    elif _infer_experience_suffix(merged_text) == "신입":
+        score += 2
+        fit_reasons.append("신입 지원자로 볼 수 있는 신호가 있습니다.")
+
+    if normalized_job and normalized_job.lower() in normalized_text:
+        score += 2
+
+    breakdown = {
+        "normalized_job_position": normalized_job,
+        "matched_keywords": matched_keywords[:10],
+    }
+    return min(30, score), fit_reasons, missing_evidence, breakdown
+
+
+def _screening_evidence_quality(merged_text: str) -> tuple[int, list[str], list[str], dict]:
+    normalized_text = _normalize_for_screening(merged_text)
+    matched_patterns = [
+        pattern
+        for pattern in CONCRETE_EVIDENCE_PATTERNS
+        if re.search(pattern, normalized_text, flags=re.IGNORECASE)
+    ]
+    score = min(20, len(matched_patterns) * 5)
+    fit_reasons: list[str] = []
+    missing_evidence: list[str] = []
+
+    if matched_patterns:
+        fit_reasons.append("성과 수치, 역할, 프로젝트 등 구체적 근거 신호가 있습니다.")
+    else:
+        missing_evidence.append("성과 수치나 구체적 역할 근거가 부족합니다.")
+
+    return score, fit_reasons, missing_evidence, {
+        "matched_evidence_pattern_count": len(matched_patterns),
+    }
+
+
+def _screening_risk_adjustment(
+    *,
+    merged_text: str,
+    duplicate_candidate_id: int | None,
+    errors: list[str],
+    warnings: list[str],
+) -> tuple[int, list[str], list[str], dict]:
+    normalized_text = _normalize_for_screening(merged_text)
+    risk_factors: list[str] = []
+    screening_warnings: list[str] = []
+    adjustment = 5
+
+    if duplicate_candidate_id is not None:
+        adjustment -= 10
+        risk_factors.append("기존 지원자와 중복 가능성이 있습니다.")
+    if errors:
+        adjustment -= 10
+        risk_factors.append("등록 전 해결해야 하는 오류가 있습니다.")
+    if warnings:
+        adjustment -= min(6, len(warnings) * 2)
+        risk_factors.append("문서/프로필 검토 경고가 있습니다.")
+
+    sensitive_hits = [
+        term for term in SENSITIVE_SCREENING_TERMS if term.lower() in normalized_text
+    ]
+    if sensitive_hits:
+        adjustment -= 5
+        screening_warnings.append(
+            "직무 무관 개인정보 후보가 감지되어 선별 근거에서 제외해야 합니다: "
+            + ", ".join(sensitive_hits[:5])
+        )
+
+    return max(-20, min(10, adjustment)), risk_factors, screening_warnings, {
+        "duplicate_candidate_id": duplicate_candidate_id,
+        "sensitive_terms": sensitive_hits[:10],
+        "error_count": len(errors),
+        "warning_count": len(warnings),
+    }
+
+
+def _build_screening_preview(
+    *,
+    profile: CandidateProfileExtractionOutput,
+    candidate: dict,
+    documents: list[DocumentBulkImportPreviewDocument],
+    merged_text: str,
+    duplicate_candidate_id: int | None,
+    errors: list[str],
+    warnings: list[str],
+) -> ScreeningPreviewResult:
+    profile_score, profile_warnings, profile_missing, profile_breakdown = (
+        _screening_profile_completeness(profile, candidate)
+    )
+    document_score, document_reasons, document_missing, document_breakdown = (
+        _screening_document_readiness(documents)
+    )
+    job_score, job_reasons, job_missing, job_breakdown = _screening_job_fit(
+        merged_text=merged_text[:SCREENING_TEXT_LIMIT],
+        job_position=str(candidate.get("job_position") or ""),
+    )
+    evidence_score, evidence_reasons, evidence_missing, evidence_breakdown = (
+        _screening_evidence_quality(merged_text[:SCREENING_TEXT_LIMIT])
+    )
+    risk_adjustment, risk_factors, screening_warnings, risk_breakdown = (
+        _screening_risk_adjustment(
+            merged_text=merged_text[:SCREENING_TEXT_LIMIT],
+            duplicate_candidate_id=duplicate_candidate_id,
+            errors=errors,
+            warnings=warnings,
+        )
+    )
+    total_score = max(
+        0,
+        min(
+            100,
+            profile_score
+            + document_score
+            + job_score
+            + evidence_score
+            + risk_adjustment,
+        ),
+    )
+
+    if errors or duplicate_candidate_id is not None or profile_score < 10:
+        recommendation = "NEEDS_REVIEW"
+    elif total_score >= 75:
+        recommendation = "RECOMMEND"
+    elif total_score >= 55:
+        recommendation = "HOLD"
+    else:
+        recommendation = "NOT_RECOMMENDED"
+
+    suggested_next_action = {
+        "RECOMMEND": "IMPORT_AND_CREATE_SESSION",
+        "HOLD": "REVIEW",
+        "NOT_RECOMMENDED": "IMPORT_ONLY",
+        "NEEDS_REVIEW": "REVIEW",
+    }.get(recommendation, "REVIEW")
+
+    fit_reasons = [
+        *document_reasons,
+        *job_reasons,
+        *evidence_reasons,
+    ][:5]
+    missing_evidence = [
+        *profile_missing,
+        *document_missing,
+        *job_missing,
+        *evidence_missing,
+    ][:6]
+    all_warnings = [*profile_warnings, *screening_warnings]
+
+    if recommendation == "RECOMMEND":
+        summary = "문서와 기본정보 기준으로 면접 후보 우선 검토를 추천합니다."
+    elif recommendation == "HOLD":
+        summary = "일부 직무 근거는 있으나 추가 검토 후 면접 대상 여부를 판단하는 것이 좋습니다."
+    elif recommendation == "NEEDS_REVIEW":
+        summary = "등록 오류, 중복 또는 필수정보 부족으로 HR 담당자 검토가 먼저 필요합니다."
+    else:
+        summary = "현재 추출된 근거만으로는 면접 우선순위가 높지 않습니다."
+
+    interview_focus = []
+    if candidate.get("job_position"):
+        interview_focus.append(f"{candidate.get('job_position')} 직무와 실제 경험의 연결성")
+    interview_focus.extend(
+        [
+            "문서에 기재된 성과의 산정 기준",
+            "프로젝트에서 실제 담당한 역할과 의사결정 범위",
+        ]
+    )
+
+    return ScreeningPreviewResult(
+        recommendation=recommendation,
+        score=total_score,
+        confidence=round(
+            max(0.0, min(1.0, (profile.confidence_score + min(1, document_score / 20)) / 2)),
+            2,
+        ),
+        summary=summary,
+        fit_reasons=fit_reasons,
+        risk_factors=risk_factors[:5],
+        missing_evidence=missing_evidence,
+        interview_focus=interview_focus[:5],
+        suggested_next_action=suggested_next_action,
+        score_breakdown={
+            "profile_completeness_score": profile_score,
+            "document_readiness_score": document_score,
+            "job_fit_signal_score": job_score,
+            "evidence_quality_score": evidence_score,
+            "risk_adjustment_score": risk_adjustment,
+            "profile": profile_breakdown,
+            "documents": document_breakdown,
+            "job_fit": job_breakdown,
+            "evidence_quality": evidence_breakdown,
+            "risk": risk_breakdown,
+        },
+        evidence_refs=[],
+        warnings=all_warnings[:8],
+    )
 
 
 def _infer_experience_suffix(text: str) -> str | None:
@@ -742,7 +1179,12 @@ class DocumentBulkImportService:
         target_rows = [
             row
             for row in rows
-            if (not selected_ids and row.status == "READY")
+            if (
+                not selected_ids
+                and row.status == "READY"
+                and row.screening_preview is not None
+                and row.screening_preview.recommendation == "RECOMMEND"
+            )
             or (selected_ids and row.row_id in selected_ids)
         ]
 
@@ -852,6 +1294,36 @@ class DocumentBulkImportService:
                     )
                     await repo.add(document)
                     row_document_count += 1
+
+                if row.screening_preview is not None:
+                    await repo.add(
+                        AiJob(
+                            job_type=AiJobType.CANDIDATE_RANKING.value,
+                            status=AiJobStatus.SUCCESS.value,
+                            target_type=AiJobTargetType.CANDIDATE.value,
+                            target_id=candidate.id,
+                            candidate_id=candidate.id,
+                            parent_job_id=job.id,
+                            progress=100,
+                            current_step="screening_preview_copied",
+                            request_payload={
+                                "source": "DOCUMENT_BULK_IMPORT_PREVIEW",
+                                "preview_job_id": job.id,
+                                "preview_row_id": row.row_id,
+                                "group_key": row.group_key,
+                            },
+                            result_payload={
+                                "screening_preview": row.screening_preview.model_dump(
+                                    mode="json"
+                                ),
+                                "decision_status": "PENDING",
+                            },
+                            requested_by=actor_id,
+                            created_by=actor_id,
+                            started_at=datetime.now(timezone.utc),
+                            completed_at=datetime.now(timezone.utc),
+                        )
+                    )
 
                 await repo.flush()
                 await db.commit()
@@ -1336,6 +1808,15 @@ class DocumentBulkImportService:
             "job_position": profile.job_position or default_job_position,
             "apply_status": default_apply_status,
         }
+        screening_preview = _build_screening_preview(
+            profile=profile,
+            candidate=candidate,
+            documents=preview_documents,
+            merged_text=merged_text,
+            duplicate_candidate_id=duplicate_candidate_id,
+            errors=errors,
+            warnings=warnings + profile.warnings,
+        )
 
         return DocumentBulkImportPreviewRow(
             row_id=str(uuid4()),
@@ -1350,4 +1831,5 @@ class DocumentBulkImportService:
             duplicate_candidate_id=duplicate_candidate_id,
             errors=errors,
             warnings=warnings + profile.warnings,
+            screening_preview=screening_preview,
         )

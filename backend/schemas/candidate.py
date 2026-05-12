@@ -66,8 +66,25 @@ class CandidateDocumentDetailResponse(CandidateDocumentResponse):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ScreeningPreviewResult(BaseModel):
+    recommendation: str
+    score: int = Field(..., ge=0, le=100)
+    confidence: float = Field(default=0, ge=0, le=1)
+    summary: str | None = None
+    fit_reasons: list[str] = Field(default_factory=list)
+    risk_factors: list[str] = Field(default_factory=list)
+    missing_evidence: list[str] = Field(default_factory=list)
+    interview_focus: list[str] = Field(default_factory=list)
+    suggested_next_action: str
+    score_breakdown: dict = Field(default_factory=dict)
+    evidence_refs: list[dict] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    decision_status: str | None = None
+
+
 class CandidateDetailResponse(CandidateResponse):
     documents: list[CandidateDocumentResponse] = Field(default_factory=list)
+    screening_result: ScreeningPreviewResult | None = None
 
 
 class CandidateDeleteResponse(BaseModel):
@@ -168,6 +185,7 @@ class DocumentBulkImportPreviewRow(BaseModel):
     duplicate_candidate_id: int | None = None
     errors: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+    screening_preview: ScreeningPreviewResult | None = None
 
 
 class DocumentBulkImportPreviewSummary(BaseModel):

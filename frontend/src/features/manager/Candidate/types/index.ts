@@ -149,6 +149,7 @@ export interface CandidateResponse {
 
 export interface CandidateDetailResponse extends CandidateResponse {
   documents: CandidateDocumentResponse[];
+  screeningResult: ScreeningPreviewResult | null;
 }
 
 export type CandidateListResponse = PagedListResponse<CandidateResponse>;
@@ -221,6 +222,36 @@ export interface CandidateProfileExtractionOutput {
   warnings: string[];
 }
 
+export type ScreeningRecommendation =
+  | "RECOMMEND"
+  | "HOLD"
+  | "NOT_RECOMMENDED"
+  | "NEEDS_REVIEW"
+  | string;
+
+export type ScreeningDecisionStatus =
+  | "PENDING"
+  | "CONFIRMED"
+  | "HELD"
+  | "EXCLUDED"
+  | string;
+
+export interface ScreeningPreviewResult {
+  recommendation: ScreeningRecommendation;
+  score: number;
+  confidence: number;
+  summary: string | null;
+  fitReasons: string[];
+  riskFactors: string[];
+  missingEvidence: string[];
+  interviewFocus: string[];
+  suggestedNextAction: string;
+  scoreBreakdown: Record<string, unknown>;
+  evidenceRefs: Record<string, unknown>[];
+  warnings: string[];
+  decisionStatus: ScreeningDecisionStatus | null;
+}
+
 export interface DocumentBulkImportPreviewDocument {
   originalFileName: string;
   storedFileName: string;
@@ -260,6 +291,7 @@ export interface DocumentBulkImportPreviewRow {
   duplicateCandidateId: number | null;
   errors: string[];
   warnings: string[];
+  screeningPreview: ScreeningPreviewResult | null;
 }
 
 export interface DocumentBulkImportPreviewSummary {

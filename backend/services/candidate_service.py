@@ -10,6 +10,7 @@ from pathlib import Path
 
 from fastapi import HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.file_util import (
@@ -26,6 +27,7 @@ from common.file_util import (
 )
 from common.job_position import normalize_job_position, normalize_job_position_code
 from core.database import AsyncSessionLocal
+from models.ai_job import AiJob, AiJobStatus, AiJobTargetType, AiJobType
 from models.candidate import ApplyStatus, Candidate
 from models.document import Document
 from repositories.candidate_repository import CandidateRepository
@@ -50,6 +52,7 @@ from schemas.candidate import (
     CandidateStatusPatchRequest,
     CandidateStatusPatchResponse,
     CandidateUpdateRequest,
+    ScreeningPreviewResult,
     TargetJobCountRow,
 )
 
@@ -207,6 +210,46 @@ def _copy_sample_document(
         extract_status="PENDING",
     )
     return document, file_size
+
+
+async def _find_latest_candidate_screening_result(
+    db: AsyncSession,
+    candidate_id: int,
+) -> ScreeningPreviewResult | None:
+    stmt = (
+        select(AiJob)
+        .where(
+            AiJob.candidate_id == candidate_id,
+            AiJob.job_type == AiJobType.CANDIDATE_RANKING.value,
+            AiJob.target_type == AiJobTargetType.CANDIDATE.value,
+            AiJob.status == AiJobStatus.SUCCESS.value,
+            AiJob.deleted_at.is_(None),
+        )
+        .order_by(desc(AiJob.created_at), desc(AiJob.id))
+        .limit(20)
+    )
+    result = await db.execute(stmt)
+    jobs = result.scalars().all()
+
+    for job in jobs:
+        payload = job.result_payload or {}
+        screening_payload = payload.get("screening_preview")
+        if not screening_payload:
+            continue
+
+        try:
+            screening_result = ScreeningPreviewResult.model_validate(screening_payload)
+            return screening_result.model_copy(
+                update={"decision_status": payload.get("decision_status")}
+            )
+        except Exception:
+            logger.warning(
+                "Invalid screening_preview payload candidate_id=%s ai_job_id=%s",
+                candidate_id,
+                job.id,
+            )
+
+    return None
 
 
 class CandidateService:
@@ -577,12 +620,17 @@ class CandidateService:
             )
 
         documents = await repo.find_active_documents_by_candidate_id(candidate_id)
+        screening_result = await _find_latest_candidate_screening_result(
+            db,
+            candidate_id,
+        )
         return CandidateDetailResponse(
             **CandidateResponse.model_validate(entity).model_dump(),
             documents=[
                 CandidateDocumentResponse.model_validate(document)
                 for document in documents
             ],
+            screening_result=screening_result,
         )
 
     @staticmethod
