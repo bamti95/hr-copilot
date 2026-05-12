@@ -26,10 +26,17 @@ class LlmUsageNodeSummary(BaseModel):
 
 
 class LlmUsageSessionSummary(BaseModel):
-    session_id: int
-    candidate_id: int
-    candidate_name: str
-    target_job: str
+    session_id: int | None = None
+    candidate_id: int | None = None
+    candidate_name: str | None = None
+    target_job: str | None = None
+    pipeline_type: str = "INTERVIEW_QUESTION"
+    target_type: str | None = None
+    target_id: int | None = None
+    job_posting_id: int | None = None
+    job_posting_analysis_report_id: int | None = None
+    job_title: str | None = None
+    risk_level: str | None = None
     call_count: int
     total_tokens: int
     estimated_cost: Decimal
@@ -40,9 +47,15 @@ class LlmUsageSessionSummary(BaseModel):
 class LlmUsageCallLog(BaseModel):
     id: int
     manager_id: int | None = None
-    session_id: int
-    candidate_id: int
-    candidate_name: str
+    session_id: int | None = None
+    candidate_id: int | None = None
+    candidate_name: str | None = None
+    pipeline_type: str = "INTERVIEW_QUESTION"
+    target_type: str | None = None
+    target_id: int | None = None
+    job_posting_id: int | None = None
+    job_posting_analysis_report_id: int | None = None
+    job_title: str | None = None
     node_name: str | None = None
     model_name: str
     input_tokens: int

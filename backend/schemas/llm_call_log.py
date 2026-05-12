@@ -8,10 +8,20 @@ class LlmCallLogResponse(BaseModel):
     id: int
 
     manager_id: int | None = Field(None, alias="managerId")
-    candidate_id: int = Field(..., alias="candidateId")
+    candidate_id: int | None = Field(None, alias="candidateId")
     document_id: int | None = Field(None, alias="documentId")
     prompt_profile_id: int | None = Field(None, alias="promptProfileId")
-    interview_sessions_id: int = Field(..., alias="interviewSessionsId")
+    interview_sessions_id: int | None = Field(None, alias="interviewSessionsId")
+
+    pipeline_type: str = Field("INTERVIEW_QUESTION", alias="pipelineType")
+    target_type: str | None = Field(None, alias="targetType")
+    target_id: int | None = Field(None, alias="targetId")
+    job_posting_id: int | None = Field(None, alias="jobPostingId")
+    job_posting_analysis_report_id: int | None = Field(
+        None,
+        alias="jobPostingAnalysisReportId",
+    )
+    knowledge_source_id: int | None = Field(None, alias="knowledgeSourceId")
 
     model_name: str = Field(..., alias="modelName")
     node_name: str | None = Field(None, alias="nodeName")

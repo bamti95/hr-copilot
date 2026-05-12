@@ -13,16 +13,36 @@ class LlmCallLog(Base, AuditBase):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     manager_id: Mapped[int | None] = mapped_column(ForeignKey("manager.id"), nullable=True)
-    candidate_id: Mapped[int] = mapped_column(ForeignKey("candidate.id"), nullable=False)
+    candidate_id: Mapped[int | None] = mapped_column(ForeignKey("candidate.id"), nullable=True)
     document_id: Mapped[int | None] = mapped_column(ForeignKey("document.id"), nullable=True)
 
     prompt_profile_id: Mapped[int | None] = mapped_column(
         ForeignKey("prompt_profile.id"),
         nullable=True,
     )
-    interview_sessions_id: Mapped[int] = mapped_column(
+    interview_sessions_id: Mapped[int | None] = mapped_column(
         ForeignKey("interview_sessions.id"),
+        nullable=True,
+    )
+    pipeline_type: Mapped[str] = mapped_column(
+        String(50),
         nullable=False,
+        default="INTERVIEW_QUESTION",
+        server_default="INTERVIEW_QUESTION",
+    )
+    target_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    target_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    job_posting_id: Mapped[int | None] = mapped_column(
+        ForeignKey("job_posting.id"),
+        nullable=True,
+    )
+    job_posting_analysis_report_id: Mapped[int | None] = mapped_column(
+        ForeignKey("job_posting_analysis_report.id"),
+        nullable=True,
+    )
+    knowledge_source_id: Mapped[int | None] = mapped_column(
+        ForeignKey("job_posting_knowledge_source.id"),
+        nullable=True,
     )
     model_name: Mapped[str] = mapped_column(String(100), nullable=False)
     node_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
