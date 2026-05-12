@@ -2,14 +2,20 @@ import {
   formatCost,
   formatDateTime,
   formatMs,
+  getCallExecutionId,
+  getWorkflowExecutionId,
+  getWorkflowExecutionSubtitle,
+  getWorkflowExecutionTitle,
   normalizeStatus,
   statusClasses,
   statusLabel,
   type LlmUsageCallLog,
   type LlmUsageSessionSummary,
+  type WorkflowPipelineType,
 } from "../types/workflowDashboard.types";
 
 interface SessionListTableProps {
+  pipelineType: WorkflowPipelineType;
   sessions: LlmUsageSessionSummary[];
   recentCalls: LlmUsageCallLog[];
   activeSessionId: number | null;
@@ -17,15 +23,18 @@ interface SessionListTableProps {
 }
 
 export function SessionListTable({
+  pipelineType,
   sessions,
   recentCalls,
   activeSessionId,
   onSelectSession,
 }: SessionListTableProps) {
+  const isJobPosting = pipelineType === "JOB_POSTING_COMPLIANCE";
+
   if (sessions.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm text-slate-500">
-        표시할 지원자 세션이 없습니다.
+        표시할 실행 목록이 없습니다.
       </div>
     );
   }
@@ -36,8 +45,12 @@ export function SessionListTable({
         <thead className="sticky top-0 bg-white text-slate-500">
           <tr>
             <th className="px-2 py-2">상태</th>
-            <th className="px-2 py-2">지원자</th>
-            <th className="px-2 py-2">직무</th>
+            <th className="px-2 py-2">
+              {isJobPosting ? "분석 리포트" : "지원자"}
+            </th>
+            <th className="px-2 py-2">
+              {isJobPosting ? "위험등급" : "직무"}
+            </th>
             <th className="px-2 py-2 text-right">실행시간</th>
             <th className="px-2 py-2 text-right">비용</th>
             <th className="px-2 py-2">실행일시</th>
@@ -45,19 +58,22 @@ export function SessionListTable({
         </thead>
         <tbody>
           {sessions.map((session) => {
+            const executionId = getWorkflowExecutionId(session);
             const sessionCalls = recentCalls.filter(
-              (call) => call.sessionId === session.sessionId,
+              (call) => getCallExecutionId(call) === executionId,
             );
             const hasFailure = sessionCalls.some(
               (call) => normalizeStatus(call.callStatus) === "failed",
             );
             const status = hasFailure ? "failed" : "success";
-            const active = activeSessionId === session.sessionId;
+            const active = activeSessionId === executionId;
 
             return (
               <tr
-                key={session.sessionId}
-                onClick={() => onSelectSession(session.sessionId)}
+                key={executionId ?? `${session.jobTitle}-${session.lastCalledAt}`}
+                onClick={() => {
+                  if (executionId !== null) onSelectSession(executionId);
+                }}
                 className={`cursor-pointer bg-white transition hover:bg-[#f5f8ff] ${
                   active ? "outline outline-2 outline-[#315fbc]/30" : ""
                 }`}
@@ -73,12 +89,14 @@ export function SessionListTable({
                 </td>
                 <td className="border-y border-slate-200 px-2 py-3">
                   <div className="font-semibold text-slate-900">
-                    {session.candidateName}
+                    {getWorkflowExecutionTitle(session)}
                   </div>
-                  <div className="text-slate-500">세션 #{session.sessionId}</div>
+                  <div className="text-slate-500">
+                    {isJobPosting ? "리포트" : "세션"} #{executionId ?? "-"}
+                  </div>
                 </td>
                 <td className="border-y border-slate-200 px-2 py-3">
-                  {session.targetJob}
+                  {getWorkflowExecutionSubtitle(session)}
                 </td>
                 <td className="border-y border-slate-200 px-2 py-3 text-right">
                   {formatMs(session.avgElapsedMs)}

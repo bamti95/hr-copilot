@@ -15,6 +15,12 @@ import DocumentPage from "../../features/manager/Document";
 import InterviewQuestionPage from "../../features/manager/InterviewQuestion";
 import InterviewSessionPage from "../../features/manager/InterviewSession";
 import InterviewSessionDetailPage from "../../features/manager/InterviewSession/pages/InterviewSessionDetailPage";
+import JobPostingPage, {
+  JobPostingDetailPage,
+  JobPostingKnowledgePage,
+  JobPostingNewPage,
+  JobPostingReportPage,
+} from "../../features/manager/JobPosting";
 import LlmUsageDashboardPage from "../../features/manager/LlmUsageDashboard";
 import ManagerPage from "../../features/manager/Manager";
 import PromptProfilePage from "../../features/manager/PromptProfile";
@@ -57,6 +63,17 @@ const router = createBrowserRouter([
             element: <InterviewSessionRouteDetailPage />,
           },
           { path: "interview-questions", element: <InterviewQuestionPage /> },
+          { path: "job-postings", element: <JobPostingPage /> },
+          { path: "job-postings/new", element: <JobPostingNewPage /> },
+          {
+            path: "job-postings/knowledge-sources",
+            element: <JobPostingKnowledgePage />,
+          },
+          { path: "job-postings/:postingId", element: <JobPostingDetailPage /> },
+          {
+            path: "job-postings/:postingId/report",
+            element: <JobPostingReportPage />,
+          },
           { path: "llm-usage", element: <LlmUsageDashboardPage /> },
         ],
       },

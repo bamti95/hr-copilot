@@ -2,14 +2,20 @@ import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { SessionListTable } from "./SessionListTable";
 import {
+  getCallExecutionId,
+  getWorkflowExecutionId,
+  getWorkflowExecutionSubtitle,
+  getWorkflowExecutionTitle,
   normalizeStatus,
   type LlmUsageCallLog,
   type LlmUsageSessionSummary,
   type SessionFilter,
   type SessionSort,
+  type WorkflowPipelineType,
 } from "../types/workflowDashboard.types";
 
 interface SessionListPanelProps {
+  pipelineType: WorkflowPipelineType;
   sessions: LlmUsageSessionSummary[];
   recentCalls: LlmUsageCallLog[];
   activeSessionId: number | null;
@@ -17,6 +23,7 @@ interface SessionListPanelProps {
 }
 
 export function SessionListPanel({
+  pipelineType,
   sessions,
   recentCalls,
   activeSessionId,
@@ -29,8 +36,9 @@ export function SessionListPanel({
   const filteredSessions = useMemo(() => {
     const query = search.trim().toLowerCase();
     const rows = sessions.filter((session) => {
+      const executionId = getWorkflowExecutionId(session);
       const sessionCalls = recentCalls.filter(
-        (call) => call.sessionId === session.sessionId,
+        (call) => getCallExecutionId(call) === executionId,
       );
       const hasFailure = sessionCalls.some(
         (call) => normalizeStatus(call.callStatus) === "failed",
@@ -38,7 +46,9 @@ export function SessionListPanel({
       if (filter === "success" && hasFailure) return false;
       if (filter === "failed" && !hasFailure) return false;
       if (!query) return true;
-      return `${session.candidateName} ${session.targetJob} ${session.sessionId}`
+      return `${getWorkflowExecutionTitle(session)} ${getWorkflowExecutionSubtitle(
+        session,
+      )} ${executionId ?? ""}`
         .toLowerCase()
         .includes(query);
     });
@@ -54,11 +64,19 @@ export function SessionListPanel({
     });
   }, [filter, recentCalls, search, sessions, sort]);
 
+  const isJobPosting = pipelineType === "JOB_POSTING_COMPLIANCE";
+
   return (
     <div className="flex min-h-[860px] min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3">
-        <h2 className="m-0 text-lg font-bold text-slate-950">지원자 세션 목록</h2>
-        <p className="m-0 mt-1 text-xs text-slate-500">LangSmith 실행 목록 역할</p>
+        <h2 className="m-0 text-lg font-bold text-slate-950">
+          {isJobPosting ? "채용공고 리포트 목록" : "지원자 세션 목록"}
+        </h2>
+        <p className="m-0 mt-1 text-xs text-slate-500">
+          {isJobPosting
+            ? "Agentic RAG 분석 실행 단위"
+            : "LangSmith 질문 생성 실행 목록"}
+        </p>
       </div>
       <div className="mb-3 grid gap-2 md:grid-cols-[1fr_auto_auto]">
         <label className="relative block">
@@ -67,7 +85,11 @@ export function SessionListPanel({
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-[#315fbc]"
-            placeholder="지원자명, 직무, 세션 검색"
+            placeholder={
+              isJobPosting
+                ? "공고명, 위험등급, 리포트 ID 검색"
+                : "지원자명, 직무, 세션 검색"
+            }
           />
         </label>
         <select
@@ -92,6 +114,7 @@ export function SessionListPanel({
       </div>
 
       <SessionListTable
+        pipelineType={pipelineType}
         sessions={filteredSessions}
         recentCalls={recentCalls}
         activeSessionId={activeSessionId}

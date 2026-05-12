@@ -7,11 +7,43 @@ interface QuestionResultPanelProps {
 
 export function QuestionResultPanel({ finalResponse }: QuestionResultPanelProps) {
   const finalQuestions = getArray(finalResponse, "questions");
+  const findings = getArray(finalResponse, "findings");
+  const isJobPostingReport = findings.length > 0;
 
   return (
-    <BottomPanel title="최종 질문 목록">
-      {finalQuestions.length === 0 ? (
-        <EmptyState text="final_formatter의 outputJson.final_response.questions가 있을 때 표시됩니다." />
+    <BottomPanel title={isJobPostingReport ? "최종 리스크 판단" : "최종 질문 목록"}>
+      {isJobPostingReport ? (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <div className="text-sm font-bold text-slate-950">
+              {String(finalResponse?.job_title ?? "채용공고")} ·{" "}
+              {String(finalResponse?.risk_level ?? "-")}
+            </div>
+            <p className="m-0 mt-2 text-xs leading-5 text-slate-600">
+              {String(finalResponse?.summary ?? "")}
+            </p>
+          </div>
+          {findings.slice(0, 8).map((finding, index) => {
+            const item = isRecord(finding) ? finding : {};
+            return (
+              <article
+                key={`${String(item.type ?? index)}`}
+                className="rounded-lg border border-slate-200 bg-white p-3"
+              >
+                <div className="font-semibold text-slate-950">
+                  {index + 1}. {String(item.type ?? "-")}
+                </div>
+                <div className="mt-2 grid gap-1 text-xs text-slate-500">
+                  <span>문구: {String(item.problematic_text ?? "-")}</span>
+                  <span>근거: {String(item.evidence ?? "-")}</span>
+                  <span>권장: {String(item.recommendation ?? "-")}</span>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : finalQuestions.length === 0 ? (
+        <EmptyState text="final_formatter의 outputJson.final_response.questions가 있을 때 표시합니다." />
       ) : (
         <div className="space-y-3">
           {finalQuestions.slice(0, 8).map((question, index) => {
