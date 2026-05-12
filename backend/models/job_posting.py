@@ -61,6 +61,8 @@ class JobPosting(Base, AuditBase):
     salary_text: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     posting_text: Mapped[str] = mapped_column(Text, nullable=False)
+    
+    posting_text_hash: Mapped[str] = mapped_column(String(64), nullable=False) # 같은 공고 중복 분석 방지 hash
 
     raw_payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     normalized_payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

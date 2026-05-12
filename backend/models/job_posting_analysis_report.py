@@ -59,9 +59,34 @@ class JobPostingAnalysisReport(Base, AuditBase):
     )
     analysis_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
     model_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
-
+    
+    risk_level: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    issue_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+    violation_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+    warning_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+    confidence_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    detected_issue_types: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    retrieval_summary: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    pipeline_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    summary_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
     parsed_sections: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-
     overall_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     risk_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     attractiveness_score: Mapped[int | None] = mapped_column(Integer, nullable=True)

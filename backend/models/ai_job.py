@@ -27,6 +27,12 @@ class AiJobType(StrEnum):
     
     # 지원자 분석 결과와 질문 품질 점수를 기반으로 면접 대상자 추천 랭킹을 계산하는 작업
     CANDIDATE_RANKING = "CANDIDATE_RANKING"
+    
+    # 채용공고 1건을 분석해서 컴플라이언스/리스크 검증 리포트를 생성하는 작업
+    JOB_POSTING_COMPLIANCE_ANALYSIS = "JOB_POSTING_COMPLIANCE_ANALYSIS"
+    
+    # 채용공고 리스크 분석에 사용할 법령/가이드북/지도점검 사례 문서를 RAG 검색 가능하게 색인하는 작업
+    JOB_POSTING_KNOWLEDGE_INDEXING = "JOB_POSTING_KNOWLEDGE_INDEXING"
 
 
 class AiJobStatus(StrEnum):
@@ -64,6 +70,12 @@ class AiJobTargetType(StrEnum):
 
     # 작업 대상이 지원자 일괄 등록 묶음인 경우
     BULK_IMPORT = "BULK_IMPORT"
+    
+    # 채용공고 원문 자체
+    JOB_POSTING = "JOB_POSTING"
+    
+    # 법령/가이드북/지도점검 사례 같은 지식 원천 문서
+    KNOWLEDGE_SOURCE = "KNOWLEDGE_SOURCE"
 
 
 class AiJob(Base, AuditBase):

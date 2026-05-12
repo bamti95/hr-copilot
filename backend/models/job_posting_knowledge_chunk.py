@@ -4,13 +4,18 @@ from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from pgvector.sqlalchemy import Vector
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models.audit_base import AuditBase
 from models.base import Base
+
+try:
+    from pgvector.sqlalchemy import Vector
+except ModuleNotFoundError:
+    def Vector(_: int):
+        return JSONB
 
 if TYPE_CHECKING:
     from models.job_posting_knowledge_source import JobPostingKnowledgeSource

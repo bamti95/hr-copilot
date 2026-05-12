@@ -6,6 +6,7 @@ from api.v1.routers.llm_call_log_router import router as llm_call_log_router
 from api.v1.routers.llm_usage_router import router as llm_usage_router
 from api.v1.routers.manager_dashboard_router import router as manager_dashboard_router
 from api.v1.routers.manager_router import router as manager_router
+from api.v1.routers.job_posting_router import router as job_posting_router
 from api.v1.routers.prompt_profile_router import router as prompt_profile_router
 from api.v1.routers.sessions_router import router as session_router
 
@@ -18,3 +19,4 @@ api_router.include_router(session_router)
 api_router.include_router(prompt_profile_router)
 api_router.include_router(llm_usage_router)
 api_router.include_router(llm_call_log_router)
+api_router.include_router(job_posting_router)

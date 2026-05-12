@@ -4,7 +4,19 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from core.config import get_settings
-from models import Candidate, Document, InterviewQuestion, InterviewSession, LlmCallLog, Manager, PromptProfile
+from models import (
+    Candidate,
+    Document,
+    InterviewQuestion,
+    InterviewSession,
+    JobPosting,
+    JobPostingAnalysisReport,
+    JobPostingKnowledgeChunk,
+    JobPostingKnowledgeSource,
+    LlmCallLog,
+    Manager,
+    PromptProfile,
+)
 from models.base import Base
 
 settings = get_settings()

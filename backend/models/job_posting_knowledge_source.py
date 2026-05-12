@@ -49,6 +49,7 @@ class JobPostingKnowledgeSource(Base, AuditBase):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     source_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     version_label: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
