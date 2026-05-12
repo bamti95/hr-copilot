@@ -19,7 +19,7 @@ export function ManagerHeader({ onToggleSidebar }: ManagerHeaderProps) {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/auth/login");
+    navigate("/login");
   };
 
   return (

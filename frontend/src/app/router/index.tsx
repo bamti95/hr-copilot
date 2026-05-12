@@ -22,11 +22,15 @@ import PromptProfilePage from "../../features/manager/PromptProfile";
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Navigate to="/auth/login" replace />,
+    element: <Navigate to="/login" replace />,
+  },
+  {
+    path: "/login",
+    element: <ManagerLoginPage />,
   },
   {
     path: "/auth/login",
-    element: <ManagerLoginPage />,
+    element: <Navigate to="/login" replace />,
   },
   {
     element: <ProtectedRoute />,
@@ -60,7 +64,7 @@ const router = createBrowserRouter([
   },
   {
     path: "*",
-    element: <Navigate to="/manager/login" replace />,
+    element: <Navigate to="/login" replace />,
   },
 ]);
 
