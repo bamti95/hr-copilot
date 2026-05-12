@@ -1,0 +1,31 @@
+{
+  "case_id": "MKT-CASE-006",
+  "expected_label": "VIOLATION",
+  "risk_level": "MEDIUM",
+  "violation_count": 0,
+  "risk_factor_count": 2,
+  "risk_types": [
+    "CULTURE_RED_FLAG",
+    "CULTURE_RED_FLAG"
+  ],
+  "expected_findings": [
+    {
+      "type": "CULTURE_RED_FLAG",
+      "problematic_text": "가족 같은 분위기",
+      "reason": "열정, 가족 같은 분위기, 희생 등 모호한 문화 표현이 과도하게 강조됩니다.",
+      "legal_basis": "채용공고 품질 개선 권고 사항",
+      "severity": "MEDIUM",
+      "replacement_text": "조직문화는 협업 방식, 의사결정 방식, 피드백 체계 등 구체적 운영 방식으로 설명합니다."
+    },
+    {
+      "type": "CULTURE_RED_FLAG",
+      "problematic_text": "열정적으로 몰입",
+      "reason": "열정, 가족 같은 분위기, 희생 등 모호한 문화 표현이 과도하게 강조됩니다.",
+      "legal_basis": "채용공고 품질 개선 권고 사항",
+      "severity": "LOW",
+      "replacement_text": "조직문화는 협업 방식, 의사결정 방식, 피드백 체계 등 구체적 운영 방식으로 설명합니다."
+    }
+  ],
+  "clean_expected": false,
+  "expected_agent_summary": "CULTURE_RED_FLAG, CULTURE_RED_FLAG 리스크가 포함되어 문구 수정과 근로조건 명확화가 필요한 공고입니다."
+}

@@ -1,0 +1,31 @@
+{
+  "case_id": "STR-CASE-006",
+  "expected_label": "VIOLATION",
+  "risk_level": "HIGH",
+  "violation_count": 1,
+  "risk_factor_count": 1,
+  "risk_types": [
+    "AGE_DISCRIMINATION",
+    "CULTURE_RED_FLAG"
+  ],
+  "expected_findings": [
+    {
+      "type": "AGE_DISCRIMINATION",
+      "problematic_text": "젊고 빠른 조직",
+      "reason": "직무상 합리적 이유 없이 특정 연령대만 선호하거나 제한하는 표현입니다.",
+      "legal_basis": "고용상 연령차별금지 및 고령자고용촉진에 관한 법률 제4조의4",
+      "severity": "HIGH",
+      "replacement_text": "연령과 무관하게 관련 경험, 문제 해결력, 직무 역량을 기준으로 평가합니다."
+    },
+    {
+      "type": "CULTURE_RED_FLAG",
+      "problematic_text": "끝까지 책임질 분",
+      "reason": "열정, 가족 같은 분위기, 희생 등 모호한 문화 표현이 과도하게 강조됩니다.",
+      "legal_basis": "채용공고 품질 개선 권고 사항",
+      "severity": "MEDIUM",
+      "replacement_text": "조직문화는 협업 방식, 의사결정 방식, 피드백 체계 등 구체적 운영 방식으로 설명합니다."
+    }
+  ],
+  "clean_expected": false,
+  "expected_agent_summary": "AGE_DISCRIMINATION, CULTURE_RED_FLAG 리스크가 포함되어 문구 수정과 근로조건 명확화가 필요한 공고입니다."
+}

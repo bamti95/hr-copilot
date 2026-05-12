@@ -1,0 +1,31 @@
+{
+  "case_id": "MKT-CASE-002",
+  "expected_label": "VIOLATION",
+  "risk_level": "HIGH",
+  "violation_count": 2,
+  "risk_factor_count": 0,
+  "risk_types": [
+    "AGE_DISCRIMINATION",
+    "AGE_DISCRIMINATION"
+  ],
+  "expected_findings": [
+    {
+      "type": "AGE_DISCRIMINATION",
+      "problematic_text": "젊은 감성",
+      "reason": "직무상 합리적 이유 없이 특정 연령대만 선호하거나 제한하는 표현입니다.",
+      "legal_basis": "고용상 연령차별금지 및 고령자고용촉진에 관한 법률 제4조의4",
+      "severity": "HIGH",
+      "replacement_text": "연령과 무관하게 관련 경험, 문제 해결력, 직무 역량을 기준으로 평가합니다."
+    },
+    {
+      "type": "AGE_DISCRIMINATION",
+      "problematic_text": "2030 고객의 언어",
+      "reason": "직무상 합리적 이유 없이 특정 연령대만 선호하거나 제한하는 표현입니다.",
+      "legal_basis": "고용상 연령차별금지 및 고령자고용촉진에 관한 법률 제4조의4",
+      "severity": "MEDIUM",
+      "replacement_text": "연령과 무관하게 관련 경험, 문제 해결력, 직무 역량을 기준으로 평가합니다."
+    }
+  ],
+  "clean_expected": false,
+  "expected_agent_summary": "AGE_DISCRIMINATION, AGE_DISCRIMINATION 리스크가 포함되어 문구 수정과 근로조건 명확화가 필요한 공고입니다."
+}

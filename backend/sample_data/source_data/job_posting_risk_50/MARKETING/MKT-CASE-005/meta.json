@@ -1,0 +1,22 @@
+{
+  "case_id": "MKT-CASE-005",
+  "expected_label": "VIOLATION",
+  "risk_level": "HIGH",
+  "violation_count": 1,
+  "risk_factor_count": 0,
+  "risk_types": [
+    "PHYSICAL_CONDITION"
+  ],
+  "expected_findings": [
+    {
+      "type": "PHYSICAL_CONDITION",
+      "problematic_text": "단정하고 세련된 외형",
+      "reason": "직무 수행과 직접 관련 없는 외모, 키, 이미지 등 신체 조건을 평가 요소로 삼는 표현입니다.",
+      "legal_basis": "채용절차의 공정화에 관한 법률 제4조의3",
+      "severity": "HIGH",
+      "replacement_text": "외모나 신체조건 대신 고객 커뮤니케이션 역량과 직무 수행 경험을 평가합니다."
+    }
+  ],
+  "clean_expected": false,
+  "expected_agent_summary": "PHYSICAL_CONDITION 리스크가 포함되어 문구 수정과 근로조건 명확화가 필요한 공고입니다."
+}

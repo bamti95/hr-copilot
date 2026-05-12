@@ -1,0 +1,31 @@
+{
+  "case_id": "SALES-CASE-003",
+  "expected_label": "VIOLATION",
+  "risk_level": "HIGH",
+  "violation_count": 2,
+  "risk_factor_count": 0,
+  "risk_types": [
+    "IRRELEVANT_PERSONAL_INFO",
+    "WORKING_CONDITION_AMBIGUITY"
+  ],
+  "expected_findings": [
+    {
+      "type": "IRRELEVANT_PERSONAL_INFO",
+      "problematic_text": "혼인 여부와 향후 자녀 계획",
+      "reason": "혼인 여부, 가족관계, 사진 등 직무와 무관한 개인정보 제출을 요구하는 표현입니다.",
+      "legal_basis": "채용절차의 공정화에 관한 법률 제4조의3",
+      "severity": "HIGH",
+      "replacement_text": "지원서에는 직무 역량 확인에 필요한 경력, 경험, 포트폴리오 정보만 제출하도록 안내합니다."
+    },
+    {
+      "type": "WORKING_CONDITION_AMBIGUITY",
+      "problematic_text": "장기 출장 가능 여부",
+      "reason": "야근, 출장, 온콜 등 근로조건 부담 요소가 기준 없이 제시되어 지원자가 조건을 알기 어렵습니다.",
+      "legal_basis": "근로기준법 및 채용절차의 공정화에 관한 법률상 근로조건 명시 취지",
+      "severity": "MEDIUM",
+      "replacement_text": "연장근로, 출장, 온콜 발생 가능성과 보상 기준을 구체적으로 안내합니다."
+    }
+  ],
+  "clean_expected": false,
+  "expected_agent_summary": "IRRELEVANT_PERSONAL_INFO, WORKING_CONDITION_AMBIGUITY 리스크가 포함되어 문구 수정과 근로조건 명확화가 필요한 공고입니다."
+}

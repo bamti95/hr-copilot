@@ -1,0 +1,31 @@
+{
+  "case_id": "HR-CASE-003",
+  "expected_label": "VIOLATION",
+  "risk_level": "HIGH",
+  "violation_count": 1,
+  "risk_factor_count": 1,
+  "risk_types": [
+    "IRRELEVANT_PERSONAL_INFO",
+    "CULTURE_RED_FLAG"
+  ],
+  "expected_findings": [
+    {
+      "type": "IRRELEVANT_PERSONAL_INFO",
+      "problematic_text": "동거 가족 수와 혼인 여부",
+      "reason": "혼인 여부, 가족관계, 사진 등 직무와 무관한 개인정보 제출을 요구하는 표현입니다.",
+      "legal_basis": "채용절차의 공정화에 관한 법률 제4조의3",
+      "severity": "HIGH",
+      "replacement_text": "지원서에는 직무 역량 확인에 필요한 경력, 경험, 포트폴리오 정보만 제출하도록 안내합니다."
+    },
+    {
+      "type": "CULTURE_RED_FLAG",
+      "problematic_text": "장기근속이 가능한 안정적인 생활 패턴",
+      "reason": "열정, 가족 같은 분위기, 희생 등 모호한 문화 표현이 과도하게 강조됩니다.",
+      "legal_basis": "채용공고 품질 개선 권고 사항",
+      "severity": "MEDIUM",
+      "replacement_text": "조직문화는 협업 방식, 의사결정 방식, 피드백 체계 등 구체적 운영 방식으로 설명합니다."
+    }
+  ],
+  "clean_expected": false,
+  "expected_agent_summary": "IRRELEVANT_PERSONAL_INFO, CULTURE_RED_FLAG 리스크가 포함되어 문구 수정과 근로조건 명확화가 필요한 공고입니다."
+}

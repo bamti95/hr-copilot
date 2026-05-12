@@ -1,0 +1,11 @@
+{
+  "case_id": "STR-CASE-010",
+  "expected_label": "CLEAN",
+  "risk_level": "CLEAN",
+  "violation_count": 0,
+  "risk_factor_count": 0,
+  "risk_types": [],
+  "expected_findings": [],
+  "clean_expected": true,
+  "expected_agent_summary": "법적 위반 및 주요 지원율 하락 요인이 발견되지 않는 정상 공고입니다."
+}

@@ -1,0 +1,31 @@
+{
+  "case_id": "AI-CASE-004",
+  "expected_label": "VIOLATION",
+  "risk_level": "MEDIUM",
+  "violation_count": 1,
+  "risk_factor_count": 1,
+  "risk_types": [
+    "FALSE_JOB_AD",
+    "JOB_DESCRIPTION_VAGUE"
+  ],
+  "expected_findings": [
+    {
+      "type": "FALSE_JOB_AD",
+      "problematic_text": "AI 모델 개발자이나 초기 1년은 데이터 라벨링 검수",
+      "reason": "공고상 처우, 고용형태 또는 직무 내용이 실제 운영 조건과 다르게 이해될 수 있는 표현입니다.",
+      "legal_basis": "채용절차의 공정화에 관한 법률 제4조 제1항",
+      "severity": "HIGH",
+      "replacement_text": "연봉, 성과급, 고용형태, 실제 업무 범위를 구분하여 정확히 안내합니다."
+    },
+    {
+      "type": "JOB_DESCRIPTION_VAGUE",
+      "problematic_text": "운영 대시보드 확인이 대부분",
+      "reason": "주요 업무가 포괄적으로만 제시되어 실제 직무 범위를 판단하기 어렵습니다.",
+      "legal_basis": "채용공고 품질 개선 권고 사항",
+      "severity": "MEDIUM",
+      "replacement_text": "주요 업무, 협업 대상, 산출물을 구체적으로 구분해 설명합니다."
+    }
+  ],
+  "clean_expected": false,
+  "expected_agent_summary": "FALSE_JOB_AD, JOB_DESCRIPTION_VAGUE 리스크가 포함되어 문구 수정과 근로조건 명확화가 필요한 공고입니다."
+}

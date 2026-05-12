@@ -1,0 +1,40 @@
+{
+  "case_id": "AI-CASE-008",
+  "expected_label": "VIOLATION",
+  "risk_level": "HIGH",
+  "violation_count": 2,
+  "risk_factor_count": 1,
+  "risk_types": [
+    "PHYSICAL_CONDITION",
+    "WORKING_CONDITION_AMBIGUITY",
+    "OVERTIME_RISK"
+  ],
+  "expected_findings": [
+    {
+      "type": "PHYSICAL_CONDITION",
+      "problematic_text": "건강하고 지구력 있는 분",
+      "reason": "직무 수행과 직접 관련 없는 외모, 키, 이미지 등 신체 조건을 평가 요소로 삼는 표현입니다.",
+      "legal_basis": "채용절차의 공정화에 관한 법률 제4조의3",
+      "severity": "HIGH",
+      "replacement_text": "외모나 신체조건 대신 고객 커뮤니케이션 역량과 직무 수행 경험을 평가합니다."
+    },
+    {
+      "type": "WORKING_CONDITION_AMBIGUITY",
+      "problematic_text": "온콜 수당과 교대 기준은 합류 후",
+      "reason": "야근, 출장, 온콜 등 근로조건 부담 요소가 기준 없이 제시되어 지원자가 조건을 알기 어렵습니다.",
+      "legal_basis": "근로기준법 및 채용절차의 공정화에 관한 법률상 근로조건 명시 취지",
+      "severity": "HIGH",
+      "replacement_text": "연장근로, 출장, 온콜 발생 가능성과 보상 기준을 구체적으로 안내합니다."
+    },
+    {
+      "type": "OVERTIME_RISK",
+      "problematic_text": "장애 대응과 릴리즈가 잦아",
+      "reason": "야근, 주말근무, 긴급 대응 등 부담 요소가 보상 기준 없이 표현됩니다.",
+      "legal_basis": "채용공고 품질 개선 권고 사항",
+      "severity": "MEDIUM",
+      "replacement_text": "야근 또는 주말 업무 발생 조건과 대체휴무, 수당 등 보상 기준을 명시합니다."
+    }
+  ],
+  "clean_expected": false,
+  "expected_agent_summary": "PHYSICAL_CONDITION, WORKING_CONDITION_AMBIGUITY, OVERTIME_RISK 리스크가 포함되어 문구 수정과 근로조건 명확화가 필요한 공고입니다."
+}

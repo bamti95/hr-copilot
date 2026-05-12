@@ -1,0 +1,31 @@
+{
+  "case_id": "AI-CASE-002",
+  "expected_label": "VIOLATION",
+  "risk_level": "CRITICAL",
+  "violation_count": 1,
+  "risk_factor_count": 1,
+  "risk_types": [
+    "FALSE_JOB_AD",
+    "SALARY_MISSING"
+  ],
+  "expected_findings": [
+    {
+      "type": "FALSE_JOB_AD",
+      "problematic_text": "연봉 최대 8,000만 원 가능",
+      "reason": "공고상 처우, 고용형태 또는 직무 내용이 실제 운영 조건과 다르게 이해될 수 있는 표현입니다.",
+      "legal_basis": "채용절차의 공정화에 관한 법률 제4조 제1항",
+      "severity": "CRITICAL",
+      "replacement_text": "연봉, 성과급, 고용형태, 실제 업무 범위를 구분하여 정확히 안내합니다."
+    },
+    {
+      "type": "SALARY_MISSING",
+      "problematic_text": "실제 기본급 범위는 입사 후 별도 안내",
+      "reason": "연봉 범위가 명확하지 않거나 추후 협의로만 제시되어 처우 예측 가능성이 낮습니다.",
+      "legal_basis": "채용공고 품질 개선 권고 사항",
+      "severity": "HIGH",
+      "replacement_text": "연봉 범위와 산정 기준을 명확히 기재합니다."
+    }
+  ],
+  "clean_expected": false,
+  "expected_agent_summary": "FALSE_JOB_AD, SALARY_MISSING 리스크가 포함되어 문구 수정과 근로조건 명확화가 필요한 공고입니다."
+}

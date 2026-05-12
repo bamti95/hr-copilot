@@ -1,0 +1,31 @@
+{
+  "case_id": "SALES-CASE-002",
+  "expected_label": "VIOLATION",
+  "risk_level": "CRITICAL",
+  "violation_count": 2,
+  "risk_factor_count": 0,
+  "risk_types": [
+    "FALSE_JOB_AD",
+    "WORKING_CONDITION_AMBIGUITY"
+  ],
+  "expected_findings": [
+    {
+      "type": "FALSE_JOB_AD",
+      "problematic_text": "인센티브 포함 연봉 1억 원 이상 가능",
+      "reason": "공고상 처우, 고용형태 또는 직무 내용이 실제 운영 조건과 다르게 이해될 수 있는 표현입니다.",
+      "legal_basis": "채용절차의 공정화에 관한 법률 제4조 제1항",
+      "severity": "CRITICAL",
+      "replacement_text": "연봉, 성과급, 고용형태, 실제 업무 범위를 구분하여 정확히 안내합니다."
+    },
+    {
+      "type": "WORKING_CONDITION_AMBIGUITY",
+      "problematic_text": "팀 목표 초과 달성 시에만 검토",
+      "reason": "야근, 출장, 온콜 등 근로조건 부담 요소가 기준 없이 제시되어 지원자가 조건을 알기 어렵습니다.",
+      "legal_basis": "근로기준법 및 채용절차의 공정화에 관한 법률상 근로조건 명시 취지",
+      "severity": "HIGH",
+      "replacement_text": "연장근로, 출장, 온콜 발생 가능성과 보상 기준을 구체적으로 안내합니다."
+    }
+  ],
+  "clean_expected": false,
+  "expected_agent_summary": "FALSE_JOB_AD, WORKING_CONDITION_AMBIGUITY 리스크가 포함되어 문구 수정과 근로조건 명확화가 필요한 공고입니다."
+}
