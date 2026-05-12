@@ -1,0 +1,31 @@
+{
+  "case_id": "HR-CASE-006",
+  "expected_label": "VIOLATION",
+  "risk_level": "MEDIUM",
+  "violation_count": 0,
+  "risk_factor_count": 2,
+  "risk_types": [
+    "CULTURE_RED_FLAG",
+    "OVERTIME_RISK"
+  ],
+  "expected_findings": [
+    {
+      "type": "CULTURE_RED_FLAG",
+      "problematic_text": "가족처럼 챙기는 분위기",
+      "reason": "열정, 가족 같은 분위기, 희생 등 모호한 문화 표현이 과도하게 강조됩니다.",
+      "legal_basis": "채용공고 품질 개선 권고 사항",
+      "severity": "MEDIUM",
+      "replacement_text": "조직문화는 협업 방식, 의사결정 방식, 피드백 체계 등 구체적 운영 방식으로 설명합니다."
+    },
+    {
+      "type": "OVERTIME_RISK",
+      "problematic_text": "늦은 시간까지 함께 책임감 있게 마무리",
+      "reason": "야근, 주말근무, 긴급 대응 등 부담 요소가 보상 기준 없이 표현됩니다.",
+      "legal_basis": "채용공고 품질 개선 권고 사항",
+      "severity": "MEDIUM",
+      "replacement_text": "야근 또는 주말 업무 발생 조건과 대체휴무, 수당 등 보상 기준을 명시합니다."
+    }
+  ],
+  "clean_expected": false,
+  "expected_agent_summary": "CULTURE_RED_FLAG, OVERTIME_RISK 리스크가 포함되어 문구 수정과 근로조건 명확화가 필요한 공고입니다."
+}

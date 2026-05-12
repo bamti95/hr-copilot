@@ -1,0 +1,31 @@
+{
+  "case_id": "AI-CASE-009",
+  "expected_label": "VIOLATION",
+  "risk_level": "MEDIUM",
+  "violation_count": 0,
+  "risk_factor_count": 2,
+  "risk_types": [
+    "BENEFIT_VAGUE",
+    "SALARY_MISSING"
+  ],
+  "expected_findings": [
+    {
+      "type": "BENEFIT_VAGUE",
+      "problematic_text": "업계 최고 수준의 성장 기회와 자유로운 복지",
+      "reason": "복지나 성장 기회가 구체적 기준 없이 추상적으로 제시되어 신뢰도가 낮습니다.",
+      "legal_basis": "채용공고 품질 개선 권고 사항",
+      "severity": "LOW",
+      "replacement_text": "복지 항목의 이용 조건, 지원 범위, 적용 대상을 구체적으로 안내합니다."
+    },
+    {
+      "type": "SALARY_MISSING",
+      "problematic_text": "연봉은 합격 후 회사 기준에 따라 개별 안내",
+      "reason": "연봉 범위가 명확하지 않거나 추후 협의로만 제시되어 처우 예측 가능성이 낮습니다.",
+      "legal_basis": "채용공고 품질 개선 권고 사항",
+      "severity": "MEDIUM",
+      "replacement_text": "연봉 범위와 산정 기준을 명확히 기재합니다."
+    }
+  ],
+  "clean_expected": false,
+  "expected_agent_summary": "BENEFIT_VAGUE, SALARY_MISSING 리스크가 포함되어 문구 수정과 근로조건 명확화가 필요한 공고입니다."
+}

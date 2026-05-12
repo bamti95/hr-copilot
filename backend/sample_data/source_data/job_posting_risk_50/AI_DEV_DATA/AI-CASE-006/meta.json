@@ -1,0 +1,31 @@
+{
+  "case_id": "AI-CASE-006",
+  "expected_label": "VIOLATION",
+  "risk_level": "MEDIUM",
+  "violation_count": 0,
+  "risk_factor_count": 2,
+  "risk_types": [
+    "JOB_DESCRIPTION_VAGUE",
+    "BENEFIT_VAGUE"
+  ],
+  "expected_findings": [
+    {
+      "type": "JOB_DESCRIPTION_VAGUE",
+      "problematic_text": "실제 담당 범위와 기술별 참여 비중은 프로젝트 상황에 따라 달라집니다",
+      "reason": "주요 업무가 포괄적으로만 제시되어 실제 직무 범위를 판단하기 어렵습니다.",
+      "legal_basis": "채용공고 품질 개선 권고 사항",
+      "severity": "MEDIUM",
+      "replacement_text": "주요 업무, 협업 대상, 산출물을 구체적으로 구분해 설명합니다."
+    },
+    {
+      "type": "BENEFIT_VAGUE",
+      "problematic_text": "최신 LLM, MLOps, 검색 시스템을 모두 경험",
+      "reason": "복지나 성장 기회가 구체적 기준 없이 추상적으로 제시되어 신뢰도가 낮습니다.",
+      "legal_basis": "채용공고 품질 개선 권고 사항",
+      "severity": "LOW",
+      "replacement_text": "복지 항목의 이용 조건, 지원 범위, 적용 대상을 구체적으로 안내합니다."
+    }
+  ],
+  "clean_expected": false,
+  "expected_agent_summary": "JOB_DESCRIPTION_VAGUE, BENEFIT_VAGUE 리스크가 포함되어 문구 수정과 근로조건 명확화가 필요한 공고입니다."
+}

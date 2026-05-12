@@ -1,0 +1,31 @@
+{
+  "case_id": "SALES-CASE-009",
+  "expected_label": "VIOLATION",
+  "risk_level": "MEDIUM",
+  "violation_count": 0,
+  "risk_factor_count": 2,
+  "risk_types": [
+    "REPEATED_POSTING",
+    "CULTURE_RED_FLAG"
+  ],
+  "expected_findings": [
+    {
+      "type": "REPEATED_POSTING",
+      "problematic_text": "상시로 반복 게시",
+      "reason": "동일 공고 반복 게시가 언급되어 채용 안정성이나 이탈 리스크로 해석될 수 있습니다.",
+      "legal_basis": "채용공고 품질 개선 권고 사항",
+      "severity": "LOW",
+      "replacement_text": "반복 게시 사유, 채용 인원, 충원 배경을 명확히 안내합니다."
+    },
+    {
+      "type": "CULTURE_RED_FLAG",
+      "problematic_text": "매월 목표를 반드시 달성",
+      "reason": "열정, 가족 같은 분위기, 희생 등 모호한 문화 표현이 과도하게 강조됩니다.",
+      "legal_basis": "채용공고 품질 개선 권고 사항",
+      "severity": "MEDIUM",
+      "replacement_text": "조직문화는 협업 방식, 의사결정 방식, 피드백 체계 등 구체적 운영 방식으로 설명합니다."
+    }
+  ],
+  "clean_expected": false,
+  "expected_agent_summary": "REPEATED_POSTING, CULTURE_RED_FLAG 리스크가 포함되어 문구 수정과 근로조건 명확화가 필요한 공고입니다."
+}

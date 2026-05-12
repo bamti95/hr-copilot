@@ -1,0 +1,31 @@
+{
+  "case_id": "STR-CASE-005",
+  "expected_label": "VIOLATION",
+  "risk_level": "MEDIUM",
+  "violation_count": 1,
+  "risk_factor_count": 1,
+  "risk_types": [
+    "WORKING_CONDITION_AMBIGUITY",
+    "OVERTIME_RISK"
+  ],
+  "expected_findings": [
+    {
+      "type": "WORKING_CONDITION_AMBIGUITY",
+      "problematic_text": "국내외 출장이 수시로 발생",
+      "reason": "야근, 출장, 온콜 등 근로조건 부담 요소가 기준 없이 제시되어 지원자가 조건을 알기 어렵습니다.",
+      "legal_basis": "근로기준법 및 채용절차의 공정화에 관한 법률상 근로조건 명시 취지",
+      "severity": "HIGH",
+      "replacement_text": "연장근로, 출장, 온콜 발생 가능성과 보상 기준을 구체적으로 안내합니다."
+    },
+    {
+      "type": "OVERTIME_RISK",
+      "problematic_text": "빈도와 체류 기간은 프로젝트 상황",
+      "reason": "야근, 주말근무, 긴급 대응 등 부담 요소가 보상 기준 없이 표현됩니다.",
+      "legal_basis": "채용공고 품질 개선 권고 사항",
+      "severity": "MEDIUM",
+      "replacement_text": "야근 또는 주말 업무 발생 조건과 대체휴무, 수당 등 보상 기준을 명시합니다."
+    }
+  ],
+  "clean_expected": false,
+  "expected_agent_summary": "WORKING_CONDITION_AMBIGUITY, OVERTIME_RISK 리스크가 포함되어 문구 수정과 근로조건 명확화가 필요한 공고입니다."
+}

@@ -1,0 +1,20 @@
+{
+  "dataset_name": "job_posting_risk_50",
+  "total_cases": 50,
+  "violation_cases": 45,
+  "clean_cases": 5,
+  "job_groups": {
+    "HR": 10,
+    "AI_DEV_DATA": 10,
+    "MARKETING": 10,
+    "STRATEGY_PLANNING": 10,
+    "SALES": 10
+  },
+  "risk_level_distribution": {
+    "CRITICAL": 10,
+    "HIGH": 20,
+    "MEDIUM": 15,
+    "CLEAN": 5
+  },
+  "description": "채용공고 리스크 감지 에이전트 검증용 50개 테스트 데이터셋"
+}
