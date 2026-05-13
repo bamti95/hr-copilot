@@ -1,6 +1,9 @@
 import { useCallback, useState } from "react";
-import { fetchSessionLlmLogs } from "../services/workflowDashboardApi";
-import type { LlmCallLogListResponse } from "../types/workflowDashboard.types";
+import { fetchWorkflowExecutionLogs } from "../services/workflowDashboardApi";
+import type {
+  LlmCallLogListResponse,
+  WorkflowPipelineType,
+} from "../types/workflowDashboard.types";
 
 export function useSessionLlmLogs() {
   const [workflowLogs, setWorkflowLogs] = useState<LlmCallLogListResponse | null>(
@@ -9,11 +12,14 @@ export function useSessionLlmLogs() {
   const [isTraceLoading, setIsTraceLoading] = useState(false);
   const [traceError, setTraceError] = useState<string | null>(null);
 
-  const loadSessionLogs = useCallback(async (sessionId: number) => {
+  const loadSessionLogs = useCallback(async (
+    sessionId: number,
+    pipelineType: WorkflowPipelineType = "INTERVIEW_QUESTION",
+  ) => {
     setIsTraceLoading(true);
     setTraceError(null);
     try {
-      setWorkflowLogs(await fetchSessionLlmLogs(sessionId));
+      setWorkflowLogs(await fetchWorkflowExecutionLogs(pipelineType, sessionId));
     } catch (err) {
       setTraceError(
         err instanceof Error

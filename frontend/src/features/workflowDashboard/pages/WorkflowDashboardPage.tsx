@@ -7,10 +7,6 @@ import { ScoreBreakdownPanel } from "../components/ScoreBreakdownPanel";
 import { SessionListPanel } from "../components/SessionListPanel";
 import { WorkflowChartSection } from "../components/WorkflowChartSection";
 import { WorkflowSummaryCards } from "../components/WorkflowSummaryCards";
-import {
-  jobPostingComplianceMockLogs,
-  jobPostingComplianceMockSummary,
-} from "../data/jobPostingComplianceMock";
 import { useSelectedNodeLog } from "../hooks/useSelectedNodeLog";
 import { useSessionLlmLogs } from "../hooks/useSessionLlmLogs";
 import { useWorkflowSessions } from "../hooks/useWorkflowSessions";
@@ -25,18 +21,11 @@ import {
 export default function WorkflowDashboardPage() {
   const [activePipeline, setActivePipeline] =
     useState<WorkflowPipelineType>("INTERVIEW_QUESTION");
-  const isJobPostingPipeline = activePipeline === "JOB_POSTING_COMPLIANCE";
-  const { data, isLoading, error, reload } = useWorkflowSessions(
-    isJobPostingPipeline ? "INTERVIEW_QUESTION" : activePipeline,
-  );
+  const { data, isLoading, error, reload } = useWorkflowSessions(activePipeline);
   const { workflowLogs, isTraceLoading, traceError, loadSessionLogs } =
     useSessionLlmLogs();
-  const summary = isJobPostingPipeline
-    ? jobPostingComplianceMockSummary
-    : data ?? emptyWorkflowSummary;
-  const activeWorkflowLogs = isJobPostingPipeline
-    ? jobPostingComplianceMockLogs
-    : workflowLogs;
+  const summary = data ?? emptyWorkflowSummary;
+  const activeWorkflowLogs = workflowLogs;
   const logs = activeWorkflowLogs?.items ?? [];
   const {
     selectedLog,
@@ -48,32 +37,15 @@ export default function WorkflowDashboardPage() {
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
 
   useEffect(() => {
-    const firstSessionId = summary.bySession[0]
-      ? getWorkflowExecutionId(summary.bySession[0])
-      : null;
-    if (!selectedSessionId && firstSessionId) {
-      setSelectedSessionId(firstSessionId);
-      if (!isJobPostingPipeline) {
-        void loadSessionLogs(firstSessionId);
-      }
-    }
-  }, [
-    isJobPostingPipeline,
-    loadSessionLogs,
-    selectedSessionId,
-    summary.bySession,
-  ]);
-
-  useEffect(() => {
     resetSelectedLog();
     const firstSessionId = summary.bySession[0]
       ? getWorkflowExecutionId(summary.bySession[0])
       : null;
     setSelectedSessionId(firstSessionId);
-    if (!isJobPostingPipeline && firstSessionId) {
-      void loadSessionLogs(firstSessionId);
+    if (firstSessionId) {
+      void loadSessionLogs(firstSessionId, activePipeline);
     }
-  }, [activePipeline]);
+  }, [activePipeline, loadSessionLogs, summary.bySession]);
 
   const totalSessionCost = useMemo(
     () =>
@@ -88,9 +60,7 @@ export default function WorkflowDashboardPage() {
   function handleSelectSession(sessionId: number) {
     setSelectedSessionId(sessionId);
     resetSelectedLog();
-    if (!isJobPostingPipeline) {
-      void loadSessionLogs(sessionId);
-    }
+    void loadSessionLogs(sessionId, activePipeline);
   }
 
   return (
@@ -126,10 +96,10 @@ export default function WorkflowDashboardPage() {
         metrics={summary.metrics}
         byNode={summary.byNode}
         bySession={summary.bySession}
-        isLoading={isJobPostingPipeline ? false : isLoading}
-        error={isJobPostingPipeline ? null : error}
+        isLoading={isLoading}
+        error={error}
         onRefresh={() => {
-          if (!isJobPostingPipeline) void reload();
+          void reload();
         }}
       />
       <section className="grid min-h-[860px] gap-4 xl:grid-cols-[1.15fr_0.85fr_1.45fr]">
@@ -144,8 +114,8 @@ export default function WorkflowDashboardPage() {
           logs={logs}
           traceId={activeWorkflowLogs?.traceId ?? null}
           selectedLogId={selectedLog?.id ?? null}
-          isLoading={isJobPostingPipeline ? false : isTraceLoading}
-          error={isJobPostingPipeline ? null : traceError}
+          isLoading={isTraceLoading}
+          error={traceError}
           onSelectLog={selectLog}
         />
         <NodeDetailPanel

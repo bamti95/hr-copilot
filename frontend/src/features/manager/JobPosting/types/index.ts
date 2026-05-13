@@ -113,6 +113,20 @@ export interface JobPostingAnalyzeResponse {
   report: JobPostingAnalysisReport;
 }
 
+export interface JobPostingAiJob {
+  jobId: number;
+  status: string;
+  jobType: string;
+  targetType: string | null;
+  targetId: number | null;
+  progress: number;
+  currentStep: string | null;
+  errorMessage: string | null;
+  requestPayload: Record<string, unknown> | null;
+  resultPayload: Record<string, unknown> | null;
+  message: string;
+}
+
 export interface KnowledgeSource {
   id: number;
   sourceType: string;

@@ -1,6 +1,7 @@
 import api from "../../../../services/api";
 import type {
   EvidenceSource,
+  JobPostingAiJob,
   JobPostingAnalysisReport,
   JobPostingAnalyzeResponse,
   JobPostingCreateRequest,
@@ -87,6 +88,20 @@ interface JobPostingReportApiResponse {
 interface JobPostingAnalyzeApiResponse {
   job_posting: JobPostingApiResponse;
   report: JobPostingReportApiResponse;
+}
+
+interface JobPostingAiJobApiResponse {
+  job_id: number;
+  status: string;
+  job_type: string;
+  target_type: string | null;
+  target_id: number | null;
+  progress: number;
+  current_step: string | null;
+  error_message: string | null;
+  request_payload: JsonRecord | null;
+  result_payload: JsonRecord | null;
+  message: string;
 }
 
 interface KnowledgeSourceApiResponse {
@@ -332,6 +347,22 @@ function mapKnowledgeSearchResult(
   };
 }
 
+function mapAiJob(response: JobPostingAiJobApiResponse): JobPostingAiJob {
+  return {
+    jobId: response.job_id,
+    status: response.status,
+    jobType: response.job_type,
+    targetType: response.target_type,
+    targetId: response.target_id,
+    progress: response.progress,
+    currentStep: response.current_step,
+    errorMessage: response.error_message,
+    requestPayload: response.request_payload,
+    resultPayload: response.result_payload,
+    message: response.message,
+  };
+}
+
 function mapReport(response: JobPostingReportApiResponse): JobPostingAnalysisReport {
   return {
     id: response.id,
@@ -438,6 +469,15 @@ export async function analyzeJobPostingText(
   };
 }
 
+export async function submitAnalyzeTextJob(
+  request: JobPostingCreateRequest,
+): Promise<JobPostingAiJob> {
+  const response = await api.post<
+    JobPostingAiJobApiResponse | ApiEnvelope<JobPostingAiJobApiResponse>
+  >("/job-postings/analyze-text/jobs", toRequestPayload(request));
+  return mapAiJob(unwrap(response.data));
+}
+
 export async function analyzeJobPostingFile(params: {
   file: File;
   jobTitle?: string;
@@ -458,6 +498,22 @@ export async function analyzeJobPostingFile(params: {
   };
 }
 
+export async function submitAnalyzeFileJob(params: {
+  file: File;
+  jobTitle?: string;
+  companyName?: string;
+}): Promise<JobPostingAiJob> {
+  const formData = new FormData();
+  formData.append("file", params.file);
+  if (params.jobTitle) formData.append("job_title", params.jobTitle);
+  if (params.companyName) formData.append("company_name", params.companyName);
+
+  const response = await api.post<
+    JobPostingAiJobApiResponse | ApiEnvelope<JobPostingAiJobApiResponse>
+  >("/job-postings/analyze-file/jobs", formData);
+  return mapAiJob(unwrap(response.data));
+}
+
 export async function analyzeExistingJobPosting(
   postingId: number,
 ): Promise<JobPostingAnalysisReport> {
@@ -467,6 +523,24 @@ export async function analyzeExistingJobPosting(
     params: { analysis_type: "FULL" },
   });
   return mapReport(unwrap(response.data));
+}
+
+export async function submitExistingAnalysisJob(
+  postingId: number,
+): Promise<JobPostingAiJob> {
+  const response = await api.post<
+    JobPostingAiJobApiResponse | ApiEnvelope<JobPostingAiJobApiResponse>
+  >(`/job-postings/${postingId}/analysis-reports/jobs`, null, {
+    params: { analysis_type: "FULL" },
+  });
+  return mapAiJob(unwrap(response.data));
+}
+
+export async function fetchAnalysisJob(jobId: number): Promise<JobPostingAiJob> {
+  const response = await api.get<
+    JobPostingAiJobApiResponse | ApiEnvelope<JobPostingAiJobApiResponse>
+  >(`/job-postings/analysis-jobs/${jobId}`);
+  return mapAiJob(unwrap(response.data));
 }
 
 export async function fetchJobPostingReports(
@@ -543,6 +617,15 @@ export async function indexKnowledgeSource(sourceId: number): Promise<{
   };
 }
 
+export async function submitKnowledgeIndexJob(
+  sourceId: number,
+): Promise<JobPostingAiJob> {
+  const response = await api.post<
+    JobPostingAiJobApiResponse | ApiEnvelope<JobPostingAiJobApiResponse>
+  >(`/job-postings/knowledge-sources/${sourceId}/index/jobs`);
+  return mapAiJob(unwrap(response.data));
+}
+
 export async function seedSourceData(): Promise<{
   indexedSources: KnowledgeSource[];
   totalSources: number;
@@ -557,6 +640,20 @@ export async function seedSourceData(): Promise<{
     totalSources: data.total_sources,
     totalChunks: data.total_chunks,
   };
+}
+
+export async function submitSeedSourceDataJob(): Promise<JobPostingAiJob> {
+  const response = await api.post<
+    JobPostingAiJobApiResponse | ApiEnvelope<JobPostingAiJobApiResponse>
+  >("/job-postings/knowledge-sources/seed-source-data/jobs");
+  return mapAiJob(unwrap(response.data));
+}
+
+export async function fetchKnowledgeIndexJob(jobId: number): Promise<JobPostingAiJob> {
+  const response = await api.get<
+    JobPostingAiJobApiResponse | ApiEnvelope<JobPostingAiJobApiResponse>
+  >(`/job-postings/knowledge-index-jobs/${jobId}`);
+  return mapAiJob(unwrap(response.data));
 }
 
 export async function fetchKnowledgeChunks(

@@ -285,6 +285,8 @@ export function getFinalResponse(logs: LlmCallLog[]): Record<string, unknown> | 
       (log) =>
         log.nodeName === "final_formatter" ||
         log.nodeName === "finalize_report" ||
+        log.nodeName === "generate_structured_report" ||
+        log.nodeName === "save_report_and_logs" ||
         log.outputJson?.final_response,
     );
   const finalResponse = finalLog?.outputJson?.final_response;

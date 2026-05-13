@@ -14,22 +14,25 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { PageIntro } from "../../../common/components/PageIntro";
 import {
-  analyzeExistingJobPosting,
-  analyzeJobPostingFile,
-  analyzeJobPostingText,
+  fetchAnalysisJob,
+  fetchKnowledgeIndexJob,
   fetchKnowledgeChunks,
   fetchJobPosting,
   fetchJobPostingReport,
   fetchJobPostingReports,
   fetchJobPostings,
   fetchKnowledgeSources,
-  indexKnowledgeSource,
   searchKnowledgeSources,
-  seedSourceData,
+  submitAnalyzeFileJob,
+  submitAnalyzeTextJob,
+  submitExistingAnalysisJob,
+  submitKnowledgeIndexJob,
+  submitSeedSourceDataJob,
   uploadKnowledgeSource,
 } from "./services/jobPostingService";
 import type {
   EvidenceSource,
+  JobPostingAiJob,
   JobPostingAnalysisReport,
   JobPostingCreateRequest,
   JobPostingIssue,
@@ -72,6 +75,42 @@ function toEvidenceList(
   value: JobPostingAnalysisReport["matchedEvidence"],
 ): EvidenceSource[] {
   return Array.isArray(value) ? value : [];
+}
+
+const terminalJobStatuses = new Set(["SUCCESS", "FAILED", "PARTIAL_SUCCESS", "CANCELLED"]);
+
+function isTerminalJob(job: JobPostingAiJob) {
+  return terminalJobStatuses.has(job.status);
+}
+
+function jobStatusStyle(status: string) {
+  const normalized = status.toUpperCase();
+  if (normalized === "SUCCESS") return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (normalized === "FAILED" || normalized === "CANCELLED") {
+    return "border-rose-200 bg-rose-50 text-rose-800";
+  }
+  if (normalized === "PARTIAL_SUCCESS") return "border-amber-200 bg-amber-50 text-amber-800";
+  return "border-[#315fbc]/20 bg-[#edf4ff] text-[#173a7a]";
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function pollJob(
+  initialJob: JobPostingAiJob,
+  fetcher: (jobId: number) => Promise<JobPostingAiJob>,
+  onUpdate: (job: JobPostingAiJob) => void,
+): Promise<JobPostingAiJob> {
+  let current = initialJob;
+  onUpdate(current);
+  for (let attempt = 0; attempt < 240; attempt += 1) {
+    if (isTerminalJob(current)) return current;
+    await sleep(1500);
+    current = await fetcher(current.jobId);
+    onUpdate(current);
+  }
+  throw new Error("작업 상태 확인 시간이 초과되었습니다.");
 }
 
 export default function JobPostingPage() {
@@ -268,6 +307,7 @@ export function JobPostingNewPage() {
   });
   const [file, setFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [activeJob, setActiveJob] = useState<JobPostingAiJob | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
 
   async function handleAnalyze() {
@@ -286,17 +326,28 @@ export function JobPostingNewPage() {
 
     setIsSaving(true);
     setErrorMessage("");
+    setActiveJob(null);
     try {
-      const result =
+      const submittedJob =
         mode === "FILE" && file
-          ? await analyzeJobPostingFile({
+          ? await submitAnalyzeFileJob({
               file,
               jobTitle: form.jobTitle,
               companyName: form.companyName || undefined,
             })
-          : await analyzeJobPostingText(form);
+          : await submitAnalyzeTextJob(form);
+      const completedJob = await pollJob(submittedJob, fetchAnalysisJob, setActiveJob);
+      if (completedJob.status !== "SUCCESS") {
+        throw new Error(completedJob.errorMessage || "채용공고 분석 작업이 실패했습니다.");
+      }
+      const resultPayload = completedJob.resultPayload ?? {};
+      const postingId = Number(resultPayload.job_posting_id ?? completedJob.targetId);
+      const reportId = Number(resultPayload.job_posting_analysis_report_id);
+      if (!postingId || !reportId) {
+        throw new Error("분석 결과 리포트 정보를 찾지 못했습니다.");
+      }
       navigate(
-        `/manager/job-postings/${result.jobPosting.id}/report?reportId=${result.report.id}`,
+        `/manager/job-postings/${postingId}/report?reportId=${reportId}`,
       );
     } catch (error) {
       setErrorMessage(
@@ -313,8 +364,8 @@ export function JobPostingNewPage() {
     <div className="space-y-5">
       <PageIntro
         eyebrow="Rule-RAG Baseline"
-        title="채용공고 등록 및 기본 리스크 점검"
-        description="공고 본문 또는 파일을 입력하면 현재 백엔드의 regex 후보 탐지와 keyword 근거 검색으로 리스크 리포트를 생성합니다."
+        title="채용공고 등록 및 Agentic RAG 점검"
+        description="공고 본문 또는 파일을 입력하면 작업 ID를 먼저 발급하고, 백그라운드에서 Hybrid RAG 근거 검색과 노드 추적 로그를 생성합니다."
         actions={
           <Link
             to="/manager/job-postings"
@@ -434,14 +485,16 @@ export function JobPostingNewPage() {
           </div>
 
           {errorMessage ? (
-            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {errorMessage}
-            </div>
-          ) : null}
+          <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {errorMessage}
+          </div>
+        ) : null}
 
-          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
-            현재 분석은 완전한 Agentic RAG가 아니라 기본 점검입니다. 결과는 공고 게시 전
-            사전 검토용으로 사용하고, 최종 법률 판단은 내부 검토 절차를 거쳐야 합니다.
+          {activeJob ? <JobProgressCard job={activeJob} /> : null}
+
+        <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
+            분석은 AiJob 백그라운드 작업으로 실행됩니다. 작업 중에도 다른 화면으로 이동할 수
+            있으며, 완료 후 리포트 페이지에서 근거와 Workflow trace를 확인할 수 있습니다.
           </div>
 
           <button
@@ -451,7 +504,7 @@ export function JobPostingNewPage() {
             className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-[#315fbc] to-[#4f7fff] px-4 text-sm font-semibold text-white shadow-[0_18px_32px_rgba(49,95,188,0.22)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {mode === "FILE" ? <Upload className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
-            {isSaving ? "분석 중..." : "기본 리스크 분석 실행"}
+            {isSaving ? "백그라운드 분석 진행 중..." : "비동기 리스크 분석 실행"}
           </button>
         </div>
 
@@ -509,6 +562,7 @@ export function JobPostingDetailPage() {
   const [reports, setReports] = useState<JobPostingAnalysisReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [activeJob, setActiveJob] = useState<JobPostingAiJob | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
 
   const load = useCallback(async () => {
@@ -540,9 +594,20 @@ export function JobPostingDetailPage() {
   async function handleAnalyzeExisting() {
     setIsAnalyzing(true);
     setErrorMessage("");
+    setActiveJob(null);
     try {
-      const report = await analyzeExistingJobPosting(id);
-      navigate(`/manager/job-postings/${id}/report?reportId=${report.id}`);
+      const submittedJob = await submitExistingAnalysisJob(id);
+      const completedJob = await pollJob(submittedJob, fetchAnalysisJob, setActiveJob);
+      if (completedJob.status !== "SUCCESS") {
+        throw new Error(completedJob.errorMessage || "재분석 작업이 실패했습니다.");
+      }
+      const reportId = Number(
+        completedJob.resultPayload?.job_posting_analysis_report_id,
+      );
+      if (!reportId) {
+        throw new Error("재분석 리포트 정보를 찾지 못했습니다.");
+      }
+      navigate(`/manager/job-postings/${id}/report?reportId=${reportId}`);
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "재분석을 실행하지 못했습니다.",
@@ -585,6 +650,7 @@ export function JobPostingDetailPage() {
           {errorMessage}
         </div>
       ) : null}
+      {activeJob ? <JobProgressCard job={activeJob} /> : null}
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <article className="rounded-[28px] border border-white/70 bg-[var(--panel)] p-5 shadow-[var(--shadow)]">
@@ -830,6 +896,7 @@ export function JobPostingKnowledgePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isIndexing, setIsIndexing] = useState<number | null>(null);
   const [isSeeding, setIsSeeding] = useState(false);
+  const [activeIndexJob, setActiveIndexJob] = useState<JobPostingAiJob | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -910,9 +977,19 @@ export function JobPostingKnowledgePage() {
     setIsIndexing(sourceId);
     setErrorMessage("");
     setMessage("");
+    setActiveIndexJob(null);
     try {
-      const result = await indexKnowledgeSource(sourceId);
-      setMessage(`인덱싱 완료: ${result.chunkCount}개 chunk가 생성되었습니다.`);
+      const submittedJob = await submitKnowledgeIndexJob(sourceId);
+      const completedJob = await pollJob(
+        submittedJob,
+        fetchKnowledgeIndexJob,
+        setActiveIndexJob,
+      );
+      if (completedJob.status !== "SUCCESS") {
+        throw new Error(completedJob.errorMessage || "문서 인덱싱 작업이 실패했습니다.");
+      }
+      const chunkCount = Number(completedJob.resultPayload?.chunk_count ?? 0);
+      setMessage(`인덱싱 완료: ${chunkCount}개 chunk가 생성되었습니다.`);
       setSelectedSourceId(sourceId);
       await loadSources();
       setChunks(await fetchKnowledgeChunks(sourceId));
@@ -929,10 +1006,20 @@ export function JobPostingKnowledgePage() {
     setIsSeeding(true);
     setErrorMessage("");
     setMessage("");
+    setActiveIndexJob(null);
     try {
-      const result = await seedSourceData();
+      const submittedJob = await submitSeedSourceDataJob();
+      const completedJob = await pollJob(
+        submittedJob,
+        fetchKnowledgeIndexJob,
+        setActiveIndexJob,
+      );
+      if (completedJob.status !== "SUCCESS") {
+        throw new Error(completedJob.errorMessage || "source_data 적재 작업이 실패했습니다.");
+      }
+      const result = completedJob.resultPayload ?? {};
       setMessage(
-        `source_data 적재 완료: ${result.totalSources}개 문서, ${result.totalChunks}개 chunk`,
+        `source_data 적재 완료: ${Number(result.total_sources ?? 0)}개 문서, ${Number(result.total_chunks ?? 0)}개 chunk`,
       );
       await loadSources();
     } catch (error) {
@@ -995,6 +1082,7 @@ export function JobPostingKnowledgePage() {
           {errorMessage}
         </div>
       ) : null}
+      {activeIndexJob ? <JobProgressCard job={activeIndexJob} /> : null}
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <article className="rounded-[28px] border border-white/70 bg-[var(--panel)] p-5 shadow-[var(--shadow)]">
@@ -1180,7 +1268,7 @@ export function JobPostingKnowledgePage() {
         </article>
 
         <div className="space-y-5">
-          <article className="rounded-[28px] border border-white/70 bg-[var(--panel)] p-5 shadow-[var(--shadow)]">
+          <article className="rounded-[28px] border border-white/70 bg-(--panel) p-5 shadow-(--shadow)">
             <h2 className="m-0 text-lg font-bold text-slate-950">검색 결과</h2>
             <div className="mt-4 space-y-3">
               {searchResult?.results.map((result) => (
@@ -1194,7 +1282,7 @@ export function JobPostingKnowledgePage() {
             </div>
           </article>
 
-          <article className="rounded-[28px] border border-white/70 bg-[var(--panel)] p-5 shadow-[var(--shadow)]">
+          <article className="rounded-[28px] border border-white/70 bg-(--panel) p-5 shadow-(--shadow)">
             <h2 className="m-0 text-lg font-bold text-slate-950">선택 문서 Chunk 미리보기</h2>
             <div className="mt-4 space-y-3">
               {chunks.slice(0, 6).map((chunk) => (
@@ -1235,6 +1323,40 @@ function StatusPill({ label }: { label: string }) {
     <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-semibold text-slate-600">
       {label}
     </span>
+  );
+}
+
+function JobProgressCard({ job }: { job: JobPostingAiJob }) {
+  return (
+    <div className={`rounded-2xl border px-4 py-3 text-sm ${jobStatusStyle(job.status)}`}>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <div className="font-bold">
+            Job #{job.jobId} · {job.status}
+          </div>
+          <div className="mt-1 text-xs opacity-80">
+            {job.currentStep ?? job.message}
+          </div>
+        </div>
+        <div className="min-w-45">
+          <div className="flex items-center justify-between text-xs font-semibold">
+            <span>진행률</span>
+            <span>{job.progress}%</span>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/70">
+            <div
+              className="h-full rounded-full bg-current transition-all"
+              style={{ width: `${Math.max(0, Math.min(job.progress, 100))}%` }}
+            />
+          </div>
+        </div>
+      </div>
+      {job.errorMessage ? (
+        <div className="mt-3 rounded-xl bg-white/70 px-3 py-2 text-xs">
+          {job.errorMessage}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -1299,7 +1421,7 @@ function MetricCard({
   tone?: string;
 }) {
   return (
-    <article className="rounded-[24px] border border-white/70 bg-[var(--panel)] p-5 shadow-[var(--shadow)]">
+    <article className="rounded-3xl border border-white/70 bg-(--panel) p-5 shadow-(--shadow)">
       <div className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
         {label}
       </div>

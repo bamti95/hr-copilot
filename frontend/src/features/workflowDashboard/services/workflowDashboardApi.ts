@@ -325,3 +325,22 @@ export async function fetchSessionLlmLogs(
     items: withLangSmithStyleLlmUsages(response.data.items.map(mapWorkflowLog)),
   };
 }
+
+export async function fetchWorkflowExecutionLogs(
+  pipelineType: WorkflowPipelineType,
+  executionId: number,
+): Promise<LlmCallLogListResponse> {
+  if (pipelineType === "JOB_POSTING_COMPLIANCE") {
+    const response = await api.get<LlmCallLogListApiResponse>(
+      `/llm-logs/job-posting-analysis-reports/${executionId}`,
+    );
+
+    return {
+      sessionId: response.data.sessionId ?? response.data.session_id ?? executionId,
+      traceId: response.data.traceId ?? response.data.trace_id ?? null,
+      items: withLangSmithStyleLlmUsages(response.data.items.map(mapWorkflowLog)),
+    };
+  }
+
+  return fetchSessionLlmLogs(executionId);
+}
