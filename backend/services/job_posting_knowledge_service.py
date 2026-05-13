@@ -61,8 +61,8 @@ from services.job_posting_embedding_service import (
 SOURCE_DATA_DIR = Path("backend/sample_data/source_data")
 KNOWLEDGE_UPLOAD_DIR = "job_posting_knowledge"
 LOCAL_EMBEDDING_MODEL = "BAAI/bge-m3"
-MAX_CHUNK_CHARS = 1800
-MIN_CHUNK_CHARS = 240
+MAX_CHUNK_CHARS = 1000
+MIN_CHUNK_CHARS = 180
 logger = logging.getLogger(__name__)
 
 
@@ -564,15 +564,21 @@ def build_chunks_for_source(
 ) -> list[JobPostingKnowledgeChunk]:
     sections = split_legal_text(extracted_text, source.source_type)
     chunks: list[JobPostingKnowledgeChunk] = []
+    doc_id = resolve_doc_id(source)
+    section_counters: dict[str, int] = {}
     for index, section in enumerate(sections):
         content = section["content"].strip()
         if not content:
             continue
+        section_ref = section.get("article_ref") or section.get("chunk_key") or f"section-{index + 1}"
+        section_counters[section_ref] = section_counters.get(section_ref, 0) + 1
+        chunk_no = section_counters[section_ref]
+        chunk_key = f"{doc_id}::{section_ref}::{chunk_no:02d}"
         content_hash = hashlib.sha256(f"{source.id}:{index}:{content}".encode("utf-8")).hexdigest()
         chunk = JobPostingKnowledgeChunk(
             knowledge_source_id=source.id,
             chunk_type=section["chunk_type"],
-            chunk_key=section.get("chunk_key"),
+            chunk_key=chunk_key,
             chunk_index=len(chunks),
             page_start=section.get("page_start"),
             page_end=section.get("page_end"),
@@ -590,9 +596,19 @@ def build_chunks_for_source(
             correction_suggestion=None,
             tags=infer_tags(content),
             metadata_json={
+                "doc_id": doc_id,
+                "doc_name": source.title,
                 "source_title": source.title,
                 "source_type": source.source_type,
+                "doc_type": map_doc_type(source.source_type),
+                "article_ref": section.get("article_ref"),
+                "section_title": section.get("section_title"),
+                "effective_date": extract_effective_date(source),
+                "is_latest": resolve_is_latest(source),
+                "page": section.get("page_start"),
+                "topic_tags": infer_tags(content),
                 "document_priority": document_priority(source.source_type),
+                "chunking_strategy": section.get("chunking_strategy"),
             },
             embedding_model=current_embedding_model_name(),
             embedding=embed_text(content),
@@ -887,6 +903,245 @@ def normalize_embedding(value: Any) -> list[float]:
 
 def embed_text(text: str) -> list[float]:
     return embed_text_with_model(text)
+
+
+def split_legal_text(text: str, source_type: str) -> list[dict[str, Any]]:
+    normalized = normalize_chunk_source_text(text)
+    if not normalized:
+        return []
+    if source_type == JobPostingKnowledgeSourceType.LAW_TEXT.value:
+        return split_by_article(normalized)
+    if source_type == JobPostingKnowledgeSourceType.INSPECTION_CASE.value:
+        return split_by_case_blocks(normalized)
+    return split_by_heading_or_window(normalized)
+
+
+def split_by_article(text: str) -> list[dict[str, Any]]:
+    article_pattern = re.compile(
+        r"(?=^\s*제\s*\d+\s*조(?:\s*의\s*\d+)?(?:\s*\([^)]+\))?)",
+        re.MULTILINE,
+    )
+    parts = [part.strip() for part in article_pattern.split(text) if part.strip()]
+    if len(parts) <= 1:
+        parts = split_to_limit(text)
+
+    sections: list[dict[str, Any]] = []
+    for fallback_index, part in enumerate(parts, start=1):
+        article_ref = infer_article_no(part) or f"article-{fallback_index}"
+        section_title = first_line(part)
+        for content in split_legal_article_detail(part):
+            sections.append(
+                {
+                    "chunk_type": JobPostingKnowledgeChunkType.LEGAL_CLAUSE.value,
+                    "chunk_key": article_ref,
+                    "article_ref": article_ref,
+                    "section_title": section_title,
+                    "content": with_section_prefix(section_title, content),
+                    "chunking_strategy": "law_article_then_paragraph_item",
+                }
+            )
+    return sections
+
+
+def split_by_case_blocks(text: str) -> list[dict[str, Any]]:
+    case_pattern = re.compile(
+        r"(?=^\s*(?:사례|Case|CASE|점검\s*사례|위반\s*사례)\s*[\dIVXivx가-힣-]*)",
+        re.MULTILINE,
+    )
+    parts = [part.strip() for part in case_pattern.split(text) if part.strip()]
+    if len(parts) <= 1:
+        parts = split_to_limit(text)
+
+    sections: list[dict[str, Any]] = []
+    for idx, part in enumerate(parts, start=1):
+        case_ref = f"case-{idx}"
+        section_title = first_line(part) or f"사례 {idx}"
+        for content in split_to_limit(part):
+            sections.append(
+                {
+                    "chunk_type": JobPostingKnowledgeChunkType.INSPECTION_CASE.value,
+                    "chunk_key": case_ref,
+                    "article_ref": case_ref,
+                    "section_title": section_title,
+                    "content": with_section_prefix(section_title, content),
+                    "chunking_strategy": "case_one_case_then_limit",
+                }
+            )
+    return sections
+
+
+def split_by_heading_or_window(text: str) -> list[dict[str, Any]]:
+    blocks: list[str] = []
+    current: list[str] = []
+    for line in (line.strip() for line in text.splitlines()):
+        if not line:
+            continue
+        if is_guide_heading(line) and current:
+            blocks.append("\n".join(current))
+            current = [line]
+        else:
+            current.append(line)
+    if current:
+        blocks.append("\n".join(current))
+    if not blocks:
+        blocks = [text]
+
+    sections: list[dict[str, Any]] = []
+    for idx, block in enumerate(blocks, start=1):
+        guide_ref = f"guide-{idx}"
+        section_title = first_line(block)
+        for content in split_to_limit(block):
+            sections.append(
+                {
+                    "chunk_type": JobPostingKnowledgeChunkType.LEGAL_GUIDE.value,
+                    "chunk_key": guide_ref,
+                    "article_ref": guide_ref,
+                    "section_title": section_title,
+                    "content": with_section_prefix(section_title, content),
+                    "chunking_strategy": "guide_heading_then_limit",
+                }
+            )
+    return sections
+
+
+def split_legal_article_detail(article_text: str) -> list[str]:
+    if len(article_text) <= MAX_CHUNK_CHARS:
+        return [article_text]
+    detail_pattern = re.compile(
+        r"(?=^\s*(?:[①②③④⑤⑥⑦⑧⑨⑩]|\d+\.\s|[가-힣]\.\s|\(\d+\)|\d+\)|[가-힣]\)))",
+        re.MULTILINE,
+    )
+    parts = [part.strip() for part in detail_pattern.split(article_text) if part.strip()]
+    if len(parts) <= 1:
+        return split_to_limit(article_text)
+    return split_to_limit_blocks(parts)
+
+
+def split_to_limit(text: str) -> list[str]:
+    return split_to_limit_blocks([text])
+
+
+def split_to_limit_blocks(parts: list[str]) -> list[str]:
+    expanded: list[str] = []
+    for part in parts:
+        if len(part) <= MAX_CHUNK_CHARS:
+            if len(part) >= MIN_CHUNK_CHARS or not expanded:
+                expanded.append(part)
+            elif len(expanded[-1]) + len(part) + 2 <= MAX_CHUNK_CHARS:
+                expanded[-1] = f"{expanded[-1]}\n\n{part}"
+            else:
+                expanded.append(part)
+            continue
+
+        paragraphs = [p.strip() for p in re.split(r"\n\s*\n", part) if p.strip()]
+        if len(paragraphs) <= 1:
+            paragraphs = [p.strip() for p in re.split(r"(?<=[.!?。다])\s+", part) if p.strip()]
+
+        current = ""
+        for paragraph in paragraphs or [part]:
+            if len(paragraph) > MAX_CHUNK_CHARS:
+                if current:
+                    expanded.append(current)
+                    current = ""
+                expanded.extend(split_by_hard_limit(paragraph))
+                continue
+            if len(current) + len(paragraph) + 2 <= MAX_CHUNK_CHARS:
+                current = f"{current}\n\n{paragraph}".strip()
+            else:
+                if current:
+                    expanded.append(current)
+                current = paragraph
+        if current:
+            expanded.append(current)
+    return expanded
+
+
+def split_by_hard_limit(text: str) -> list[str]:
+    return [
+        text[index:index + MAX_CHUNK_CHARS].strip()
+        for index in range(0, len(text), MAX_CHUNK_CHARS)
+        if text[index:index + MAX_CHUNK_CHARS].strip()
+    ]
+
+
+def normalize_chunk_source_text(text: str) -> str:
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    normalized = re.sub(r"[ \t]+", " ", normalized)
+    normalized = re.sub(r"\n{3,}", "\n\n", normalized)
+    return normalized.strip()
+
+
+def is_guide_heading(line: str) -> bool:
+    if len(line) > 90:
+        return False
+    return bool(
+        re.match(
+            r"^(?:제\s*\d+\s*[장절]|[0-9]+(?:\.[0-9]+)*[.)]?\s+|[가-힣][.)]\s+|[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+[.)]?\s+|□\s*|○\s*)",
+            line,
+        )
+    )
+
+
+def with_section_prefix(section_title: str | None, content: str) -> str:
+    title = (section_title or "").strip()
+    if not title:
+        return content.strip()
+    content = content.strip()
+    if content.startswith(title) or content.startswith(f"[{title}]"):
+        return content
+    return f"[{title}]\n{content}"
+
+
+def infer_article_no(text: str) -> str | None:
+    match = re.search(r"제\s*(\d+)\s*조(?:\s*의\s*(\d+))?", text)
+    if not match:
+        return None
+    return f"제{match.group(1)}조" + (f"의{match.group(2)}" if match.group(2) else "")
+
+
+def resolve_doc_id(source: JobPostingKnowledgeSource) -> str:
+    metadata = source.metadata_json or {}
+    value = metadata.get("doc_id") or metadata.get("docId")
+    if value:
+        return str(value)
+    prefix_by_type = {
+        JobPostingKnowledgeSourceType.LAW_TEXT.value: "LAW",
+        JobPostingKnowledgeSourceType.LEGAL_GUIDEBOOK.value: "GUIDE",
+        JobPostingKnowledgeSourceType.LEGAL_MANUAL.value: "MANUAL",
+        JobPostingKnowledgeSourceType.INSPECTION_CASE.value: "CASE",
+    }
+    prefix = prefix_by_type.get(source.source_type, "DOC")
+    return f"{prefix}_{source.id:03d}"
+
+
+def map_doc_type(source_type: str) -> str:
+    if source_type == JobPostingKnowledgeSourceType.LAW_TEXT.value:
+        return "법령"
+    if source_type == JobPostingKnowledgeSourceType.INSPECTION_CASE.value:
+        return "사례"
+    return "가이드"
+
+
+def extract_effective_date(source: JobPostingKnowledgeSource) -> str | None:
+    metadata = source.metadata_json or {}
+    value = metadata.get("effective_date") or metadata.get("effectiveDate")
+    if value:
+        return str(value)
+    if source.version_label:
+        match = re.search(r"\d{4}[-.]\d{1,2}[-.]\d{1,2}|\d{4}[-.]\d{1,2}|\d{4}", source.version_label)
+        if match:
+            return match.group(0).replace(".", "-")
+    return None
+
+
+def resolve_is_latest(source: JobPostingKnowledgeSource) -> bool:
+    metadata = source.metadata_json or {}
+    value = metadata.get("is_latest") if "is_latest" in metadata else metadata.get("isLatest")
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.lower() in {"true", "y", "yes", "1", "latest"}
+    return True
 
 
 async def _save_knowledge_upload(upload_file: UploadFile) -> dict[str, Any]:
