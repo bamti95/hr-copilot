@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import math
 import re
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException, UploadFile, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.document_types import ALLOWED_EXTENSIONS, READ_CHUNK_SIZE
@@ -20,6 +23,8 @@ from common.file_storage import (
     strip_extension,
 )
 from common.file_util import extract_text_from_file
+from core.database import AsyncSessionLocal
+from models.ai_job import AiJob, AiJobStatus, AiJobTargetType, AiJobType
 from models.job_posting import JobPosting, JobPostingInputSource, JobPostingStatus
 from models.job_posting_analysis_report import (
     JobPostingAnalysisReport,
@@ -31,7 +36,19 @@ from repositories.job_posting_repository import (
     JobPostingAnalysisReportRepository,
     JobPostingRepository,
 )
+from services.job_posting_report_service import (
+    build_evidence_sufficiency,
+    build_structured_compliance_report,
+    calculate_evidence_strength,
+)
+from services.job_posting_retrieval_service import JobPostingRetrievalService
+from services.job_posting_trace_service import JobPostingTraceRecorder, record_timed_node
+from services.job_posting_embedding_service import (
+    current_embedding_model_name,
+    current_reranker_model_name,
+)
 from schemas.job_posting import (
+    JobPostingAiJobResponse,
     JobPostingAnalyzeResponse,
     JobPostingAnalyzeTextRequest,
     JobPostingCreateRequest,
@@ -45,6 +62,7 @@ PIPELINE_VERSION = "job-posting-compliance-rag-v1"
 ANALYSIS_VERSION = "2026-05-12"
 MODEL_NAME = "rule-rag-baseline"
 JOB_POSTING_UPLOAD_DIR = "job_postings"
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -158,6 +176,22 @@ RISK_PATTERNS = [
 
 
 class JobPostingService:
+    @staticmethod
+    def _job_response(job: AiJob, message: str) -> JobPostingAiJobResponse:
+        return JobPostingAiJobResponse(
+            job_id=job.id,
+            status=job.status,
+            job_type=job.job_type,
+            target_type=job.target_type,
+            target_id=job.target_id,
+            progress=job.progress,
+            current_step=job.current_step,
+            error_message=job.error_message,
+            request_payload=job.request_payload,
+            result_payload=job.result_payload,
+            message=message,
+        )
+
     @staticmethod
     async def create_posting(
         *,
@@ -315,6 +349,136 @@ class JobPostingService:
         )
 
     @staticmethod
+    async def submit_analyze_text_job(
+        *,
+        db: AsyncSession,
+        request: JobPostingAnalyzeTextRequest,
+        actor_id: int | None,
+    ) -> JobPostingAiJobResponse:
+        posting_repo = JobPostingRepository(db)
+        posting = await upsert_posting(
+            db=db,
+            repo=posting_repo,
+            request=request,
+            actor_id=actor_id,
+        )
+        await posting_repo.flush()
+        job = AiJob(
+            job_type=AiJobType.JOB_POSTING_COMPLIANCE_ANALYSIS.value,
+            status=AiJobStatus.QUEUED.value,
+            target_type=AiJobTargetType.JOB_POSTING.value,
+            target_id=posting.id,
+            progress=2,
+            current_step="analysis_job_created",
+            request_payload={
+                "mode": "TEXT",
+                "posting_id": posting.id,
+                "analysis_type": request.analysis_type,
+            },
+            requested_by=actor_id,
+            created_by=actor_id,
+        )
+        db.add(job)
+        await db.commit()
+        await db.refresh(job)
+        return JobPostingService._job_response(
+            job,
+            "채용공고 점검 작업이 시작되었습니다.",
+        )
+
+    @staticmethod
+    async def submit_existing_analysis_job(
+        *,
+        db: AsyncSession,
+        posting_id: int,
+        analysis_type: str,
+        actor_id: int | None,
+    ) -> JobPostingAiJobResponse:
+        posting_repo = JobPostingRepository(db)
+        posting = await posting_repo.find_by_id_not_deleted(posting_id)
+        if posting is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Job posting was not found.",
+            )
+        job = AiJob(
+            job_type=AiJobType.JOB_POSTING_COMPLIANCE_ANALYSIS.value,
+            status=AiJobStatus.QUEUED.value,
+            target_type=AiJobTargetType.JOB_POSTING.value,
+            target_id=posting.id,
+            progress=2,
+            current_step="analysis_job_created",
+            request_payload={
+                "mode": "EXISTING",
+                "posting_id": posting.id,
+                "analysis_type": analysis_type,
+            },
+            requested_by=actor_id,
+            created_by=actor_id,
+        )
+        db.add(job)
+        await db.commit()
+        await db.refresh(job)
+        return JobPostingService._job_response(
+            job,
+            "채용공고 재점검 작업이 시작되었습니다.",
+        )
+
+    @staticmethod
+    async def submit_analyze_file_job(
+        *,
+        db: AsyncSession,
+        upload_file: UploadFile,
+        job_title: str | None,
+        company_name: str | None,
+        actor_id: int | None,
+    ) -> JobPostingAiJobResponse:
+        saved = await save_job_posting_upload(upload_file)
+        job = AiJob(
+            job_type=AiJobType.JOB_POSTING_COMPLIANCE_ANALYSIS.value,
+            status=AiJobStatus.QUEUED.value,
+            target_type=AiJobTargetType.JOB_POSTING.value,
+            progress=2,
+            current_step="analysis_file_saved",
+            request_payload={
+                "mode": "FILE",
+                "file_path": saved["file_path"],
+                "file_ext": saved["file_ext"],
+                "job_title": job_title or saved["title"],
+                "company_name": company_name,
+            },
+            requested_by=actor_id,
+            created_by=actor_id,
+        )
+        db.add(job)
+        await db.commit()
+        await db.refresh(job)
+        return JobPostingService._job_response(
+            job,
+            "채용공고 파일 점검 작업이 시작되었습니다.",
+        )
+
+    @staticmethod
+    async def get_analysis_job(
+        *,
+        db: AsyncSession,
+        job_id: int,
+    ) -> JobPostingAiJobResponse:
+        result = await db.execute(
+            select(AiJob).where(
+                AiJob.id == job_id,
+                AiJob.job_type == AiJobType.JOB_POSTING_COMPLIANCE_ANALYSIS.value,
+            )
+        )
+        job = result.scalar_one_or_none()
+        if job is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Job posting analysis job was not found.",
+            )
+        return JobPostingService._job_response(job, "채용공고 점검 작업 상태입니다.")
+
+    @staticmethod
     async def list_reports(
         *,
         db: AsyncSession,
@@ -346,6 +510,114 @@ class JobPostingService:
                 detail="Analysis report was not found.",
             )
         return JobPostingAnalysisReportResponse.from_entity(entity)
+
+    @staticmethod
+    async def run_analysis_job(job_id: int) -> None:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(AiJob).where(AiJob.id == job_id))
+            job = result.scalar_one_or_none()
+            if job is None:
+                logger.warning("Job posting analysis job not found: %s", job_id)
+                return
+
+            try:
+                payload = job.request_payload or {}
+                mode = payload.get("mode")
+                actor_id = job.requested_by
+                job.status = AiJobStatus.RUNNING.value
+                job.progress = 10
+                job.current_step = "analysis_started"
+                job.started_at = job.started_at or datetime.now(timezone.utc)
+                await db.commit()
+
+                if mode in {"TEXT", "EXISTING"}:
+                    posting_repo = JobPostingRepository(db)
+                    posting = await posting_repo.find_by_id_not_deleted(
+                        int(payload["posting_id"])
+                    )
+                    if posting is None:
+                        raise ValueError("Job posting was not found.")
+                    job.progress = 35
+                    job.current_step = "posting_loaded"
+                    await db.commit()
+                    report = await run_rule_rag_analysis(
+                        db=db,
+                        posting=posting,
+                        analysis_type=payload.get("analysis_type") or JobPostingAnalysisType.FULL.value,
+                        actor_id=actor_id,
+                    )
+                    report.ai_job_id = job.id
+                    job.target_id = posting.id
+                elif mode == "FILE":
+                    extracted = extract_text_from_file(
+                        payload.get("file_path") or "",
+                        payload.get("file_ext"),
+                    )
+                    if extracted.extract_status != "SUCCESS" or not extracted.extracted_text:
+                        raise ValueError("Failed to extract text from uploaded job posting file.")
+                    job.progress = 30
+                    job.current_step = "file_text_extracted"
+                    await db.commit()
+                    request = JobPostingAnalyzeTextRequest(
+                        input_source=JobPostingInputSource.MANUAL.value,
+                        company_name=payload.get("company_name"),
+                        job_title=payload.get("job_title") or "채용공고",
+                        posting_text=extracted.extracted_text,
+                        raw_payload={
+                            "file_path": payload.get("file_path"),
+                            "file_ext": payload.get("file_ext"),
+                            "extract_meta": extracted.extract_meta,
+                        },
+                        normalized_payload={
+                            "extract_strategy": extracted.extract_strategy,
+                            "extract_quality_score": extracted.extract_quality_score,
+                        },
+                    )
+                    posting_repo = JobPostingRepository(db)
+                    posting = await upsert_posting(
+                        db=db,
+                        repo=posting_repo,
+                        request=request,
+                        actor_id=actor_id,
+                    )
+                    await posting_repo.flush()
+                    job.target_id = posting.id
+                    job.progress = 45
+                    job.current_step = "posting_saved"
+                    await db.commit()
+                    report = await run_rule_rag_analysis(
+                        db=db,
+                        posting=posting,
+                        analysis_type=JobPostingAnalysisType.FULL.value,
+                        actor_id=actor_id,
+                    )
+                    report.ai_job_id = job.id
+                else:
+                    raise ValueError(f"Unsupported job posting analysis mode: {mode}")
+
+                job.status = AiJobStatus.SUCCESS.value
+                job.progress = 100
+                job.current_step = "analysis_completed"
+                job.result_payload = {
+                    "job_posting_id": report.job_posting_id,
+                    "job_posting_analysis_report_id": report.id,
+                    "risk_level": report.risk_level,
+                    "analysis_status": report.analysis_status,
+                }
+                job.completed_at = datetime.now(timezone.utc)
+                await db.commit()
+            except Exception as exc:
+                logger.exception("Job posting analysis job failed. job_id=%s", job_id)
+                await db.rollback()
+                result = await db.execute(select(AiJob).where(AiJob.id == job_id))
+                failed_job = result.scalar_one_or_none()
+                if failed_job is not None:
+                    failed_job.status = AiJobStatus.FAILED.value
+                    failed_job.progress = 100
+                    failed_job.current_step = "analysis_failed"
+                    failed_job.error_message = str(exc)
+                    failed_job.completed_at = datetime.now(timezone.utc)
+                    await db.commit()
 
 
 async def upsert_posting(
@@ -415,71 +687,219 @@ async def run_rule_rag_analysis(
     report_repo = JobPostingAnalysisReportRepository(db)
     await report_repo.add(report)
     await report_repo.flush()
-
-    issues = detect_issues(posting.posting_text)
-    chunk_repo = JobPostingKnowledgeChunkRepository(db)
-    evidence_items: list[dict[str, Any]] = []
-    for issue in issues:
-        chunks = await chunk_repo.search_candidates(
-            query_terms=issue["query_terms"],
-            limit=8,
-        )
-        ranked = rank_evidence(issue, chunks)
-        issue["sources"] = ranked[:5]
-        evidence_items.extend(ranked[:5])
-
-    risk_level = calculate_risk_level(issues)
-    violation_count = sum(1 for issue in issues if issue["category"] == "LEGAL")
-    warning_count = max(0, len(issues) - violation_count)
-    confidence = calculate_confidence(issues, evidence_items)
-    final_report = build_final_report(
-        posting=posting,
-        issues=issues,
-        risk_level=risk_level,
-        confidence=confidence,
-        evidence_items=evidence_items,
+    trace = JobPostingTraceRecorder(
+        db=db,
+        manager_id=actor_id,
+        job_posting_id=posting.id,
+        report_id=report.id,
     )
 
-    report.analysis_status = JobPostingAnalysisStatus.SUCCESS.value
-    report.risk_level = risk_level
-    report.issue_count = len(issues)
-    report.violation_count = violation_count
-    report.warning_count = warning_count
-    report.confidence_score = confidence
-    report.detected_issue_types = sorted({issue["issue_type"] for issue in issues})
-    report.retrieval_summary = {
-        "pipeline": PIPELINE_VERSION,
-        "query_count": len(issues),
-        "evidence_count": len(evidence_items),
-        "retrieval_mode": "keyword-baseline",
-    }
-    report.summary_text = final_report["summary"]
-    report.parsed_sections = parse_posting_sections(posting.posting_text)
-    report.overall_score = final_report["overall_score"]
-    report.risk_score = final_report["risk_score"]
-    report.attractiveness_score = final_report["attractiveness_score"]
-    report.issue_summary = issues
-    report.matched_evidence = evidence_items
-    report.compliance_warnings = [
-        issue for issue in issues if issue["category"] == "LEGAL"
-    ]
-    report.improvement_suggestions = [
-        {
-            "issue_type": issue["issue_type"],
-            "flagged_text": issue["flagged_text"],
-            "recommended_revision": issue["recommended_revision"],
+    try:
+        node_started_at = time.perf_counter()
+        issues = detect_issues(posting.posting_text)
+        await record_timed_node(
+            trace,
+            node_name="detect_risk_phrases",
+            request_json={"posting_id": posting.id, "text_length": len(posting.posting_text)},
+            output_json={"issue_count": len(issues), "issues": issues},
+            elapsed_started_at=node_started_at,
+        )
+
+        node_started_at = time.perf_counter()
+        retrieval_queries = [
+            {
+                "issue_type": issue["issue_type"],
+                "flagged_text": issue["flagged_text"],
+                "query_terms": issue["query_terms"],
+            }
+            for issue in issues
+        ]
+        await record_timed_node(
+            trace,
+            node_name="generate_retrieval_queries",
+            request_json={"issue_count": len(issues)},
+            output_json={"queries": retrieval_queries},
+            elapsed_started_at=node_started_at,
+        )
+
+        retrieval_service = JobPostingRetrievalService(db)
+        evidence_items: list[dict[str, Any]] = []
+        for issue in issues:
+            node_started_at = time.perf_counter()
+            evidences = await retrieval_service.retrieve_for_issue(
+                issue=issue,
+                limit=12,
+            )
+            evidence_payloads = [evidence.to_payload() for evidence in evidences]
+            await record_timed_node(
+                trace,
+                node_name="bm25_retrieve",
+                request_json={
+                    "issue_type": issue["issue_type"],
+                    "query_terms": issue["query_terms"],
+                },
+                output_json={
+                    "candidate_count": len(evidence_payloads),
+                    "top_candidates": evidence_payloads[:5],
+                },
+                elapsed_started_at=node_started_at,
+            )
+            await trace.record(
+                node_name="vector_retrieve",
+                request_json={
+                    "issue_type": issue["issue_type"],
+                    "embedding_model": current_embedding_model_name(),
+                },
+                output_json={
+                    "candidate_count": len(evidence_payloads),
+                    "top_vector_scores": [
+                        item.get("vector_score") for item in evidence_payloads[:5]
+                    ],
+                },
+                elapsed_ms=0,
+            )
+            await trace.record(
+                node_name="merge_hybrid_results",
+                request_json={
+                    "issue_type": issue["issue_type"],
+                    "reranker_model": current_reranker_model_name(),
+                },
+                output_json={
+                    "candidate_count": len(evidence_payloads),
+                    "top_hybrid_scores": [
+                        item.get("hybrid_score") for item in evidence_payloads[:5]
+                    ],
+                },
+                elapsed_ms=0,
+            )
+            issue["sources"] = evidence_payloads[:5]
+            evidence_items.extend(evidence_payloads[:5])
+
+        node_started_at = time.perf_counter()
+        sufficiency = build_evidence_sufficiency(issues=issues)
+        await record_timed_node(
+            trace,
+            node_name="check_evidence_sufficiency",
+            request_json={"issue_count": len(issues)},
+            output_json=sufficiency,
+            elapsed_started_at=node_started_at,
+        )
+
+        node_started_at = time.perf_counter()
+        reranked_evidence_items = sorted(
+            evidence_items,
+            key=lambda item: item.get("rerank_score") or item.get("hybrid_score") or 0,
+            reverse=True,
+        )
+        await record_timed_node(
+            trace,
+            node_name="rerank_evidence",
+            request_json={"evidence_count": len(evidence_items)},
+            output_json={"top_evidence": reranked_evidence_items[:10]},
+            elapsed_started_at=node_started_at,
+        )
+
+        node_started_at = time.perf_counter()
+        risk_level = calculate_risk_level_with_evidence(issues)
+        violation_count = sum(1 for issue in issues if issue["category"] == "LEGAL")
+        warning_count = max(0, len(issues) - violation_count)
+        evidence_strength = calculate_evidence_strength(issues)
+        final_report = build_structured_compliance_report(
+            posting=posting,
+            issues=issues,
+            risk_level=risk_level,
+            evidence_strength=evidence_strength,
+            evidence_items=reranked_evidence_items[:20],
+        )
+        await record_timed_node(
+            trace,
+            node_name="generate_structured_report",
+            request_json={
+                "posting_id": posting.id,
+                "issue_count": len(issues),
+                "evidence_count": len(reranked_evidence_items),
+            },
+            output_json=final_report,
+            elapsed_started_at=node_started_at,
+            model_name="structured-output-local",
+        )
+
+        node_started_at = time.perf_counter()
+        report.analysis_status = JobPostingAnalysisStatus.SUCCESS.value
+        report.risk_level = risk_level
+        report.issue_count = len(issues)
+        report.violation_count = violation_count
+        report.warning_count = warning_count
+        report.confidence_score = evidence_strength
+        report.detected_issue_types = sorted({issue["issue_type"] for issue in issues})
+        report.retrieval_summary = {
+            "pipeline": PIPELINE_VERSION,
+            "query_count": len(issues),
+            "evidence_count": len(reranked_evidence_items),
+            "retrieval_mode": "hybrid_full_text_pgvector",
+            "rerank_mode": "three_axis_slot_rerank",
+            "sufficiency": sufficiency,
         }
-        for issue in issues
-    ]
-    report.rewrite_examples = [
-        {
-            "before": issue["flagged_text"],
-            "after": issue["recommended_revision"],
-        }
-        for issue in issues
-    ]
-    report.final_report = final_report
-    report.completed_at = datetime.now(timezone.utc)
+        report.summary_text = final_report["summary"]
+        report.parsed_sections = parse_posting_sections(posting.posting_text)
+        report.overall_score = final_report["overall_score"]
+        report.risk_score = final_report["risk_score"]
+        report.attractiveness_score = final_report["attractiveness_score"]
+        report.issue_summary = issues
+        report.matched_evidence = reranked_evidence_items[:20]
+        report.compliance_warnings = [
+            issue for issue in issues if issue["category"] == "LEGAL"
+        ]
+        report.improvement_suggestions = [
+            {
+                "issue_type": issue["issue_type"],
+                "flagged_text": issue["flagged_text"],
+                "recommended_revision": issue["recommended_revision"],
+                "evidence_strength": (
+                    final_report["issues"][index]["evidence_strength"]
+                    if index < len(final_report["issues"])
+                    else "INSUFFICIENT"
+                ),
+            }
+            for index, issue in enumerate(issues)
+        ]
+        report.rewrite_examples = [
+            {
+                "before": issue["flagged_text"],
+                "after": issue["recommended_revision"],
+            }
+            for issue in issues
+        ]
+        report.final_report = final_report
+        report.completed_at = datetime.now(timezone.utc)
+        await record_timed_node(
+            trace,
+            node_name="save_report_and_logs",
+            request_json={"report_id": report.id},
+            output_json={
+                "analysis_status": report.analysis_status,
+                "risk_level": report.risk_level,
+                "evidence_strength": evidence_strength,
+            },
+            elapsed_started_at=node_started_at,
+        )
+    except Exception as exc:
+        logger.exception(
+            "Job posting analysis failed posting_id=%s report_id=%s",
+            posting.id,
+            report.id,
+        )
+        await trace.record(
+            node_name="pipeline_failed",
+            request_json={"posting_id": posting.id, "report_id": report.id},
+            output_json=None,
+            call_status="failed",
+            error_message=str(exc),
+            elapsed_ms=0,
+        )
+        report.analysis_status = JobPostingAnalysisStatus.FAILED.value
+        report.error_message = str(exc)
+        report.completed_at = datetime.now(timezone.utc)
     return report
 
 
@@ -564,6 +984,34 @@ def calculate_risk_level(issues: list[dict[str, Any]]) -> str:
         return "HIGH"
     if legal_count >= 1 or len(issues) >= 2:
         return "MEDIUM"
+    return "LOW"
+
+
+def calculate_risk_level_with_evidence(issues: list[dict[str, Any]]) -> str:
+    if not issues:
+        return "CLEAN"
+    legal_with_law = 0
+    legal_without_law = 0
+    for issue in issues:
+        if issue.get("category") != "LEGAL":
+            continue
+        sources = issue.get("sources") or []
+        has_law = any(source.get("law_name") or source.get("article_no") for source in sources)
+        if has_law:
+            legal_with_law += 1
+        else:
+            legal_without_law += 1
+
+    if any(issue.get("issue_type") == "FALSE_JOB_AD" for issue in issues) and legal_with_law:
+        return "CRITICAL"
+    if legal_with_law >= 3:
+        return "CRITICAL"
+    if legal_with_law >= 1 and len(issues) >= 3:
+        return "HIGH"
+    if legal_with_law >= 1 or legal_without_law >= 1:
+        return "MEDIUM"
+    if len(issues) >= 2:
+        return "LOW"
     return "LOW"
 
 

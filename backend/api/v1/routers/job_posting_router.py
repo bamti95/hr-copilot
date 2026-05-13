@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from dependencies.auth import get_current_active_manager
 from models.manager import Manager
 from schemas.job_posting import (
+    JobPostingAiJobResponse,
     JobPostingAnalyzeResponse,
     JobPostingAnalyzeTextRequest,
     JobPostingAnalysisReportResponse,
@@ -86,6 +87,27 @@ async def analyze_job_posting_text(
 
 
 @router.post(
+    "/analyze-text/jobs",
+    response_model=JobPostingAiJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="채용공고 텍스트 분석 비동기 작업 시작",
+)
+async def submit_job_posting_text_analysis_job(
+    request_body: JobPostingAnalyzeTextRequest,
+    background_tasks: BackgroundTasks,
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> JobPostingAiJobResponse:
+    response = await JobPostingService.submit_analyze_text_job(
+        db=db,
+        request=request_body,
+        actor_id=current_manager.id,
+    )
+    background_tasks.add_task(JobPostingService.run_analysis_job, response.job_id)
+    return response
+
+
+@router.post(
     "/analyze-file",
     response_model=JobPostingAnalyzeResponse,
     summary="채용공고 파일 분석",
@@ -107,6 +129,31 @@ async def analyze_job_posting_file(
 
 
 @router.post(
+    "/analyze-file/jobs",
+    response_model=JobPostingAiJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="채용공고 파일 분석 비동기 작업 시작",
+)
+async def submit_job_posting_file_analysis_job(
+    background_tasks: BackgroundTasks,
+    file: Annotated[UploadFile, File(...)],
+    job_title: Annotated[str | None, Form()] = None,
+    company_name: Annotated[str | None, Form()] = None,
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> JobPostingAiJobResponse:
+    response = await JobPostingService.submit_analyze_file_job(
+        db=db,
+        upload_file=file,
+        job_title=job_title,
+        company_name=company_name,
+        actor_id=current_manager.id,
+    )
+    background_tasks.add_task(JobPostingService.run_analysis_job, response.job_id)
+    return response
+
+
+@router.post(
     "/{posting_id}/analysis-reports",
     response_model=JobPostingAnalysisReportResponse,
     summary="기존 채용공고 재분석",
@@ -123,6 +170,29 @@ async def analyze_existing_job_posting(
         analysis_type=analysis_type,
         actor_id=current_manager.id,
     )
+
+
+@router.post(
+    "/{posting_id}/analysis-reports/jobs",
+    response_model=JobPostingAiJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="기존 채용공고 재분석 비동기 작업 시작",
+)
+async def submit_existing_job_posting_analysis_job(
+    posting_id: int,
+    background_tasks: BackgroundTasks,
+    analysis_type: str = Query("FULL"),
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> JobPostingAiJobResponse:
+    response = await JobPostingService.submit_existing_analysis_job(
+        db=db,
+        posting_id=posting_id,
+        analysis_type=analysis_type,
+        actor_id=current_manager.id,
+    )
+    background_tasks.add_task(JobPostingService.run_analysis_job, response.job_id)
+    return response
 
 
 @router.get(
@@ -154,6 +224,19 @@ async def get_job_posting_report(
     db: AsyncSession = Depends(get_db),
 ) -> JobPostingAnalysisReportResponse:
     return await JobPostingService.get_report(db=db, report_id=report_id)
+
+
+@router.get(
+    "/analysis-jobs/{job_id}",
+    response_model=JobPostingAiJobResponse,
+    summary="채용공고 분석 비동기 작업 상태 조회",
+)
+async def get_job_posting_analysis_job(
+    job_id: int,
+    _: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> JobPostingAiJobResponse:
+    return await JobPostingService.get_analysis_job(db=db, job_id=job_id)
 
 
 @router.post(
@@ -217,6 +300,40 @@ async def index_knowledge_source(
     return await JobPostingKnowledgeService.index_source(db=db, source_id=source_id)
 
 
+@router.post(
+    "/knowledge-sources/{source_id}/index/jobs",
+    response_model=JobPostingAiJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="RAG 지식문서 인덱싱 비동기 작업 시작",
+)
+async def submit_knowledge_source_index_job(
+    source_id: int,
+    background_tasks: BackgroundTasks,
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> JobPostingAiJobResponse:
+    response = await JobPostingKnowledgeService.submit_index_source_job(
+        db=db,
+        source_id=source_id,
+        actor_id=current_manager.id,
+    )
+    background_tasks.add_task(JobPostingKnowledgeService.run_index_job, response.job_id)
+    return response
+
+
+@router.get(
+    "/knowledge-index-jobs/{job_id}",
+    response_model=JobPostingAiJobResponse,
+    summary="RAG 지식문서 인덱싱 비동기 작업 상태 조회",
+)
+async def get_knowledge_source_index_job(
+    job_id: int,
+    _: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> JobPostingAiJobResponse:
+    return await JobPostingKnowledgeService.get_index_job(db=db, job_id=job_id)
+
+
 @router.get(
     "/knowledge-sources/{source_id}/chunks",
     response_model=KnowledgeChunkListResponse,
@@ -264,6 +381,25 @@ async def seed_source_data(
         db=db,
         actor_id=current_manager.id,
     )
+
+
+@router.post(
+    "/knowledge-sources/seed-source-data/jobs",
+    response_model=JobPostingAiJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="샘플 source_data 법률문서 일괄 적재 비동기 작업 시작",
+)
+async def submit_seed_source_data_job(
+    background_tasks: BackgroundTasks,
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> JobPostingAiJobResponse:
+    response = await JobPostingKnowledgeService.submit_seed_source_data_job(
+        db=db,
+        actor_id=current_manager.id,
+    )
+    background_tasks.add_task(JobPostingKnowledgeService.run_index_job, response.job_id)
+    return response
 
 
 @router.get(

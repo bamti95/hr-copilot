@@ -1,0 +1,264 @@
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from models.job_posting_knowledge_chunk import JobPostingKnowledgeChunk
+from models.job_posting_knowledge_source import JobPostingKnowledgeSourceType
+from repositories.job_posting_knowledge_repository import JobPostingKnowledgeChunkRepository
+from services.job_posting_knowledge_service import (
+    calculate_keyword_score,
+    document_priority,
+    embed_text,
+    extract_query_terms,
+    normalize_embedding,
+)
+from services.job_posting_embedding_service import (
+    current_reranker_model_name,
+    rerank_pairs,
+)
+
+
+@dataclass(slots=True)
+class RetrievedEvidence:
+    chunk: JobPostingKnowledgeChunk
+    text_score: float = 0.0
+    vector_score: float = 0.0
+    keyword_score: float = 0.0
+    hybrid_score: float = 0.0
+    rerank_score: float = 0.0
+    matched_terms: list[str] | None = None
+
+    def to_payload(self) -> dict[str, Any]:
+        source = getattr(self.chunk, "knowledge_source", None)
+        content = self.chunk.content or ""
+        return {
+            "chunk_id": self.chunk.id,
+            "source_id": self.chunk.knowledge_source_id,
+            "title": getattr(source, "title", None),
+            "source_type": getattr(source, "source_type", None),
+            "chunk_type": self.chunk.chunk_type,
+            "section_title": self.chunk.section_title,
+            "page_start": self.chunk.page_start,
+            "page_end": self.chunk.page_end,
+            "law_name": self.chunk.law_name,
+            "article_no": self.chunk.article_no,
+            "content": content[:900],
+            "text_score": round(self.text_score, 4),
+            "vector_score": round(self.vector_score, 4),
+            "keyword_score": round(self.keyword_score, 4),
+            "hybrid_score": round(self.hybrid_score, 4),
+            "rerank_score": round(self.rerank_score, 4),
+            "matched_terms": self.matched_terms or [],
+        }
+
+
+class JobPostingRetrievalService:
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+        self.chunk_repo = JobPostingKnowledgeChunkRepository(db)
+
+    async def retrieve_for_issue(
+        self,
+        *,
+        issue: dict[str, Any],
+        limit: int = 12,
+    ) -> list[RetrievedEvidence]:
+        query = build_issue_query(issue)
+        query_terms = extract_query_terms(query)
+        query_embedding = embed_text(query)
+
+        text_rows = await self.chunk_repo.search_by_full_text(
+            query=query,
+            query_terms=query_terms,
+            limit=limit * 3,
+        )
+        try:
+            vector_rows = await self.chunk_repo.search_by_vector(
+                query_embedding=query_embedding,
+                limit=limit * 3,
+            )
+        except Exception:
+            vector_rows = await self._python_vector_fallback(
+                query_embedding=query_embedding,
+                query_terms=query_terms,
+                limit=limit * 3,
+            )
+
+        merged = merge_retrieval_rows(
+            issue=issue,
+            query_terms=query_terms,
+            text_rows=text_rows,
+            vector_rows=vector_rows,
+        )
+        reranked = rerank_evidence(issue=issue, evidences=merged)
+        apply_model_rerank(query=query, evidences=reranked)
+        return reranked[:limit]
+
+    async def _python_vector_fallback(
+        self,
+        *,
+        query_embedding: list[float],
+        query_terms: list[str],
+        limit: int,
+    ) -> list[tuple[JobPostingKnowledgeChunk, float]]:
+        pool = await self.chunk_repo.find_search_pool(query_terms=query_terms, limit=500)
+        scored = [
+            (chunk, cosine_similarity(query_embedding, normalize_embedding(chunk.embedding)))
+            for chunk in pool
+        ]
+        scored.sort(key=lambda item: item[1], reverse=True)
+        return scored[:limit]
+
+
+def build_issue_query(issue: dict[str, Any]) -> str:
+    parts = [
+        issue.get("issue_type") or "",
+        issue.get("flagged_text") or "",
+        issue.get("why_risky") or "",
+        " ".join(issue.get("query_terms") or []),
+    ]
+    return " ".join(part for part in parts if part).strip()
+
+
+def merge_retrieval_rows(
+    *,
+    issue: dict[str, Any],
+    query_terms: list[str],
+    text_rows: list[tuple[JobPostingKnowledgeChunk, float]],
+    vector_rows: list[tuple[JobPostingKnowledgeChunk, float]],
+) -> list[RetrievedEvidence]:
+    by_id: dict[int, RetrievedEvidence] = {}
+
+    for rank, (chunk, score) in enumerate(text_rows, start=1):
+        evidence = by_id.setdefault(chunk.id, RetrievedEvidence(chunk=chunk))
+        evidence.text_score = max(evidence.text_score, normalize_rank_score(score, rank))
+
+    for rank, (chunk, score) in enumerate(vector_rows, start=1):
+        evidence = by_id.setdefault(chunk.id, RetrievedEvidence(chunk=chunk))
+        evidence.vector_score = max(evidence.vector_score, normalize_rank_score(score, rank))
+
+    merged = list(by_id.values())
+    for evidence in merged:
+        keyword_score, matched_terms = calculate_keyword_score(
+            query_terms=query_terms,
+            chunk=evidence.chunk,
+        )
+        evidence.keyword_score = keyword_score
+        evidence.matched_terms = matched_terms
+        text_weight, vector_weight = retrieval_weights(evidence.chunk)
+        source = getattr(evidence.chunk, "knowledge_source", None)
+        source_priority = document_priority(getattr(source, "source_type", "") or "")
+        issue_match_bonus = 0.15 if evidence.chunk.issue_code == issue.get("issue_type") else 0.0
+        evidence.hybrid_score = (
+            (evidence.text_score * text_weight)
+            + (evidence.vector_score * vector_weight)
+            + (keyword_score * 0.2)
+            + issue_match_bonus
+            + (0.03 / max(source_priority, 1))
+        )
+
+    merged.sort(key=lambda item: item.hybrid_score, reverse=True)
+    return merged
+
+
+def normalize_rank_score(score: float, rank: int) -> float:
+    return max(float(score or 0.0), 1.0 / (60 + rank))
+
+
+def retrieval_weights(chunk: JobPostingKnowledgeChunk) -> tuple[float, float]:
+    source = getattr(chunk, "knowledge_source", None)
+    source_type = getattr(source, "source_type", None)
+    if source_type == JobPostingKnowledgeSourceType.LAW_TEXT.value:
+        return 0.6, 0.4
+    if source_type in {
+        JobPostingKnowledgeSourceType.LEGAL_GUIDEBOOK.value,
+        JobPostingKnowledgeSourceType.LEGAL_MANUAL.value,
+        JobPostingKnowledgeSourceType.INSPECTION_CASE.value,
+    }:
+        return 0.4, 0.6
+    return 0.45, 0.55
+
+
+def rerank_evidence(
+    *,
+    issue: dict[str, Any],
+    evidences: list[RetrievedEvidence],
+) -> list[RetrievedEvidence]:
+    issue_type = issue.get("issue_type")
+    for evidence in evidences:
+        chunk = evidence.chunk
+        source = getattr(chunk, "knowledge_source", None)
+        source_type = getattr(source, "source_type", "") or ""
+        legal_bonus = 0.25 if chunk.law_name or chunk.article_no else 0.0
+        case_bonus = 0.15 if source_type == JobPostingKnowledgeSourceType.INSPECTION_CASE.value else 0.0
+        guide_bonus = 0.1 if source_type in {
+            JobPostingKnowledgeSourceType.LEGAL_GUIDEBOOK.value,
+            JobPostingKnowledgeSourceType.LEGAL_MANUAL.value,
+        } else 0.0
+        issue_bonus = 0.2 if chunk.issue_code == issue_type else 0.0
+        evidence.rerank_score = evidence.hybrid_score + legal_bonus + case_bonus + guide_bonus + issue_bonus
+
+    evidences.sort(key=lambda item: item.rerank_score, reverse=True)
+    return apply_slot_policy(evidences)
+
+
+def apply_slot_policy(evidences: list[RetrievedEvidence]) -> list[RetrievedEvidence]:
+    law = [item for item in evidences if item.chunk.law_name or item.chunk.article_no]
+    guide = [
+        item
+        for item in evidences
+        if getattr(getattr(item.chunk, "knowledge_source", None), "source_type", None)
+        in {
+            JobPostingKnowledgeSourceType.LEGAL_GUIDEBOOK.value,
+            JobPostingKnowledgeSourceType.LEGAL_MANUAL.value,
+        }
+    ]
+    case = [
+        item
+        for item in evidences
+        if getattr(getattr(item.chunk, "knowledge_source", None), "source_type", None)
+        == JobPostingKnowledgeSourceType.INSPECTION_CASE.value
+    ]
+    selected: list[RetrievedEvidence] = []
+    for bucket, count in ((law, 2), (guide, 2), (case, 1)):
+        for item in bucket:
+            if item not in selected:
+                selected.append(item)
+            if len([candidate for candidate in selected if candidate in bucket]) >= count:
+                break
+    for item in evidences:
+        if item not in selected:
+            selected.append(item)
+    return selected
+
+
+def apply_model_rerank(*, query: str, evidences: list[RetrievedEvidence]) -> None:
+    scores = rerank_pairs(query, [item.chunk.content or "" for item in evidences])
+    if not scores:
+        return
+    max_score = max(scores) or 1.0
+    min_score = min(scores)
+    span = max(max_score - min_score, 1e-9)
+    for evidence, score in zip(evidences, scores, strict=False):
+        normalized = (score - min_score) / span
+        evidence.rerank_score = (evidence.rerank_score * 0.7) + (normalized * 0.3)
+        if evidence.matched_terms is None:
+            evidence.matched_terms = []
+        evidence.matched_terms.append(f"reranker:{current_reranker_model_name()}")
+    evidences.sort(key=lambda item: item.rerank_score, reverse=True)
+
+
+def cosine_similarity(left: list[float], right: list[float]) -> float:
+    if not left or not right:
+        return 0.0
+    size = min(len(left), len(right))
+    dot = sum(left[index] * right[index] for index in range(size))
+    left_norm = math.sqrt(sum(value * value for value in left[:size]))
+    right_norm = math.sqrt(sum(value * value for value in right[:size]))
+    if not left_norm or not right_norm:
+        return 0.0
+    return max(0.0, min(1.0, dot / (left_norm * right_norm)))

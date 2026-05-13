@@ -66,6 +66,42 @@ class LlmCallLogRepository(BaseRepository[LlmCallLog]):
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def find_by_job_posting_analysis_report_id(
+        self,
+        report_id: int,
+    ) -> list[LlmCallLog]:
+        stmt = (
+            select(LlmCallLog)
+            .where(
+                LlmCallLog.job_posting_analysis_report_id == report_id,
+                LlmCallLog.pipeline_type == "JOB_POSTING_COMPLIANCE",
+                LlmCallLog.deleted_at.is_(None),
+            )
+            .order_by(
+                LlmCallLog.execution_order.asc().nullslast(),
+                LlmCallLog.id.asc(),
+            )
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def find_by_job_posting_id(self, job_posting_id: int) -> list[LlmCallLog]:
+        stmt = (
+            select(LlmCallLog)
+            .where(
+                LlmCallLog.job_posting_id == job_posting_id,
+                LlmCallLog.pipeline_type == "JOB_POSTING_COMPLIANCE",
+                LlmCallLog.deleted_at.is_(None),
+            )
+            .order_by(
+                LlmCallLog.created_at.desc(),
+                LlmCallLog.execution_order.asc().nullslast(),
+                LlmCallLog.id.asc(),
+            )
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
     async def get_usage_metrics_row(self, pipeline_type: str | None = None):
         failed_call = case((LlmCallLog.call_status != "success", 1), else_=0)
         stmt = select(

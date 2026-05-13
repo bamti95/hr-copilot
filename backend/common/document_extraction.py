@@ -447,6 +447,7 @@ def _finalize_extracted_text_result(
     )
     llm_cleaning_used = False
     llm_reason: str | None = None
+    llm_error: str | None = None
 
     should_run_llm, llm_reason = should_run_llm_cleaning(
         source_type=source_type,
@@ -454,7 +455,7 @@ def _finalize_extracted_text_result(
         normalized_text=normalized_text,
     )
     if should_run_llm and normalized_text:
-        llm_output = run_llm_normalization(
+        llm_output, llm_error = run_llm_normalization(
             source_type=source_type,
             document_kind=document_kind,
             normalized_text=normalized_text,
@@ -463,6 +464,14 @@ def _finalize_extracted_text_result(
             normalized_text = llm_output
             quality_score = compute_quality_score(normalized_text)
             llm_cleaning_used = True
+        elif llm_error:
+            logger.warning(
+                "LLM normalization skipped after failure file=%s source_type=%s document_type=%s error=%s",
+                abs_path,
+                source_type,
+                document_kind,
+                llm_error,
+            )
 
     extract_strategy = build_strategy(source_type, document_kind, quality_score)
     if llm_cleaning_used:
@@ -491,6 +500,7 @@ def _finalize_extracted_text_result(
             ),
             "llm_cleaning": llm_cleaning_used,
             "llm_reason": llm_reason,
+            "llm_error": llm_error,
             "quality_score": quality_score,
             "strategy": extract_strategy,
         },

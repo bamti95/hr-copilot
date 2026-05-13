@@ -510,10 +510,10 @@ def run_llm_normalization(
     source_type: str,
     document_kind: str,
     normalized_text: str,
-) -> str | None:
+) -> tuple[str | None, str | None]:
     client = get_openai_client()
     if client is None:
-        return None
+        return None, "OpenAI client is not available."
 
     prompt = LLM_NORMALIZATION_USER_PROMPT_TEMPLATE.format(
         source_type=source_type,
@@ -528,11 +528,11 @@ def run_llm_normalization(
             model=LLM_NORMALIZATION_MODEL,
             input=f"{LLM_NORMALIZATION_SYSTEM_PROMPT.strip()}\n\n{prompt.strip()}",
         )
-        return normalize_extracted_text(getattr(response, "output_text", "") or "")
-    except Exception:
+        return normalize_extracted_text(getattr(response, "output_text", "") or ""), None
+    except Exception as exc:
         logger.exception(
             "LLM normalization failed for source_type=%s document_type=%s",
             source_type,
             document_kind,
         )
-        return None
+        return None, str(exc)

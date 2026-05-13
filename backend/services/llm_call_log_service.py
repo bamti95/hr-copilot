@@ -2,6 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from repositories.llm_call_log_repository import LlmCallLogRepository
+from repositories.job_posting_repository import JobPostingAnalysisReportRepository, JobPostingRepository
 from repositories.session_repo import SessionRepository
 from schemas.llm_call_log import LlmCallLogListResponse, LlmCallLogResponse
 
@@ -17,6 +18,8 @@ class LlmCallLogService:
     def __init__(self, db: AsyncSession):
         self.repository = LlmCallLogRepository(db)
         self.session_repository = SessionRepository(db)
+        self.job_posting_repository = JobPostingRepository(db)
+        self.report_repository = JobPostingAnalysisReportRepository(db)
 
     async def _ensure_session_exists(self, session_id: int) -> None:
         session = await self.session_repository.find_by_id_not_deleted(session_id)
@@ -71,3 +74,33 @@ class LlmCallLogService:
                 "LLM 호출 로그를 찾을 수 없습니다.",
             )
         return LlmCallLogResponse.from_entity(log)
+
+    async def get_job_posting_analysis_logs(
+        self,
+        report_id: int,
+    ) -> LlmCallLogListResponse:
+        report = await self.report_repository.find_by_id_not_deleted(report_id)
+        if report is None:
+            raise _http_error(
+                status.HTTP_404_NOT_FOUND,
+                "REPORT_NOT_FOUND",
+                "Job posting analysis report was not found.",
+            )
+        logs = await self.repository.find_by_job_posting_analysis_report_id(report_id)
+        items = [LlmCallLogResponse.from_entity(log) for log in logs]
+        return LlmCallLogListResponse.of(session_id=report_id, items=items)
+
+    async def get_job_posting_logs(
+        self,
+        job_posting_id: int,
+    ) -> LlmCallLogListResponse:
+        posting = await self.job_posting_repository.find_by_id_not_deleted(job_posting_id)
+        if posting is None:
+            raise _http_error(
+                status.HTTP_404_NOT_FOUND,
+                "JOB_POSTING_NOT_FOUND",
+                "Job posting was not found.",
+            )
+        logs = await self.repository.find_by_job_posting_id(job_posting_id)
+        items = [LlmCallLogResponse.from_entity(log) for log in logs]
+        return LlmCallLogListResponse.of(session_id=job_posting_id, items=items)

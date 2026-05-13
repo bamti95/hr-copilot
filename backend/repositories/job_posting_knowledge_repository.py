@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import String, desc, func, select
+from sqlalchemy import String, desc, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -137,6 +137,80 @@ class JobPostingKnowledgeChunkRepository(BaseRepository[JobPostingKnowledgeChunk
         stmt = stmt.order_by(desc(JobPostingKnowledgeChunk.created_at)).limit(limit)
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    async def search_by_full_text(
+        self,
+        *,
+        query: str,
+        query_terms: list[str],
+        limit: int = 30,
+    ) -> list[tuple[JobPostingKnowledgeChunk, float]]:
+        vector = func.to_tsvector(
+            "simple",
+            func.concat_ws(
+                " ",
+                JobPostingKnowledgeChunk.content,
+                JobPostingKnowledgeChunk.summary,
+                JobPostingKnowledgeChunk.issue_code,
+                JobPostingKnowledgeChunk.law_name,
+                JobPostingKnowledgeChunk.article_no,
+                JobPostingKnowledgeChunk.tags.cast(String),
+            ),
+        )
+        ts_query = func.websearch_to_tsquery("simple", query)
+        rank = func.ts_rank_cd(vector, ts_query)
+        conditions = [vector.op("@@")(ts_query)]
+        if query_terms:
+            keyword_conditions = [
+                JobPostingKnowledgeChunk.content.ilike(f"%{term}%")
+                | JobPostingKnowledgeChunk.summary.ilike(f"%{term}%")
+                | JobPostingKnowledgeChunk.issue_code.ilike(f"%{term}%")
+                | JobPostingKnowledgeChunk.law_name.ilike(f"%{term}%")
+                | JobPostingKnowledgeChunk.tags.cast(String).ilike(f"%{term}%")
+                for term in query_terms
+                if term
+            ]
+            if keyword_conditions:
+                conditions.append(or_(*keyword_conditions))
+
+        stmt = (
+            select(JobPostingKnowledgeChunk, rank.label("text_score"))
+            .options(selectinload(JobPostingKnowledgeChunk.knowledge_source))
+            .where(
+                JobPostingKnowledgeChunk.use_tf == "Y",
+                JobPostingKnowledgeChunk.del_tf == "N",
+                or_(*conditions),
+            )
+            .order_by(desc(rank), desc(JobPostingKnowledgeChunk.created_at))
+            .limit(limit)
+        )
+        result = await self.db.execute(stmt)
+        rows = result.all()
+        return [(chunk, float(score or 0.0)) for chunk, score in rows]
+
+    async def search_by_vector(
+        self,
+        *,
+        query_embedding: list[float],
+        limit: int = 30,
+    ) -> list[tuple[JobPostingKnowledgeChunk, float]]:
+        if not query_embedding:
+            return []
+        distance = JobPostingKnowledgeChunk.embedding.cosine_distance(query_embedding)
+        stmt = (
+            select(JobPostingKnowledgeChunk, (literal(1.0) - distance).label("vector_score"))
+            .options(selectinload(JobPostingKnowledgeChunk.knowledge_source))
+            .where(
+                JobPostingKnowledgeChunk.use_tf == "Y",
+                JobPostingKnowledgeChunk.del_tf == "N",
+                JobPostingKnowledgeChunk.embedding.is_not(None),
+            )
+            .order_by(distance.asc())
+            .limit(limit)
+        )
+        result = await self.db.execute(stmt)
+        rows = result.all()
+        return [(chunk, float(score or 0.0)) for chunk, score in rows]
 
     async def find_search_pool(
         self,

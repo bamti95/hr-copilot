@@ -25,4 +25,5 @@ dependencies = [
     "reportlab>=4.4.10",
     "langsmith>=0.7.37",
     "pgvector>=0.4.2",
+    "sentence-transformers>=5.0.0",
 ]

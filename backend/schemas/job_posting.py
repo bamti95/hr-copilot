@@ -177,6 +177,20 @@ class JobPostingAnalyzeResponse(BaseModel):
     report: JobPostingAnalysisReportResponse
 
 
+class JobPostingAiJobResponse(BaseModel):
+    job_id: int
+    status: str
+    job_type: str
+    target_type: str | None = None
+    target_id: int | None = None
+    progress: int
+    current_step: str | None = None
+    error_message: str | None = None
+    request_payload: dict[str, Any] | None = None
+    result_payload: dict[str, Any] | None = None
+    message: str
+
+
 class KnowledgeSourceCreateRequest(BaseModel):
     source_type: str | None = None
     title: str | None = Field(default=None, max_length=255)

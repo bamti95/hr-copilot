@@ -58,3 +58,31 @@ async def get_session_llm_log_detail(
         session_id=session_id,
         log_id=log_id,
     )
+
+
+@router.get(
+    "/llm-logs/job-posting-analysis-reports/{report_id}",
+    response_model=LlmCallLogListResponse,
+    summary="Job posting compliance workflow logs by report",
+)
+async def get_job_posting_analysis_logs(
+    report_id: int,
+    _: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> LlmCallLogListResponse:
+    service = LlmCallLogService(db)
+    return await service.get_job_posting_analysis_logs(report_id)
+
+
+@router.get(
+    "/llm-logs/job-postings/{job_posting_id}",
+    response_model=LlmCallLogListResponse,
+    summary="Job posting compliance workflow logs by job posting",
+)
+async def get_job_posting_logs(
+    job_posting_id: int,
+    _: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> LlmCallLogListResponse:
+    service = LlmCallLogService(db)
+    return await service.get_job_posting_logs(job_posting_id)

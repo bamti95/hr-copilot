@@ -5,10 +5,12 @@ import logging
 import math
 import mimetypes
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException, UploadFile, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.document_types import ALLOWED_EXTENSIONS, FILES_PREFIX, READ_CHUNK_SIZE
@@ -21,6 +23,8 @@ from common.file_storage import (
     strip_extension,
 )
 from common.file_util import extract_text_from_file
+from core.database import AsyncSessionLocal
+from models.ai_job import AiJob, AiJobStatus, AiJobTargetType, AiJobType
 from models.job_posting_knowledge_chunk import (
     JobPostingKnowledgeChunk,
     JobPostingKnowledgeChunkType,
@@ -35,6 +39,7 @@ from repositories.job_posting_knowledge_repository import (
     JobPostingKnowledgeSourceRepository,
 )
 from schemas.job_posting import (
+    JobPostingAiJobResponse,
     KnowledgeChunkListResponse,
     KnowledgeChunkResponse,
     KnowledgeIndexResponse,
@@ -46,18 +51,38 @@ from schemas.job_posting import (
     KnowledgeSourceListResponse,
     KnowledgeSourceResponse,
 )
+from services.job_posting_embedding_service import (
+    EMBEDDING_DIM,
+    current_embedding_model_name,
+    embed_text as embed_text_with_model,
+)
 
 
 SOURCE_DATA_DIR = Path("backend/sample_data/source_data")
 KNOWLEDGE_UPLOAD_DIR = "job_posting_knowledge"
-LOCAL_EMBEDDING_MODEL = "local-hash-embedding-v1"
-EMBEDDING_DIM = 1536
+LOCAL_EMBEDDING_MODEL = "BAAI/bge-m3"
 MAX_CHUNK_CHARS = 1800
 MIN_CHUNK_CHARS = 240
 logger = logging.getLogger(__name__)
 
 
 class JobPostingKnowledgeService:
+    @staticmethod
+    def _job_response(job: AiJob, message: str) -> JobPostingAiJobResponse:
+        return JobPostingAiJobResponse(
+            job_id=job.id,
+            status=job.status,
+            job_type=job.job_type,
+            target_type=job.target_type,
+            target_id=job.target_id,
+            progress=job.progress,
+            current_step=job.current_step,
+            error_message=job.error_message,
+            request_payload=job.request_payload,
+            result_payload=job.result_payload,
+            message=message,
+        )
+
     @staticmethod
     async def upload_source(
         *,
@@ -165,9 +190,26 @@ class JobPostingKnowledgeService:
                 "extract_strategy": result.extract_strategy,
                 "extract_quality_score": result.extract_quality_score,
             }
+            llm_error = (result.extract_meta or {}).get("llm_error")
+            if llm_error:
+                logger.warning(
+                    "Job posting knowledge LLM normalization failed source_id=%s error=%s",
+                    source_id,
+                    llm_error,
+                )
             if result.extract_status != KnowledgeProcessStatus.SUCCESS.value or not result.extracted_text:
                 source.index_status = KnowledgeProcessStatus.FAILED.value
                 source.chunk_count = 0
+                source.metadata_json = {
+                    **(source.metadata_json or {}),
+                    "index_error": "Text extraction failed or produced empty text.",
+                }
+                logger.warning(
+                    "Job posting knowledge extraction failed source_id=%s strategy=%s meta=%s",
+                    source_id,
+                    result.extract_strategy,
+                    result.extract_meta,
+                )
                 await db.commit()
                 await source_repo.refresh(source)
                 return KnowledgeIndexResponse(
@@ -208,6 +250,150 @@ class JobPostingKnowledgeService:
                     chunk_count=0,
                 )
             raise
+
+    @staticmethod
+    async def submit_index_source_job(
+        *,
+        db: AsyncSession,
+        source_id: int,
+        actor_id: int | None,
+    ) -> JobPostingAiJobResponse:
+        source_repo = JobPostingKnowledgeSourceRepository(db)
+        source = await source_repo.find_by_id_not_deleted(source_id)
+        if source is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Knowledge source was not found.",
+            )
+        job = AiJob(
+            job_type=AiJobType.JOB_POSTING_KNOWLEDGE_INDEXING.value,
+            status=AiJobStatus.QUEUED.value,
+            target_type=AiJobTargetType.KNOWLEDGE_SOURCE.value,
+            target_id=source.id,
+            progress=2,
+            current_step="knowledge_index_job_created",
+            request_payload={
+                "mode": "SOURCE",
+                "source_id": source.id,
+            },
+            requested_by=actor_id,
+            created_by=actor_id,
+        )
+        db.add(job)
+        await db.commit()
+        await db.refresh(job)
+        return JobPostingKnowledgeService._job_response(
+            job,
+            "지식 소스 인덱싱 작업이 시작되었습니다.",
+        )
+
+    @staticmethod
+    async def submit_seed_source_data_job(
+        *,
+        db: AsyncSession,
+        actor_id: int | None,
+    ) -> JobPostingAiJobResponse:
+        job = AiJob(
+            job_type=AiJobType.JOB_POSTING_KNOWLEDGE_INDEXING.value,
+            status=AiJobStatus.QUEUED.value,
+            target_type=AiJobTargetType.KNOWLEDGE_SOURCE.value,
+            progress=2,
+            current_step="knowledge_seed_job_created",
+            request_payload={"mode": "SEED_SOURCE_DATA"},
+            requested_by=actor_id,
+            created_by=actor_id,
+        )
+        db.add(job)
+        await db.commit()
+        await db.refresh(job)
+        return JobPostingKnowledgeService._job_response(
+            job,
+            "샘플 지식 소스 일괄 인덱싱 작업이 시작되었습니다.",
+        )
+
+    @staticmethod
+    async def get_index_job(
+        *,
+        db: AsyncSession,
+        job_id: int,
+    ) -> JobPostingAiJobResponse:
+        result = await db.execute(
+            select(AiJob).where(
+                AiJob.id == job_id,
+                AiJob.job_type == AiJobType.JOB_POSTING_KNOWLEDGE_INDEXING.value,
+            )
+        )
+        job = result.scalar_one_or_none()
+        if job is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Knowledge indexing job was not found.",
+            )
+        return JobPostingKnowledgeService._job_response(job, "지식 소스 인덱싱 작업 상태입니다.")
+
+    @staticmethod
+    async def run_index_job(job_id: int) -> None:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(AiJob).where(AiJob.id == job_id))
+            job = result.scalar_one_or_none()
+            if job is None:
+                logger.warning("Knowledge indexing job not found: %s", job_id)
+                return
+
+            try:
+                payload = job.request_payload or {}
+                mode = payload.get("mode")
+                job.status = AiJobStatus.RUNNING.value
+                job.progress = 10
+                job.current_step = "knowledge_index_started"
+                job.started_at = job.started_at or datetime.now(timezone.utc)
+                await db.commit()
+
+                if mode == "SOURCE":
+                    result_payload = await JobPostingKnowledgeService.index_source(
+                        db=db,
+                        source_id=int(payload["source_id"]),
+                    )
+                    if result_payload.source.index_status != KnowledgeProcessStatus.SUCCESS.value:
+                        raise ValueError(
+                            (
+                                result_payload.source.metadata or {}
+                            ).get("index_error")
+                            or "Knowledge source indexing failed."
+                        )
+                    job.target_id = result_payload.source.id
+                    job.result_payload = {
+                        "source_id": result_payload.source.id,
+                        "chunk_count": result_payload.chunk_count,
+                        "extract_status": result_payload.source.extract_status,
+                        "index_status": result_payload.source.index_status,
+                    }
+                elif mode == "SEED_SOURCE_DATA":
+                    seed_result = await JobPostingKnowledgeService.seed_source_data(
+                        db=db,
+                        actor_id=job.requested_by,
+                    )
+                    job.result_payload = seed_result.model_dump(mode="json")
+                else:
+                    raise ValueError(f"Unsupported knowledge indexing mode: {mode}")
+
+                job.status = AiJobStatus.SUCCESS.value
+                job.progress = 100
+                job.current_step = "knowledge_index_completed"
+                job.completed_at = datetime.now(timezone.utc)
+                await db.commit()
+            except Exception as exc:
+                logger.exception("Knowledge indexing job failed. job_id=%s", job_id)
+                await db.rollback()
+                result = await db.execute(select(AiJob).where(AiJob.id == job_id))
+                failed_job = result.scalar_one_or_none()
+                if failed_job is not None:
+                    failed_job.status = AiJobStatus.FAILED.value
+                    failed_job.progress = 100
+                    failed_job.current_step = "knowledge_index_failed"
+                    failed_job.error_message = str(exc)
+                    failed_job.completed_at = datetime.now(timezone.utc)
+                    await db.commit()
 
     @staticmethod
     async def list_sources(
@@ -351,7 +537,7 @@ class JobPostingKnowledgeService:
         return KnowledgeSearchResponse(
             query=request.query,
             search_mode=search_mode,
-            embedding_model=LOCAL_EMBEDDING_MODEL,
+            embedding_model=current_embedding_model_name(),
             result_count=len(results),
             results=results,
         )
@@ -408,7 +594,7 @@ def build_chunks_for_source(
                 "source_type": source.source_type,
                 "document_priority": document_priority(source.source_type),
             },
-            embedding_model=LOCAL_EMBEDDING_MODEL,
+            embedding_model=current_embedding_model_name(),
             embedding=embed_text(content),
             content_hash=content_hash,
             token_count=estimate_token_count(content),
@@ -697,6 +883,10 @@ def normalize_embedding(value: Any) -> list[float]:
         return [float(item) for item in value]
     except TypeError:
         return []
+
+
+def embed_text(text: str) -> list[float]:
+    return embed_text_with_model(text)
 
 
 async def _save_knowledge_upload(upload_file: UploadFile) -> dict[str, Any]:
