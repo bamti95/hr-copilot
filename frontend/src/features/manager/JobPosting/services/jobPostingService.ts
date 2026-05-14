@@ -474,7 +474,9 @@ export async function submitAnalyzeTextJob(
 ): Promise<JobPostingAiJob> {
   const response = await api.post<
     JobPostingAiJobApiResponse | ApiEnvelope<JobPostingAiJobApiResponse>
-  >("/job-postings/analyze-text/jobs", toRequestPayload(request));
+  >("/job-postings/analyze-text/jobs", toRequestPayload(request), {
+    skipGlobalLoading: true,
+  });
   return mapAiJob(unwrap(response.data));
 }
 
@@ -510,7 +512,9 @@ export async function submitAnalyzeFileJob(params: {
 
   const response = await api.post<
     JobPostingAiJobApiResponse | ApiEnvelope<JobPostingAiJobApiResponse>
-  >("/job-postings/analyze-file/jobs", formData);
+  >("/job-postings/analyze-file/jobs", formData, {
+    skipGlobalLoading: true,
+  });
   return mapAiJob(unwrap(response.data));
 }
 
@@ -532,6 +536,7 @@ export async function submitExistingAnalysisJob(
     JobPostingAiJobApiResponse | ApiEnvelope<JobPostingAiJobApiResponse>
   >(`/job-postings/${postingId}/analysis-reports/jobs`, null, {
     params: { analysis_type: "FULL" },
+    skipGlobalLoading: true,
   });
   return mapAiJob(unwrap(response.data));
 }
@@ -539,7 +544,9 @@ export async function submitExistingAnalysisJob(
 export async function fetchAnalysisJob(jobId: number): Promise<JobPostingAiJob> {
   const response = await api.get<
     JobPostingAiJobApiResponse | ApiEnvelope<JobPostingAiJobApiResponse>
-  >(`/job-postings/analysis-jobs/${jobId}`);
+  >(`/job-postings/analysis-jobs/${jobId}`, {
+    skipGlobalLoading: true,
+  });
   return mapAiJob(unwrap(response.data));
 }
 
@@ -599,7 +606,9 @@ export async function uploadKnowledgeSource(params: {
 
   const response = await api.post<
     KnowledgeSourceApiResponse | ApiEnvelope<KnowledgeSourceApiResponse>
-  >("/job-postings/knowledge-sources/upload", formData);
+  >("/job-postings/knowledge-sources/upload", formData, {
+    skipGlobalLoading: true,
+  });
   return mapKnowledgeSource(unwrap(response.data));
 }
 
@@ -622,7 +631,9 @@ export async function submitKnowledgeIndexJob(
 ): Promise<JobPostingAiJob> {
   const response = await api.post<
     JobPostingAiJobApiResponse | ApiEnvelope<JobPostingAiJobApiResponse>
-  >(`/job-postings/knowledge-sources/${sourceId}/index/jobs`);
+  >(`/job-postings/knowledge-sources/${sourceId}/index/jobs`, null, {
+    skipGlobalLoading: true,
+  });
   return mapAiJob(unwrap(response.data));
 }
 
@@ -645,14 +656,18 @@ export async function seedSourceData(): Promise<{
 export async function submitSeedSourceDataJob(): Promise<JobPostingAiJob> {
   const response = await api.post<
     JobPostingAiJobApiResponse | ApiEnvelope<JobPostingAiJobApiResponse>
-  >("/job-postings/knowledge-sources/seed-source-data/jobs");
+  >("/job-postings/knowledge-sources/seed-source-data/jobs", null, {
+    skipGlobalLoading: true,
+  });
   return mapAiJob(unwrap(response.data));
 }
 
 export async function fetchKnowledgeIndexJob(jobId: number): Promise<JobPostingAiJob> {
   const response = await api.get<
     JobPostingAiJobApiResponse | ApiEnvelope<JobPostingAiJobApiResponse>
-  >(`/job-postings/knowledge-index-jobs/${jobId}`);
+  >(`/job-postings/knowledge-index-jobs/${jobId}`, {
+    skipGlobalLoading: true,
+  });
   return mapAiJob(unwrap(response.data));
 }
 

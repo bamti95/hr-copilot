@@ -8,6 +8,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from fastapi import HTTPException, UploadFile, status
@@ -63,6 +64,8 @@ ANALYSIS_VERSION = "2026-05-12"
 MODEL_NAME = "rule-rag-baseline"
 JOB_POSTING_UPLOAD_DIR = "job_postings"
 logger = logging.getLogger(__name__)
+
+ProgressCallback = Callable[[int, str], Awaitable[None]]
 
 
 @dataclass(slots=True)
@@ -530,6 +533,11 @@ class JobPostingService:
                 job.started_at = job.started_at or datetime.now(timezone.utc)
                 await db.commit()
 
+                async def update_progress(progress: int, current_step: str) -> None:
+                    job.progress = max(job.progress, min(progress, 99))
+                    job.current_step = current_step
+                    await db.commit()
+
                 if mode in {"TEXT", "EXISTING"}:
                     posting_repo = JobPostingRepository(db)
                     posting = await posting_repo.find_by_id_not_deleted(
@@ -545,6 +553,7 @@ class JobPostingService:
                         posting=posting,
                         analysis_type=payload.get("analysis_type") or JobPostingAnalysisType.FULL.value,
                         actor_id=actor_id,
+                        progress_callback=update_progress,
                     )
                     report.ai_job_id = job.id
                     job.target_id = posting.id
@@ -590,6 +599,7 @@ class JobPostingService:
                         posting=posting,
                         analysis_type=JobPostingAnalysisType.FULL.value,
                         actor_id=actor_id,
+                        progress_callback=update_progress,
                     )
                     report.ai_job_id = job.id
                 else:
@@ -670,6 +680,7 @@ async def run_rule_rag_analysis(
     posting: JobPosting,
     analysis_type: str,
     actor_id: int | None,
+    progress_callback: ProgressCallback | None = None,
 ) -> JobPostingAnalysisReport:
     started_at = datetime.now(timezone.utc)
     report = JobPostingAnalysisReport(
@@ -695,6 +706,8 @@ async def run_rule_rag_analysis(
     )
 
     try:
+        if progress_callback is not None:
+            await progress_callback(50, "detecting_risk_phrases")
         node_started_at = time.perf_counter()
         issues = detect_issues(posting.posting_text)
         await record_timed_node(
@@ -705,6 +718,8 @@ async def run_rule_rag_analysis(
             elapsed_started_at=node_started_at,
         )
 
+        if progress_callback is not None:
+            await progress_callback(58, "generating_retrieval_queries")
         node_started_at = time.perf_counter()
         retrieval_queries = [
             {
@@ -724,7 +739,14 @@ async def run_rule_rag_analysis(
 
         retrieval_service = JobPostingRetrievalService(db)
         evidence_items: list[dict[str, Any]] = []
-        for issue in issues:
+        total_issues = max(len(issues), 1)
+        for issue_index, issue in enumerate(issues):
+            if progress_callback is not None:
+                retrieve_progress = 62 + int((issue_index / total_issues) * 18)
+                await progress_callback(
+                    retrieve_progress,
+                    f"retrieving_evidence_{issue_index + 1}_of_{len(issues)}",
+                )
             node_started_at = time.perf_counter()
             evidences = await retrieval_service.retrieve_for_issue(
                 issue=issue,
@@ -775,6 +797,8 @@ async def run_rule_rag_analysis(
             issue["sources"] = evidence_payloads[:5]
             evidence_items.extend(evidence_payloads[:5])
 
+        if progress_callback is not None:
+            await progress_callback(82, "checking_evidence_sufficiency")
         node_started_at = time.perf_counter()
         sufficiency = build_evidence_sufficiency(issues=issues)
         await record_timed_node(
@@ -785,6 +809,8 @@ async def run_rule_rag_analysis(
             elapsed_started_at=node_started_at,
         )
 
+        if progress_callback is not None:
+            await progress_callback(87, "reranking_evidence")
         node_started_at = time.perf_counter()
         reranked_evidence_items = sorted(
             evidence_items,
@@ -799,6 +825,8 @@ async def run_rule_rag_analysis(
             elapsed_started_at=node_started_at,
         )
 
+        if progress_callback is not None:
+            await progress_callback(92, "generating_structured_report")
         node_started_at = time.perf_counter()
         risk_level = calculate_risk_level_with_evidence(issues)
         violation_count = sum(1 for issue in issues if issue["category"] == "LEGAL")
@@ -824,6 +852,8 @@ async def run_rule_rag_analysis(
             model_name="structured-output-local",
         )
 
+        if progress_callback is not None:
+            await progress_callback(96, "saving_report_and_trace")
         node_started_at = time.perf_counter()
         report.analysis_status = JobPostingAnalysisStatus.SUCCESS.value
         report.risk_level = risk_level
