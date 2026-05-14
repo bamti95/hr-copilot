@@ -4,7 +4,11 @@ from datetime import datetime, timezone
 from fastapi import BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ai.interview_graph.schemas import InterviewQuestionItem, ReviewResult
+from ai.interview_graph.schemas import (
+    InterviewQuestionItem,
+    ReviewResult,
+    normalize_question_category,
+)
 from core.config import settings
 from core.database import get_db
 from repositories.candidate_repository import CandidateRepository
@@ -201,7 +205,10 @@ class SessionService:
                 detail="면접 세션을 찾을 수 없습니다.",
             )
 
-        await self.session_repo.mark_question_generation_queued(entity)
+        await self.session_repo.mark_question_generation_queued(
+            entity,
+            request.graph_impl,
+        )
         await self.db.commit()
         background_tasks.add_task(
             run_question_generation_background_job,
@@ -278,16 +285,13 @@ class SessionService:
             requested_at=entity.question_generation_requested_at,
             completed_at=entity.question_generation_completed_at,
             progress=entity.question_generation_progress or [],
-            generation_source={
-                "entrypoint": "services.question_generation_service.run_question_generation_background_job",
-                "service": "QuestionGenerationService.generate_and_store_for_session",
-                "graph_runner": "ai.interview_graph.runner.run_interview_question_graph",
-                "graph": "BuildState -> Analyzer -> Questioner -> Predictor -> Driller -> Reviewer -> Scorer -> Router -> Selector -> FinalFormatter",
-            },
+            generation_source=self._build_generation_source(
+                entity.question_generation_progress or []
+            ),
             questions=[
                 InterviewQuestionItem(
                     id=str(question.id),
-                    category=question.category,
+                    category=self._normalize_stored_question_category(question.category),
                     question_text=question.question_text,
                     generation_basis=question.question_rationale or "",
                     document_evidence=question.document_evidence or [],
@@ -351,15 +355,72 @@ class SessionService:
         return "COMPLETED" if completed_like >= 4 else "PARTIAL_COMPLETED"
 
     @staticmethod
+    def _normalize_stored_question_category(category: str | None) -> str:
+        normalized = normalize_question_category(category)
+        allowed_categories = {
+            "기술 역량",
+            "직무 역량",
+            "경험 검증",
+            "리스크 검증",
+            "조직 적합성",
+            "지원 동기",
+            "커뮤니케이션",
+            "기타",
+        }
+        if normalized in allowed_categories:
+            return normalized
+
+        raw = str(category or "").strip()
+        upper = raw.upper()
+
+        if any(token in raw for token in ("소통", "조정", "이해관계자", "협업", "갈등", "커뮤니케이션")):
+            return "커뮤니케이션"
+        if any(token in raw for token in ("조직", "문화", "적합", "피드백", "책임감")):
+            return "조직 적합성"
+        if any(token in raw for token in ("동기", "이유", "전환", "지원", "복귀")):
+            return "지원 동기"
+        if any(token in raw for token in ("리스크", "위험", "불확실", "공백", "검증")):
+            return "리스크 검증"
+        if any(token in raw for token in ("경험", "사례", "성과", "책임", "운영", "규모", "프로젝트")):
+            return "경험 검증"
+        if any(
+            token in upper
+            for token in ("API", "FASTAPI", "DOCKER", "AIRFLOW", "SPARK", "SQL", "ETL", "ML", "AI")
+        ):
+            return "기술 역량"
+
+        return "기타"
+
+    @staticmethod
     def _can_infer_generation_completed_from_progress(entity) -> bool:
         progress = entity.question_generation_progress or []
         if not progress:
             return True
-        return any(
-            step.get("key") == "final_formatter"
-            and step.get("status") in {"COMPLETED", "FAILED"}
-            for step in progress
-        )
+        last_step = progress[-1]
+        return last_step.get("status") in {"COMPLETED", "FAILED"}
+
+    @staticmethod
+    def _build_generation_source(progress: list[dict]) -> dict[str, str]:
+        progress_keys = {str(step.get("key") or "") for step in progress}
+        if "prepare_context" in progress_keys or "verification_point_extractor" in progress_keys:
+            return {
+                "entrypoint": "services.question_generation_service.run_question_generation_background_job",
+                "service": "QuestionGenerationService.generate_and_store_for_session",
+                "graph_runner": "ai.interview_graph_JH.runner.run_interview_question_graph",
+                "graph": (
+                    "PrepareContext -> VerificationPointExtractor -> Questioner -> "
+                    "Predictor -> Driller -> Reviewer -> BuildResponse"
+                ),
+            }
+        return {
+            "entrypoint": "services.question_generation_service.run_question_generation_background_job",
+            "service": "QuestionGenerationService.generate_and_store_for_session",
+            "graph_runner": "ai.interview_graph.runner.run_interview_question_graph",
+            "graph": (
+                "BuildState -> Analyzer -> Questioner -> Predictor -> Driller -> "
+                "Reviewer -> Scorer -> Router -> Selector -> FinalFormatter"
+            ),
+        }
 
     @staticmethod
     def _is_stale_question_generation(entity) -> bool:

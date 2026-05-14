@@ -9,25 +9,39 @@ from models.manager import Manager
 from repositories.base_repository import BaseRepository
 
 
-QUESTION_GENERATION_PROGRESS_STEPS = [
-    ("build_state", "입력 조립"),
-    ("analyzer", "문서 분석"),
-    ("questioner", "질문 생성"),
-    ("selector_lite", "초기 질문 선별"),
-    ("predictor", "예상 답변"),
-    ("driller", "꼬리 질문"),
-    ("reviewer", "리뷰"),
-    ("scorer", "점수화"),
-    ("selector", "최종 질문 선택"),
-    ("final_formatter", "결과 정리"),
+DEFAULT_QUESTION_GENERATION_PROGRESS_STEPS = [
+    ("build_state", "Input Build"),
+    ("analyzer", "Document Analysis"),
+    ("questioner", "Question Generation"),
+    ("selector_lite", "Initial Selection"),
+    ("predictor", "Predicted Answer"),
+    ("driller", "Follow-up Question"),
+    ("reviewer", "Question Review"),
+    ("scorer", "Question Scoring"),
+    ("selector", "Final Selection"),
+    ("final_formatter", "Result Formatting"),
 ]
 
-LINEAR_NEXT_PROGRESS_STEP = {
+JH_QUESTION_GENERATION_PROGRESS_STEPS = [
+    ("prepare_context", "Context Preparation"),
+    ("verification_point_extractor", "Verification Point Extraction"),
+    ("questioner", "Question Generation"),
+    ("predictor", "Predicted Answer"),
+    ("driller", "Follow-up Question"),
+    ("reviewer", "Question Review"),
+]
+
+QUESTION_GENERATION_PROGRESS_STEPS_BY_PIPELINE = {
+    "default": DEFAULT_QUESTION_GENERATION_PROGRESS_STEPS,
+    "hy": DEFAULT_QUESTION_GENERATION_PROGRESS_STEPS,
+    "jy": DEFAULT_QUESTION_GENERATION_PROGRESS_STEPS,
+    "jh": JH_QUESTION_GENERATION_PROGRESS_STEPS,
+}
+
+DEFAULT_LINEAR_NEXT_PROGRESS_STEP = {
     "build_state": ["analyzer"],
     "analyzer": ["questioner"],
     "questioner": ["selector_lite"],
-    # The compiled LangGraph executes these nodes sequentially:
-    # selector_lite -> predictor -> driller -> reviewer -> scorer
     "selector_lite": ["predictor"],
     "predictor": ["driller"],
     "driller": ["reviewer"],
@@ -36,10 +50,32 @@ LINEAR_NEXT_PROGRESS_STEP = {
     "selector": ["final_formatter"],
 }
 
-PROGRESS_STEP_PREREQUISITES = {
+JH_LINEAR_NEXT_PROGRESS_STEP = {
+    "prepare_context": ["verification_point_extractor"],
+    "verification_point_extractor": ["questioner"],
+    "questioner": ["predictor"],
+    "predictor": ["driller"],
+    "driller": ["reviewer"],
+}
+
+LINEAR_NEXT_PROGRESS_STEP_BY_PIPELINE = {
+    "default": DEFAULT_LINEAR_NEXT_PROGRESS_STEP,
+    "hy": DEFAULT_LINEAR_NEXT_PROGRESS_STEP,
+    "jy": DEFAULT_LINEAR_NEXT_PROGRESS_STEP,
+    "jh": JH_LINEAR_NEXT_PROGRESS_STEP,
+}
+
+DEFAULT_PROGRESS_STEP_PREREQUISITES = {
     "scorer": {"predictor", "driller", "reviewer"},
     "selector": {"scorer"},
     "final_formatter": {"selector"},
+}
+
+PROGRESS_STEP_PREREQUISITES_BY_PIPELINE = {
+    "default": DEFAULT_PROGRESS_STEP_PREREQUISITES,
+    "hy": DEFAULT_PROGRESS_STEP_PREREQUISITES,
+    "jy": DEFAULT_PROGRESS_STEP_PREREQUISITES,
+    "jh": {},
 }
 
 
@@ -47,9 +83,26 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def build_initial_question_generation_progress() -> list[dict]:
+def _normalize_graph_impl(graph_impl: str | None) -> str:
+    normalized = (graph_impl or "default").strip().lower()
+    if normalized in QUESTION_GENERATION_PROGRESS_STEPS_BY_PIPELINE:
+        return normalized
+    return "default"
+
+
+def _infer_pipeline_from_progress(progress: list[dict] | None) -> str:
+    keys = {str(step.get("key") or "") for step in (progress or [])}
+    if "prepare_context" in keys or "verification_point_extractor" in keys:
+        return "jh"
+    return "default"
+
+
+def build_initial_question_generation_progress(graph_impl: str | None = None) -> list[dict]:
+    pipeline = _normalize_graph_impl(graph_impl)
     steps = []
-    for index, (key, label) in enumerate(QUESTION_GENERATION_PROGRESS_STEPS):
+    for index, (key, label) in enumerate(
+        QUESTION_GENERATION_PROGRESS_STEPS_BY_PIPELINE[pipeline]
+    ):
         steps.append(
             {
                 "key": key,
@@ -113,12 +166,15 @@ class SessionRepository(BaseRepository[InterviewSession]):
     async def mark_question_generation_queued(
         self,
         session: InterviewSession,
+        graph_impl: str | None = None,
     ) -> None:
         session.question_generation_status = "QUEUED"
         session.question_generation_error = None
         session.question_generation_requested_at = datetime.now(timezone.utc)
         session.question_generation_completed_at = None
-        session.question_generation_progress = build_initial_question_generation_progress()
+        session.question_generation_progress = build_initial_question_generation_progress(
+            graph_impl
+        )
 
     async def mark_question_generation_processing(
         self,
@@ -141,6 +197,9 @@ class SessionRepository(BaseRepository[InterviewSession]):
         if not any(step.get("key") == node_key for step in progress):
             return
 
+        pipeline = _infer_pipeline_from_progress(progress)
+        next_step_map = LINEAR_NEXT_PROGRESS_STEP_BY_PIPELINE[pipeline]
+        prerequisites_map = PROGRESS_STEP_PREREQUISITES_BY_PIPELINE[pipeline]
         now = _now_iso()
 
         for index, step in enumerate(progress):
@@ -153,7 +212,7 @@ class SessionRepository(BaseRepository[InterviewSession]):
                 if error:
                     step["error"] = error
 
-                next_keys = set(LINEAR_NEXT_PROGRESS_STEP.get(node_key, []))
+                next_keys = set(next_step_map.get(node_key, []))
                 completed_keys = {
                     item.get("key")
                     for item in progress
@@ -161,7 +220,7 @@ class SessionRepository(BaseRepository[InterviewSession]):
                 }
                 for next_step in progress[index + 1 :]:
                     next_key = next_step.get("key")
-                    prerequisites = PROGRESS_STEP_PREREQUISITES.get(next_key, set())
+                    prerequisites = prerequisites_map.get(next_key, set())
                     if (
                         next_key in next_keys
                         and next_step.get("status") == "PENDING"
@@ -194,8 +253,6 @@ class SessionRepository(BaseRepository[InterviewSession]):
             progress = list(session.question_generation_progress or [])
             now = _now_iso()
             for step in progress:
-                # If the overall job is completed, normalize all steps to completed.
-                # This helps reconcile sessions where the job finished but progress updates were lost.
                 if step.get("status") != "FAILED":
                     step["started_at"] = step.get("started_at") or now
                     step["status"] = "COMPLETED"
