@@ -322,6 +322,21 @@ async def submit_knowledge_source_index_job(
 
 
 @router.get(
+    "/knowledge-index-jobs/active",
+    response_model=JobPostingAiJobResponse | None,
+    summary="RAG active knowledge indexing job",
+)
+async def get_active_knowledge_source_index_job(
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> JobPostingAiJobResponse | None:
+    return await JobPostingKnowledgeService.get_active_index_job(
+        db=db,
+        actor_id=current_manager.id,
+    )
+
+
+@router.get(
     "/knowledge-index-jobs/{job_id}",
     response_model=JobPostingAiJobResponse,
     summary="RAG 지식문서 인덱싱 비동기 작업 상태 조회",

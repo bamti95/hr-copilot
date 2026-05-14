@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.document_types import ALLOWED_EXTENSIONS, FILES_PREFIX, READ_CHUNK_SIZE
@@ -331,6 +331,39 @@ class JobPostingKnowledgeService:
                 detail="Knowledge indexing job was not found.",
             )
         return JobPostingKnowledgeService._job_response(job, "지식 소스 인덱싱 작업 상태입니다.")
+
+    @staticmethod
+    async def get_active_index_job(
+        *,
+        db: AsyncSession,
+        actor_id: int | None,
+    ) -> JobPostingAiJobResponse | None:
+        conditions = [
+            AiJob.job_type == AiJobType.JOB_POSTING_KNOWLEDGE_INDEXING.value,
+            AiJob.status.in_(
+                [
+                    AiJobStatus.QUEUED.value,
+                    AiJobStatus.RUNNING.value,
+                    AiJobStatus.RETRYING.value,
+                ]
+            ),
+        ]
+        if actor_id is not None:
+            conditions.append(AiJob.requested_by == actor_id)
+
+        result = await db.execute(
+            select(AiJob)
+            .where(*conditions)
+            .order_by(desc(AiJob.created_at), desc(AiJob.id))
+            .limit(1)
+        )
+        job = result.scalar_one_or_none()
+        if job is None:
+            return None
+        return JobPostingKnowledgeService._job_response(
+            job,
+            "Knowledge indexing job status.",
+        )
 
     @staticmethod
     async def run_index_job(job_id: int) -> None:
