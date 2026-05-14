@@ -744,6 +744,7 @@ async def run_rule_rag_analysis(
                 },
                 elapsed_started_at=node_started_at,
             )
+            vector_trace_started_at = time.perf_counter()
             await trace.record(
                 node_name="vector_retrieve",
                 request_json={
@@ -756,8 +757,9 @@ async def run_rule_rag_analysis(
                         item.get("vector_score") for item in evidence_payloads[:5]
                     ],
                 },
-                elapsed_ms=0,
+                elapsed_ms=int((time.perf_counter() - vector_trace_started_at) * 1000),
             )
+            merge_trace_started_at = time.perf_counter()
             await trace.record(
                 node_name="merge_hybrid_results",
                 request_json={
@@ -770,7 +772,7 @@ async def run_rule_rag_analysis(
                         item.get("hybrid_score") for item in evidence_payloads[:5]
                     ],
                 },
-                elapsed_ms=0,
+                elapsed_ms=int((time.perf_counter() - merge_trace_started_at) * 1000),
             )
             issue["sources"] = evidence_payloads[:5]
             evidence_items.extend(evidence_payloads[:5])
@@ -837,6 +839,7 @@ async def run_rule_rag_analysis(
             "query_count": len(issues),
             "evidence_count": len(reranked_evidence_items),
             "retrieval_mode": "hybrid_full_text_pgvector",
+            "query_rewrite_mode": "issue_template_expansion",
             "rerank_mode": "three_axis_slot_rerank",
             "sufficiency": sufficiency,
         }

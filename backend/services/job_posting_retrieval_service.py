@@ -35,17 +35,22 @@ class RetrievedEvidence:
     def to_payload(self) -> dict[str, Any]:
         source = getattr(self.chunk, "knowledge_source", None)
         content = self.chunk.content or ""
+        metadata = self.chunk.metadata_json or {}
         return {
             "chunk_id": self.chunk.id,
             "source_id": self.chunk.knowledge_source_id,
             "title": getattr(source, "title", None),
             "source_type": getattr(source, "source_type", None),
+            "doc_id": metadata.get("doc_id"),
             "chunk_type": self.chunk.chunk_type,
             "section_title": self.chunk.section_title,
-            "page_start": self.chunk.page_start,
+            "page_start": self.chunk.page_start or metadata.get("page"),
             "page_end": self.chunk.page_end,
             "law_name": self.chunk.law_name,
             "article_no": self.chunk.article_no,
+            "article_ref": metadata.get("article_ref"),
+            "effective_date": metadata.get("effective_date"),
+            "is_latest": metadata.get("is_latest"),
             "content": content[:900],
             "text_score": round(self.text_score, 4),
             "vector_score": round(self.vector_score, 4),
@@ -67,35 +72,45 @@ class JobPostingRetrievalService:
         issue: dict[str, Any],
         limit: int = 12,
     ) -> list[RetrievedEvidence]:
-        query = build_issue_query(issue)
-        query_terms = extract_query_terms(query)
-        query_embedding = embed_text(query)
-
-        text_rows = await self.chunk_repo.search_by_full_text(
-            query=query,
-            query_terms=query_terms,
-            limit=limit * 3,
-        )
-        try:
-            vector_rows = await self.chunk_repo.search_by_vector(
-                query_embedding=query_embedding,
-                limit=limit * 3,
+        queries = build_query_candidates(issue)
+        base_query = queries[0]
+        query_terms = extract_query_terms(base_query)
+        text_rows: list[tuple[JobPostingKnowledgeChunk, float]] = []
+        vector_rows: list[tuple[JobPostingKnowledgeChunk, float]] = []
+        for query in queries:
+            query_terms = extract_query_terms(query)
+            query_embedding = embed_text(query)
+            text_rows.extend(
+                await self.chunk_repo.search_by_full_text(
+                    query=query,
+                    query_terms=query_terms,
+                    limit=limit * 2,
+                )
             )
-        except Exception:
-            vector_rows = await self._python_vector_fallback(
-                query_embedding=query_embedding,
-                query_terms=query_terms,
-                limit=limit * 3,
-            )
+            try:
+                vector_rows.extend(
+                    await self.chunk_repo.search_by_vector(
+                        query_embedding=query_embedding,
+                        limit=limit * 2,
+                    )
+                )
+            except Exception:
+                vector_rows.extend(
+                    await self._python_vector_fallback(
+                        query_embedding=query_embedding,
+                        query_terms=query_terms,
+                        limit=limit * 2,
+                    )
+                )
 
         merged = merge_retrieval_rows(
             issue=issue,
-            query_terms=query_terms,
-            text_rows=text_rows,
-            vector_rows=vector_rows,
+            query_terms=extract_query_terms(" ".join(queries)),
+            text_rows=dedupe_rows(text_rows),
+            vector_rows=dedupe_rows(vector_rows),
         )
         reranked = rerank_evidence(issue=issue, evidences=merged)
-        apply_model_rerank(query=query, evidences=reranked)
+        apply_model_rerank(query=base_query, evidences=reranked)
         return reranked[:limit]
 
     async def _python_vector_fallback(
@@ -106,6 +121,8 @@ class JobPostingRetrievalService:
         limit: int,
     ) -> list[tuple[JobPostingKnowledgeChunk, float]]:
         pool = await self.chunk_repo.find_search_pool(query_terms=query_terms, limit=500)
+        if not pool:
+            pool = await self.chunk_repo.find_search_pool(query_terms=[], limit=1000)
         scored = [
             (chunk, cosine_similarity(query_embedding, normalize_embedding(chunk.embedding)))
             for chunk in pool
@@ -122,6 +139,50 @@ def build_issue_query(issue: dict[str, Any]) -> str:
         " ".join(issue.get("query_terms") or []),
     ]
     return " ".join(part for part in parts if part).strip()
+
+
+def build_query_candidates(issue: dict[str, Any]) -> list[str]:
+    base_query = build_issue_query(issue)
+    candidates = [base_query]
+    flagged_text = issue.get("flagged_text") or ""
+    issue_label = issue_type_to_korean(issue.get("issue_type"))
+    terms = " ".join(issue.get("query_terms") or [])
+    if issue_label and flagged_text:
+        candidates.append(f"{issue_label} {flagged_text} 법령 가이드 사례")
+    if issue_label and terms:
+        candidates.append(f"{issue_label} {terms} 채용공고 금지 기준")
+    seen: set[str] = set()
+    result: list[str] = []
+    for candidate in candidates:
+        normalized = " ".join(candidate.split()).strip()
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            result.append(normalized)
+    return result
+
+
+def issue_type_to_korean(issue_type: str | None) -> str:
+    labels = {
+        "GENDER_DISCRIMINATION": "성별 차별",
+        "AGE_DISCRIMINATION": "연령 차별",
+        "IRRELEVANT_PERSONAL_INFO": "직무무관 개인정보",
+        "PHYSICAL_CONDITION": "신체조건 차별",
+        "FALSE_JOB_AD": "거짓 채용광고",
+        "UNFAVORABLE_CONDITION_CHANGE": "불리한 근로조건 변경",
+        "WORKING_CONDITION_AMBIGUITY": "근로조건 불명확",
+    }
+    return labels.get(issue_type or "", issue_type or "")
+
+
+def dedupe_rows(
+    rows: list[tuple[JobPostingKnowledgeChunk, float]],
+) -> list[tuple[JobPostingKnowledgeChunk, float]]:
+    by_chunk_id: dict[int, tuple[JobPostingKnowledgeChunk, float]] = {}
+    for chunk, score in rows:
+        current = by_chunk_id.get(chunk.id)
+        if current is None or float(score or 0.0) > current[1]:
+            by_chunk_id[chunk.id] = (chunk, float(score or 0.0))
+    return list(by_chunk_id.values())
 
 
 def merge_retrieval_rows(
@@ -153,11 +214,13 @@ def merge_retrieval_rows(
         source = getattr(evidence.chunk, "knowledge_source", None)
         source_priority = document_priority(getattr(source, "source_type", "") or "")
         issue_match_bonus = 0.15 if evidence.chunk.issue_code == issue.get("issue_type") else 0.0
+        freshness_bonus = source_freshness_bonus(evidence.chunk)
         evidence.hybrid_score = (
             (evidence.text_score * text_weight)
             + (evidence.vector_score * vector_weight)
             + (keyword_score * 0.2)
             + issue_match_bonus
+            + freshness_bonus
             + (0.03 / max(source_priority, 1))
         )
 
@@ -167,6 +230,15 @@ def merge_retrieval_rows(
 
 def normalize_rank_score(score: float, rank: int) -> float:
     return max(float(score or 0.0), 1.0 / (60 + rank))
+
+
+def source_freshness_bonus(chunk: JobPostingKnowledgeChunk) -> float:
+    metadata = chunk.metadata_json or {}
+    if metadata.get("is_latest") is True:
+        return 0.05
+    if metadata.get("effective_date"):
+        return 0.02
+    return 0.0
 
 
 def retrieval_weights(chunk: JobPostingKnowledgeChunk) -> tuple[float, float]:

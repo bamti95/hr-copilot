@@ -63,6 +63,7 @@ KNOWLEDGE_UPLOAD_DIR = "job_posting_knowledge"
 LOCAL_EMBEDDING_MODEL = "BAAI/bge-m3"
 MAX_CHUNK_CHARS = 1000
 MIN_CHUNK_CHARS = 180
+SEED_SOURCE_EXTENSIONS = {".pdf", ".txt"}
 logger = logging.getLogger(__name__)
 
 
@@ -448,19 +449,25 @@ class JobPostingKnowledgeService:
     ) -> KnowledgeSeedResponse:
         indexed_sources: list[KnowledgeSourceResponse] = []
         total_chunks = 0
-        for path in sorted(SOURCE_DATA_DIR.glob("*.pdf")):
+        seed_files = collect_seed_source_files(SOURCE_DATA_DIR)
+        latest_flags = compute_latest_flags(seed_files)
+        for path in seed_files:
             public_file = _ensure_seed_file_under_upload_root(path)
+            effective_date = extract_effective_date_from_text(path.name)
             request = KnowledgeSourceCreateRequest(
                 source_type=infer_source_type(path.name),
-                title=strip_extension(path.name),
+                title=canonical_source_title(path),
                 source_name=path.name,
                 file_path=public_file,
                 file_ext=path.suffix.removeprefix(".").lower(),
-                mime_type=mimetypes.guess_type(path.name)[0] or "application/pdf",
+                mime_type=mimetypes.guess_type(path.name)[0] or "text/plain",
                 file_size=path.stat().st_size,
                 metadata={
                     "upload_mode": "seed_source_data",
                     "original_path": path.as_posix(),
+                    "doc_id": build_seed_doc_id(path),
+                    "effective_date": effective_date,
+                    "is_latest": latest_flags.get(path.as_posix(), True),
                 },
             )
             source = await JobPostingKnowledgeService.create_or_update_source(
@@ -621,112 +628,6 @@ def build_chunks_for_source(
     return chunks
 
 
-def split_legal_text(text: str, source_type: str) -> list[dict[str, Any]]:
-    normalized = re.sub(r"\n{3,}", "\n\n", text).strip()
-    if not normalized:
-        return []
-    if source_type == JobPostingKnowledgeSourceType.LAW_TEXT.value:
-        return split_by_article(normalized)
-    if source_type == JobPostingKnowledgeSourceType.INSPECTION_CASE.value:
-        return split_by_case_blocks(normalized)
-    return split_by_heading_or_window(normalized)
-
-
-def split_by_article(text: str) -> list[dict[str, Any]]:
-    pattern = re.compile(r"(?=제\s*\d+\s*조(?:의\s*\d+)?\s*\()")
-    parts = [part.strip() for part in pattern.split(text) if part.strip()]
-    return [
-        {
-            "chunk_type": JobPostingKnowledgeChunkType.LEGAL_CLAUSE.value,
-            "chunk_key": infer_article_no(part),
-            "section_title": first_line(part),
-            "content": part,
-        }
-        for part in expand_long_parts(parts)
-    ]
-
-
-def split_by_case_blocks(text: str) -> list[dict[str, Any]]:
-    pattern = re.compile(r"(?=(?:\(|ㆍ|•)?\s*위반\s*사례\s*\d*|❶|❷|❸|❹|❺)")
-    parts = [part.strip() for part in pattern.split(text) if part.strip()]
-    if len(parts) <= 1:
-        parts = expand_long_parts([text])
-    return [
-        {
-            "chunk_type": JobPostingKnowledgeChunkType.INSPECTION_CASE.value,
-            "chunk_key": f"case-{idx + 1}",
-            "section_title": first_line(part),
-            "content": part,
-        }
-        for idx, part in enumerate(expand_long_parts(parts))
-    ]
-
-
-def split_by_heading_or_window(text: str) -> list[dict[str, Any]]:
-    lines = [line.strip() for line in text.splitlines()]
-    blocks: list[str] = []
-    current: list[str] = []
-    for line in lines:
-        if not line:
-            continue
-        is_heading = bool(re.match(r"^(제\s*\d+\s*장|[0-9]+[.)]\s+|[가-힣]\.\s+)", line))
-        if is_heading and current:
-            blocks.append("\n".join(current))
-            current = [line]
-        else:
-            current.append(line)
-    if current:
-        blocks.append("\n".join(current))
-    if not blocks:
-        blocks = [text]
-    return [
-        {
-            "chunk_type": JobPostingKnowledgeChunkType.LEGAL_GUIDE.value,
-            "chunk_key": f"guide-{idx + 1}",
-            "section_title": first_line(part),
-            "content": part,
-        }
-        for idx, part in enumerate(expand_long_parts(blocks))
-    ]
-
-
-def expand_long_parts(parts: list[str]) -> list[str]:
-    expanded: list[str] = []
-    for part in parts:
-        if len(part) <= MAX_CHUNK_CHARS:
-            if len(part) >= MIN_CHUNK_CHARS or not expanded:
-                expanded.append(part)
-            elif expanded:
-                expanded[-1] = f"{expanded[-1]}\n\n{part}"
-            continue
-        paragraphs = [p.strip() for p in re.split(r"\n\s*\n", part) if p.strip()]
-        current = ""
-        for paragraph in paragraphs or [part]:
-            if len(current) + len(paragraph) + 2 <= MAX_CHUNK_CHARS:
-                current = f"{current}\n\n{paragraph}".strip()
-            else:
-                if current:
-                    expanded.append(current)
-                current = paragraph
-        if current:
-            expanded.append(current)
-    return expanded
-
-
-def embed_text(text: str) -> list[float]:
-    vector = [0.0] * EMBEDDING_DIM
-    tokens = re.findall(r"[0-9A-Za-z가-힣]+", text.lower())
-    if not tokens:
-        return vector
-    for token in tokens:
-        digest = hashlib.sha256(token.encode("utf-8")).digest()
-        index = int.from_bytes(digest[:4], "big") % EMBEDDING_DIM
-        sign = -1.0 if digest[4] % 2 else 1.0
-        vector[index] += sign
-    norm = math.sqrt(sum(value * value for value in vector)) or 1.0
-    return [round(value / norm, 6) for value in vector]
-
-
 def first_line(text: str) -> str:
     return next((line.strip() for line in text.splitlines() if line.strip()), "")[:255]
 
@@ -734,13 +635,6 @@ def first_line(text: str) -> str:
 def summarize_chunk(text: str) -> str:
     compact = re.sub(r"\s+", " ", text).strip()
     return compact[:280]
-
-
-def infer_article_no(text: str) -> str | None:
-    match = re.search(r"제\s*(\d+)\s*조(?:의\s*(\d+))?", text)
-    if not match:
-        return None
-    return f"제{match.group(1)}조" + (f"의{match.group(2)}" if match.group(2) else "")
 
 
 def infer_law_name(text: str, fallback: str | None) -> str | None:
@@ -1142,6 +1036,61 @@ def resolve_is_latest(source: JobPostingKnowledgeSource) -> bool:
     if isinstance(value, str):
         return value.lower() in {"true", "y", "yes", "1", "latest"}
     return True
+
+
+def collect_seed_source_files(root_dir: Path) -> list[Path]:
+    return sorted(
+        path
+        for path in root_dir.rglob("*")
+        if path.is_file() and path.suffix.lower() in SEED_SOURCE_EXTENSIONS
+    )
+
+
+def canonical_source_title(path: Path) -> str:
+    title = strip_extension(path.name)
+    title = re.sub(r"\([^)]*\d{4,}[^)]*\)", "", title)
+    title = re.sub(r"\([^)]*제\d+호[^)]*\)", "", title)
+    title = re.sub(r"\s{2,}", " ", title)
+    return title.strip(" _-") or strip_extension(path.name)
+
+
+def build_seed_doc_id(path: Path) -> str:
+    source_type = infer_source_type(path.name)
+    prefix_map = {
+        JobPostingKnowledgeSourceType.LAW_TEXT.value: "LAW",
+        JobPostingKnowledgeSourceType.INSPECTION_CASE.value: "CASE",
+        JobPostingKnowledgeSourceType.LEGAL_GUIDEBOOK.value: "GUIDE",
+        JobPostingKnowledgeSourceType.LEGAL_MANUAL.value: "MANUAL",
+    }
+    prefix = prefix_map.get(source_type, "DOC")
+    slug = re.sub(r"[^0-9A-Za-z가-힣]+", "_", canonical_source_title(path)).strip("_")
+    return f"{prefix}_{slug or 'SOURCE'}"
+
+
+def extract_effective_date_from_text(text: str) -> str | None:
+    match = re.search(r"(20\d{2})(\d{2})(\d{2})", text)
+    if match:
+        return f"{match.group(1)}-{match.group(2)}-{match.group(3)}"
+    match = re.search(r"(20\d{2})[-.](\d{1,2})[-.](\d{1,2})", text)
+    if match:
+        return f"{match.group(1)}-{int(match.group(2)):02d}-{int(match.group(3)):02d}"
+    return None
+
+
+def compute_latest_flags(paths: list[Path]) -> dict[str, bool]:
+    latest_by_group: dict[tuple[str, str], tuple[str | None, str]] = {}
+    for path in paths:
+        source_type = infer_source_type(path.name)
+        group_key = (source_type, canonical_source_title(path).lower())
+        effective_date = extract_effective_date_from_text(path.name)
+        sort_key = effective_date or ""
+        current = latest_by_group.get(group_key)
+        current_sort_key = current[0] or "" if current is not None else ""
+        if current is None or sort_key >= current_sort_key:
+            latest_by_group[group_key] = (sort_key or None, path.as_posix())
+
+    latest_paths = {selected_path for _, selected_path in latest_by_group.values()}
+    return {path.as_posix(): path.as_posix() in latest_paths for path in paths}
 
 
 async def _save_knowledge_upload(upload_file: UploadFile) -> dict[str, Any]:
