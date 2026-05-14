@@ -165,6 +165,15 @@ export const emptyWorkflowSummary: LlmUsageSummaryResponse = {
 export function getWorkflowExecutionId(
   session: LlmUsageSessionSummary,
 ): number | null {
+  if (session.pipelineType === "JOB_POSTING_COMPLIANCE") {
+    return (
+      session.jobPostingAnalysisReportId ??
+      session.sessionId ??
+      session.targetId ??
+      null
+    );
+  }
+
   return (
     session.sessionId ??
     session.jobPostingAnalysisReportId ??
@@ -174,6 +183,15 @@ export function getWorkflowExecutionId(
 }
 
 export function getCallExecutionId(call: LlmUsageCallLog): number | null {
+  if (call.pipelineType === "JOB_POSTING_COMPLIANCE") {
+    return (
+      call.jobPostingAnalysisReportId ??
+      call.sessionId ??
+      call.targetId ??
+      null
+    );
+  }
+
   return (
     call.sessionId ??
     call.jobPostingAnalysisReportId ??

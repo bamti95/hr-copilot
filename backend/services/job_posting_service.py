@@ -1054,6 +1054,14 @@ def detect_issues(posting_text: str) -> list[dict[str, Any]]:
     for risk_pattern in RISK_PATTERNS:
         for match in risk_pattern.pattern.finditer(posting_text):
             flagged = normalize_flagged_text(match.group(0))
+            if risk_pattern.issue_type == "SALARY_MISSING" and has_explicit_salary_range(
+                posting_text
+            ):
+                logger.debug(
+                    "Salary-missing match skipped due to explicit salary range. flagged_text=%s",
+                    flagged,
+                )
+                continue
             key = (risk_pattern.issue_type, flagged)
             if key in seen:
                 logger.debug(
@@ -1072,31 +1080,108 @@ def detect_issues(posting_text: str) -> list[dict[str, Any]]:
             )
             issues.append(
                 {
-                    "issue_type": risk_pattern.issue_type,
-                    "severity": risk_pattern.severity,
-                    "category": (
-                        "LEGAL"
-                        if risk_pattern.issue_type
-                        in {
-                            "FALSE_JOB_AD",
-                            "UNFAVORABLE_CONDITION_CHANGE",
-                            "GENDER_DISCRIMINATION",
-                            "AGE_DISCRIMINATION",
-                            "PHYSICAL_CONDITION",
-                            "IRRELEVANT_PERSONAL_INFO",
-                            "WORKING_CONDITION_AMBIGUITY",
-                        }
-                        else "BRANDING"
-                    ),
-                    "flagged_text": flagged,
-                    "why_risky": risk_pattern.reason,
-                    "recommended_revision": risk_pattern.replacement,
-                    "confidence": confidence_by_severity(risk_pattern.severity),
-                    "query_terms": risk_pattern.query_terms,
-                    "sources": [],
+                    **build_issue_payload(
+                        issue_type=risk_pattern.issue_type,
+                        severity=risk_pattern.severity,
+                        flagged_text=flagged,
+                        why_risky=risk_pattern.reason,
+                        recommended_revision=risk_pattern.replacement,
+                        query_terms=risk_pattern.query_terms,
+                    )
                 }
             )
+    issues.extend(detect_additional_issues(posting_text=posting_text, seen=seen))
     return issues
+
+
+def build_issue_payload(
+    *,
+    issue_type: str,
+    severity: str,
+    flagged_text: str,
+    why_risky: str,
+    recommended_revision: str,
+    query_terms: list[str],
+) -> dict[str, Any]:
+    return {
+        "issue_type": issue_type,
+        "severity": severity,
+        "category": (
+            "LEGAL"
+            if issue_type
+            in {
+                "FALSE_JOB_AD",
+                "UNFAVORABLE_CONDITION_CHANGE",
+                "GENDER_DISCRIMINATION",
+                "AGE_DISCRIMINATION",
+                "PHYSICAL_CONDITION",
+                "IRRELEVANT_PERSONAL_INFO",
+                "WORKING_CONDITION_AMBIGUITY",
+                "OVERTIME_RISK",
+            }
+            else "BRANDING"
+        ),
+        "flagged_text": flagged_text,
+        "why_risky": why_risky,
+        "recommended_revision": recommended_revision,
+        "confidence": confidence_by_severity(severity),
+        "query_terms": query_terms,
+        "sources": [],
+    }
+
+
+def detect_additional_issues(
+    *, posting_text: str, seen: set[tuple[str, str]]
+) -> list[dict[str, Any]]:
+    extra: list[dict[str, Any]] = []
+    extra_rules: list[tuple[str, str, str, str, list[str], re.Pattern[str]]] = [
+        (
+            "OVERTIME_RISK",
+            "HIGH",
+            "연장근로·야간근무 가능만 강조하고 보상 기준이 불명확한 표현입니다.",
+            "연장·야간·온콜 발생 조건과 수당/대체휴무 기준을 함께 명시합니다.",
+            ["연장근로", "야근", "온콜", "수당", "대체휴무"],
+            re.compile(
+                r"(야근\s*가능|야간\s*온콜|온콜\s*참여|연장근로|늦은\s*시간까지|교대\s*기준은\s*합류\s*후|수당.*팀\s*상황|대체휴무.*팀\s*상황)"
+            ),
+        ),
+        (
+            "AGE_DISCRIMINATION",
+            "HIGH",
+            "특정 연령대/연차 구간만 선호하거나 제한하는 표현입니다.",
+            "연령과 무관하게 직무 역량·성과 기준으로 평가합니다.",
+            ["연령", "차별", "경력제한", "나이"],
+            re.compile(r"(경력은\s*\d+\s*년\s*이상\s*\d+\s*년\s*이하\s*인\s*분만\s*검토)"),
+        ),
+        (
+            "FALSE_JOB_AD",
+            "CRITICAL",
+            "공고상 조건과 실제 근로조건이 다를 수 있음을 시사하는 표현입니다.",
+            "정규직/계약직/평가조건/기본급·인센티브 기준을 공고에 동일하게 명시합니다.",
+            ["근로조건", "정규직", "계약직", "기본급", "전환조건"],
+            re.compile(
+                r"(실제\s*기본급은|입사\s*후\s*별도\s*안내|프로젝트\s*계약\s*평가\s*통과.*정규직\s*전환|개인사업자\s*위촉계약|고용조건을\s*다시\s*협의)"
+            ),
+        ),
+    ]
+    for issue_type, severity, why_risky, recommended_revision, query_terms, pattern in extra_rules:
+        for match in pattern.finditer(posting_text):
+            flagged = normalize_flagged_text(match.group(0))
+            key = (issue_type, flagged)
+            if key in seen:
+                continue
+            seen.add(key)
+            extra.append(
+                build_issue_payload(
+                    issue_type=issue_type,
+                    severity=severity,
+                    flagged_text=flagged,
+                    why_risky=why_risky,
+                    recommended_revision=recommended_revision,
+                    query_terms=query_terms,
+                )
+            )
+    return extra
 
 
 def rank_evidence(issue: dict[str, Any], chunks: list[Any]) -> list[dict[str, Any]]:
@@ -1251,6 +1336,18 @@ def hash_posting_text(text: str) -> str:
 
 def normalize_flagged_text(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
+
+
+def has_explicit_salary_range(text: str) -> bool:
+    normalized = normalize_flagged_text(text)
+    has_amount = bool(re.search(r"\d[\d,]*\s*(만\s*)?원", normalized))
+    has_range = bool(
+        re.search(
+            r"(~|-|부터\s*\d[\d,]*\s*(만\s*)?원\s*까지)",
+            normalized,
+        )
+    )
+    return has_amount and has_range
 
 
 def confidence_by_severity(severity: str) -> int:

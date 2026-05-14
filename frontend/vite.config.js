@@ -11,4 +11,12 @@ export default defineConfig({
 
 // 2. tailwindcss() 플러그인(plugin) 추가
   plugins: [react(), tailwindcss()],
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+    },
+  },
 });

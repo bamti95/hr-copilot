@@ -5,7 +5,11 @@ import { useGlobalLoadingStore } from "../store/useGlobalLoadingStore";
 /** 로컬 기본값. 배포 시 Vite `VITE_API_URL` — origin만 주면 `/api/v1` 자동 추가 */
 function resolveApiBaseUrl(): string {
   const raw = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
-  const root = (raw || "http://127.0.0.1:8000").replace(/\/$/, "");
+  if (!raw && import.meta.env.DEV) {
+    return "/api/v1";
+  }
+
+  const root = (raw || "http://localhost:8000").replace(/\/$/, "");
   return root.endsWith("/api/v1") ? root : `${root}/api/v1`;
 }
 
