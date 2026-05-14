@@ -181,6 +181,7 @@ interface KnowledgeSourceListProps {
   keywordInput: string;
   isLoading: boolean;
   indexingSourceId: number | null;
+  jobPolling: boolean;
   onKeywordInputChange: Dispatch<SetStateAction<string>>;
   onKeywordSubmit: (keyword: string) => void;
   onSelectSource: (sourceId: number) => void;
@@ -193,6 +194,7 @@ export function KnowledgeSourceList({
   keywordInput,
   isLoading,
   indexingSourceId,
+  jobPolling,
   onKeywordInputChange,
   onKeywordSubmit,
   onSelectSource,
@@ -250,7 +252,7 @@ export function KnowledgeSourceList({
               <StatusPill label={`index ${source.indexStatus}`} />
               <button
                 type="button"
-                disabled={indexingSourceId === source.id}
+                disabled={jobPolling || indexingSourceId === source.id}
                 onClick={() => onIndex(source.id)}
                 className="rounded-full border border-[#315fbc]/20 bg-[#edf4ff] px-3 py-1 font-semibold text-[#315fbc] disabled:opacity-60"
               >

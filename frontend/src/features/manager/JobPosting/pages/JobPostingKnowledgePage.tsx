@@ -12,6 +12,7 @@ import {
 import { JobProgressCard as SharedJobProgressCard } from "../components/JobProgressCard";
 import { useJobPolling } from "../hooks/useJobPolling";
 import {
+  fetchActiveKnowledgeIndexJob,
   fetchKnowledgeChunks,
   fetchKnowledgeIndexJob,
   fetchKnowledgeSources,
@@ -26,6 +27,37 @@ import type {
   KnowledgeSearchResponse,
   KnowledgeSource,
 } from "../types";
+
+const ACTIVE_KNOWLEDGE_INDEX_JOB_KEY = "hrCopilot.activeKnowledgeIndexJob";
+
+function readStoredKnowledgeIndexJob(): JobPostingAiJob | null {
+  try {
+    const raw = window.localStorage.getItem(ACTIVE_KNOWLEDGE_INDEX_JOB_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<JobPostingAiJob>;
+    return typeof parsed.jobId === "number" && typeof parsed.status === "string"
+      ? (parsed as JobPostingAiJob)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeKnowledgeIndexJob(job: JobPostingAiJob | null) {
+  try {
+    if (job) {
+      window.localStorage.setItem(ACTIVE_KNOWLEDGE_INDEX_JOB_KEY, JSON.stringify(job));
+    } else {
+      window.localStorage.removeItem(ACTIVE_KNOWLEDGE_INDEX_JOB_KEY);
+    }
+  } catch {
+    // Best-effort refresh recovery only.
+  }
+}
+
+function resolveJobSourceId(job: JobPostingAiJob): number | null {
+  return Number(job.resultPayload?.source_id ?? job.requestPayload?.source_id ?? job.targetId) || null;
+}
 
 export function JobPostingKnowledgePage() {
   const [sources, setSources] = useState<KnowledgeSource[]>([]);
@@ -42,7 +74,7 @@ export function JobPostingKnowledgePage() {
   );
   const [searchResult, setSearchResult] =
     useState<KnowledgeSearchResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [indexingSourceId, setIndexingSourceId] = useState<number | null>(null);
   const [isSeeding, setIsSeeding] = useState(false);
@@ -51,7 +83,7 @@ export function JobPostingKnowledgePage() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const loadSources = useCallback(async () => {
-    setIsLoading(true);
+    setPageLoading(true);
     setErrorMessage("");
     try {
       const data = await fetchKnowledgeSources({
@@ -70,7 +102,7 @@ export function JobPostingKnowledgePage() {
           : "기반지식 문서 목록을 불러오지 못했습니다.",
       );
     } finally {
-      setIsLoading(false);
+      setPageLoading(false);
     }
   }, [keyword, selectedSourceId]);
 
@@ -90,6 +122,7 @@ export function JobPostingKnowledgePage() {
 
       setIsSeeding(false);
       setIndexingSourceId(null);
+      storeKnowledgeIndexJob(null);
       if (sourceId) {
         setSelectedSourceId(sourceId);
         setChunks(await fetchKnowledgeChunks(sourceId));
@@ -102,6 +135,7 @@ export function JobPostingKnowledgePage() {
   const handleIndexJobFailed = useCallback((failedJob: JobPostingAiJob) => {
     setIsSeeding(false);
     setIndexingSourceId(null);
+    storeKnowledgeIndexJob(null);
     setErrorMessage(
       failedJob.errorMessage || "문서 인덱싱 작업이 실패했습니다.",
     );
@@ -109,6 +143,7 @@ export function JobPostingKnowledgePage() {
 
   const {
     job: activeIndexJob,
+    isPolling: indexJobPolling,
     startPolling: startIndexJobPolling,
     clearJob: clearIndexJob,
   } = useJobPolling({
@@ -125,8 +160,75 @@ export function JobPostingKnowledgePage() {
   });
 
   useEffect(() => {
-    void loadSources();
-  }, [loadSources]);
+    let cancelled = false;
+
+    async function initPage() {
+      setPageLoading(true);
+      setErrorMessage("");
+
+      const storedJob = readStoredKnowledgeIndexJob();
+      if (storedJob) {
+        startIndexJobPolling(storedJob);
+        setIndexingSourceId(resolveJobSourceId(storedJob));
+      }
+
+      void fetchActiveKnowledgeIndexJob()
+        .then((activeJob) => {
+          if (cancelled || !activeJob) {
+            return;
+          }
+          storeKnowledgeIndexJob(activeJob);
+          startIndexJobPolling(activeJob);
+          setIndexingSourceId(resolveJobSourceId(activeJob));
+        })
+        .catch(() => {
+          // Keep the locally restored card if the active-job probe is delayed.
+        });
+
+      const slowListTimer = window.setTimeout(() => {
+        if (!cancelled) {
+          setPageLoading(false);
+        }
+      }, 5000);
+
+      try {
+        const data = await fetchKnowledgeSources({
+          page: 0,
+          size: 50,
+          keyword,
+        });
+        if (cancelled) {
+          return;
+        }
+
+        setSources(data.items);
+        setSelectedSourceId((current) => current ?? data.items[0]?.id ?? null);
+      } catch (error) {
+        if (!cancelled) {
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "기반지식 문서 목록을 불러오지 못했습니다.",
+          );
+        }
+      } finally {
+        window.clearTimeout(slowListTimer);
+        if (!cancelled) {
+          setPageLoading(false);
+        }
+      }
+    }
+
+    void initPage().catch(() => {
+      if (!cancelled) {
+        setPageLoading(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [keyword, startIndexJobPolling]);
 
   useEffect(() => {
     if (!selectedSourceId) {
@@ -179,6 +281,7 @@ export function JobPostingKnowledgePage() {
     clearIndexJob();
     try {
       const submittedJob = await submitKnowledgeIndexJob(sourceId);
+      storeKnowledgeIndexJob(submittedJob);
       startIndexJobPolling(submittedJob);
       setMessage("인덱싱 작업을 백그라운드로 시작했습니다. 진행 상태는 아래 카드에서 확인할 수 있습니다.");
       setSelectedSourceId(sourceId);
@@ -196,6 +299,7 @@ export function JobPostingKnowledgePage() {
     clearIndexJob();
     try {
       const submittedJob = await submitSeedSourceDataJob();
+      storeKnowledgeIndexJob(submittedJob);
       startIndexJobPolling(submittedJob);
       setMessage("source_data 적재 작업을 백그라운드로 시작했습니다. 완료되면 목록이 자동으로 갱신됩니다.");
     } catch (error) {
@@ -287,8 +391,9 @@ export function JobPostingKnowledgePage() {
           sources={sources}
           selectedSourceId={selectedSourceId}
           keywordInput={keywordInput}
-          isLoading={isLoading}
+          isLoading={pageLoading}
           indexingSourceId={indexingSourceId}
+          jobPolling={indexJobPolling}
           onKeywordInputChange={setKeywordInput}
           onKeywordSubmit={setKeyword}
           onSelectSource={setSelectedSourceId}

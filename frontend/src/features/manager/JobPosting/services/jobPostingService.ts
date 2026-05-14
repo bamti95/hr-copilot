@@ -583,6 +583,7 @@ export async function fetchKnowledgeSources(params: {
       size: params.size,
       keyword: params.keyword || undefined,
     },
+    skipGlobalLoading: true,
   });
   const data = unwrap(response.data);
   return {
@@ -671,6 +672,16 @@ export async function fetchKnowledgeIndexJob(jobId: number): Promise<JobPostingA
   return mapAiJob(unwrap(response.data));
 }
 
+export async function fetchActiveKnowledgeIndexJob(): Promise<JobPostingAiJob | null> {
+  const response = await api.get<
+    JobPostingAiJobApiResponse | null | ApiEnvelope<JobPostingAiJobApiResponse | null>
+  >("/job-postings/knowledge-index-jobs/active", {
+    skipGlobalLoading: true,
+  });
+  const data = unwrap(response.data);
+  return data ? mapAiJob(data) : null;
+}
+
 export async function fetchKnowledgeChunks(
   sourceId: number,
 ): Promise<KnowledgeChunk[]> {
@@ -678,6 +689,7 @@ export async function fetchKnowledgeChunks(
     KnowledgeChunkListApiResponse | ApiEnvelope<KnowledgeChunkListApiResponse>
   >(`/job-postings/knowledge-sources/${sourceId}/chunks`, {
     params: { limit: 20 },
+    skipGlobalLoading: true,
   });
   return unwrap(response.data).items.map(mapKnowledgeChunk);
 }
