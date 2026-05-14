@@ -5,6 +5,7 @@ import { PageIntro } from "../../../../common/components/PageIntro";
 import { JobProgressCard as SharedJobProgressCard } from "../components/JobProgressCard";
 import { Info } from "../components/JobPostingFields";
 import {
+  cancelAnalysisJob,
   fetchActiveAnalysisJob,
   fetchAnalysisJob,
   fetchJobPosting,
@@ -17,9 +18,16 @@ import type {
   JobPostingResponse,
 } from "../types";
 import { formatDateTime, riskStyle } from "../utils/display";
+import {
+  forgetIgnoredJobId,
+  isIgnoredJobId,
+  rememberIgnoredJobId,
+} from "../utils/ignoredJobs";
 import { useJobPolling } from "../hooks/useJobPolling";
 
 const ACTIVE_ANALYSIS_JOB_KEY = "hrCopilot.activeJobPostingAnalysisJob";
+const IGNORED_ANALYSIS_JOB_IDS_KEY = "hrCopilot.ignoredJobPostingAnalysisJobIds";
+const ANALYSIS_POLLING_TIMEOUT_MS = 5 * 60 * 1000;
 
 function readStoredAnalysisJob(postingId: number): JobPostingAiJob | null {
   try {
@@ -29,7 +37,8 @@ function readStoredAnalysisJob(postingId: number): JobPostingAiJob | null {
     const targetId = Number(parsed.targetId ?? parsed.resultPayload?.job_posting_id);
     return typeof parsed.jobId === "number" &&
       typeof parsed.status === "string" &&
-      targetId === postingId
+      targetId === postingId &&
+      !isIgnoredJobId(IGNORED_ANALYSIS_JOB_IDS_KEY, parsed.jobId)
       ? (parsed as JobPostingAiJob)
       : null;
   } catch {
@@ -81,6 +90,7 @@ export function JobPostingDetailPage() {
     clearJob: clearAnalysisJob,
   } = useJobPolling({
     fetcher: fetchAnalysisJob,
+    maxPollingMs: ANALYSIS_POLLING_TIMEOUT_MS,
     onCompleted: handleAnalysisCompleted,
     onFailed: (failedJob) => {
       setIsAnalyzing(false);
@@ -91,6 +101,14 @@ export function JobPostingDetailPage() {
       setIsAnalyzing(false);
       setErrorMessage(
         error instanceof Error ? error.message : "작업 상태를 불러오지 못했습니다.",
+      );
+    },
+    onTimeout: (timedOutJob) => {
+      setIsAnalyzing(false);
+      storeAnalysisJob(null);
+      rememberIgnoredJobId(IGNORED_ANALYSIS_JOB_IDS_KEY, timedOutJob.jobId);
+      setErrorMessage(
+        "분석 작업 상태 조회를 중단했습니다. 서버 작업이 계속 실행 중이면 잠시 후 새로고침해 주세요.",
       );
     },
   });
@@ -130,6 +148,10 @@ export function JobPostingDetailPage() {
     void fetchActiveAnalysisJob(id)
       .then((activeJob) => {
         if (cancelled || !activeJob) return;
+        if (isIgnoredJobId(IGNORED_ANALYSIS_JOB_IDS_KEY, activeJob.jobId)) {
+          storeAnalysisJob(null);
+          return;
+        }
         storeAnalysisJob(activeJob);
         setIsAnalyzing(true);
         startAnalysisPolling(activeJob);
@@ -148,12 +170,31 @@ export function JobPostingDetailPage() {
     clearAnalysisJob();
     try {
       const submittedJob = await submitExistingAnalysisJob(id);
+      forgetIgnoredJobId(IGNORED_ANALYSIS_JOB_IDS_KEY, submittedJob.jobId);
       storeAnalysisJob(submittedJob);
       startAnalysisPolling(submittedJob);
     } catch (error) {
       setIsAnalyzing(false);
       setErrorMessage(
         error instanceof Error ? error.message : "재분석을 실행하지 못했습니다.",
+      );
+    }
+  }
+
+  async function handleCancelAnalysisJob(job: JobPostingAiJob) {
+    rememberIgnoredJobId(IGNORED_ANALYSIS_JOB_IDS_KEY, job.jobId);
+    setIsAnalyzing(false);
+    setErrorMessage("");
+    try {
+      const cancelledJob = await cancelAnalysisJob(job.jobId);
+      storeAnalysisJob(null);
+      clearAnalysisJob();
+      setErrorMessage(cancelledJob.errorMessage || "재분석 작업을 취소했습니다.");
+    } catch (error) {
+      storeAnalysisJob(null);
+      clearAnalysisJob();
+      setErrorMessage(
+        error instanceof Error ? error.message : "재분석 작업 취소에 실패했습니다.",
       );
     }
   }
@@ -191,7 +232,12 @@ export function JobPostingDetailPage() {
           {errorMessage}
         </div>
       ) : null}
-      {activeJob ? <SharedJobProgressCard job={activeJob} /> : null}
+      {activeJob ? (
+        <SharedJobProgressCard
+          job={activeJob}
+          onCancelJob={() => void handleCancelAnalysisJob(activeJob)}
+        />
+      ) : null}
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <article className="rounded-[28px] border border-white/70 bg-[var(--panel)] p-5 shadow-[var(--shadow)]">

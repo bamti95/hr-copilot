@@ -606,6 +606,15 @@ export async function fetchActiveAnalysisJob(
   return data ? mapAiJob(data) : null;
 }
 
+export async function cancelAnalysisJob(jobId: number): Promise<JobPostingAiJob> {
+  const response = await api.post<
+    JobPostingAiJobApiResponse | ApiEnvelope<JobPostingAiJobApiResponse>
+  >(`/job-postings/analysis-jobs/${jobId}/cancel`, null, {
+    skipGlobalLoading: true,
+  });
+  return mapAiJob(unwrap(response.data));
+}
+
 export async function fetchJobPostingReports(
   postingId: number,
 ): Promise<JobPostingAnalysisReport[]> {
