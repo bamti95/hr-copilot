@@ -9,12 +9,17 @@ import {
   fetchJobPostingReports,
 } from "../services/jobPostingService";
 import type {
+  EvidenceSource,
   JobPostingAnalysisReport,
+  JobPostingImprovementSuggestion,
+  JobPostingIssue,
   JobPostingResponse,
 } from "../types";
 import {
+  formatScore,
   riskStyle,
   toEvidenceList,
+  toImprovementSuggestionList,
   toIssueList,
 } from "../utils/display";
 
@@ -58,6 +63,10 @@ export function JobPostingReportPage() {
     () => toEvidenceList(report?.matchedEvidence ?? null),
     [report],
   );
+  const suggestions = useMemo(
+    () => toImprovementSuggestionList(report?.improvementSuggestions ?? null),
+    [report],
+  );
 
   return (
     <div className="space-y-5">
@@ -82,7 +91,7 @@ export function JobPostingReportPage() {
         </div>
       ) : null}
 
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         <MetricCard
           label="위험 등급"
           value={report?.riskLevel ?? "-"}
@@ -90,6 +99,14 @@ export function JobPostingReportPage() {
         />
         <MetricCard label="감지 이슈" value={`${report?.issueCount ?? 0}건`} />
         <MetricCard label="법적 위반 후보" value={`${report?.violationCount ?? 0}건`} />
+        <MetricCard
+          label="종합 점수"
+          value={formatScore(report?.overallScore)}
+        />
+        <MetricCard
+          label="리스크 점수"
+          value={formatScore(report?.riskScore)}
+        />
         <MetricCard
           label="신뢰도"
           value={`${report?.confidenceScore ?? "-"}${report?.confidenceScore ? "%" : ""}`}
@@ -123,30 +140,11 @@ export function JobPostingReportPage() {
             <h2 className="m-0 text-lg font-bold text-slate-950">위험 문구 및 수정안</h2>
             <div className="mt-4 space-y-3">
               {issues.map((issue, index) => (
-                <div
+                <IssueCard
                   key={`${issue.issueType}-${index}`}
-                  className="rounded-2xl border border-slate-200 bg-white p-4"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded-full border px-3 py-1 text-xs font-bold ${riskStyle(issue.severity)}`}
-                    >
-                      {issue.severity || "RISK"}
-                    </span>
-                    <span className="text-sm font-bold text-slate-950">
-                      {issue.issueType || "UNKNOWN"}
-                    </span>
-                  </div>
-                  <blockquote className="mt-3 rounded-xl border-l-4 border-[#315fbc] bg-[#f5f8ff] px-4 py-3 text-sm text-slate-700">
-                    {issue.flaggedText || "문구 정보 없음"}
-                  </blockquote>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">
-                    {issue.whyRisky || "위험 사유가 제공되지 않았습니다."}
-                  </p>
-                  <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">
-                    {issue.recommendedRevision || "수정 예시가 제공되지 않았습니다."}
-                  </div>
-                </div>
+                  issue={issue}
+                  suggestion={findSuggestion(issue, suggestions)}
+                />
               ))}
               {!isLoading && issues.length === 0 ? (
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-10 text-center text-sm text-emerald-800">
@@ -165,27 +163,10 @@ export function JobPostingReportPage() {
             </div>
             <div className="mt-4 space-y-3">
               {evidence.slice(0, 8).map((item, index) => (
-                <div
+                <EvidenceCard
                   key={`${item.chunkId ?? index}`}
-                  className="rounded-2xl border border-slate-200 bg-white p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-bold text-slate-950">
-                        {item.title || item.lawName || "근거 문서"}
-                      </div>
-                      <div className="mt-1 text-xs text-slate-500">
-                        {item.articleNo || item.sectionTitle || item.chunkType || "-"}
-                      </div>
-                    </div>
-                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
-                      {item.score ? Math.round(item.score * 100) : "-"}점
-                    </span>
-                  </div>
-                  <p className="mt-3 line-clamp-5 text-xs leading-5 text-slate-600">
-                    {item.content || "근거 내용 없음"}
-                  </p>
-                </div>
+                  evidence={item}
+                />
               ))}
               {!isLoading && evidence.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-white/70 px-4 py-10 text-center text-sm text-slate-500">
@@ -197,5 +178,173 @@ export function JobPostingReportPage() {
         </aside>
       </section>
     </div>
+  );
+}
+
+function IssueCard({
+  issue,
+  suggestion,
+}: {
+  issue: JobPostingIssue;
+  suggestion: JobPostingImprovementSuggestion | null;
+}) {
+  const sources = issue.sources ?? [];
+  const evidenceStrength = suggestion?.evidenceStrength;
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-bold ${riskStyle(issue.severity)}`}
+          >
+            {issue.severity || "RISK"}
+          </span>
+          <span className="text-sm font-bold text-slate-950">
+            {issue.issueType || "UNKNOWN"}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+          {typeof issue.confidence === "number" ? (
+            <span className="rounded-full bg-slate-100 px-2 py-1">
+              탐지 신뢰도 {issue.confidence}%
+            </span>
+          ) : null}
+          {evidenceStrength ? (
+            <span className="rounded-full bg-[#edf4ff] px-2 py-1 text-[#315fbc]">
+              근거 강도 {evidenceStrength}
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <blockquote className="mt-3 rounded-xl border-l-4 border-[#315fbc] bg-[#f5f8ff] px-4 py-3 text-sm text-slate-700">
+        {issue.flaggedText || "문구 정보 없음"}
+      </blockquote>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <div className="rounded-xl border border-rose-100 bg-rose-50/60 px-4 py-3">
+          <div className="text-xs font-bold text-rose-700">위험 판단</div>
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            {issue.whyRisky || "위험 사유가 제공되지 않았습니다."}
+          </p>
+        </div>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <div className="text-xs font-bold text-emerald-800">개선 제안</div>
+          <p className="mt-2 text-sm leading-6 text-emerald-950">
+            {suggestion?.recommendedRevision ||
+              issue.recommendedRevision ||
+              "수정 예시가 제공되지 않았습니다."}
+          </p>
+        </div>
+      </div>
+
+      {sources.length > 0 ? (
+        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+          <div className="text-xs font-bold text-slate-700">이 문구에 연결된 근거</div>
+          <div className="mt-2 space-y-2">
+            {sources.slice(0, 3).map((source, index) => (
+              <EvidenceSummary key={`${source.chunkId ?? index}`} evidence={source} />
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function EvidenceSummary({ evidence }: { evidence: EvidenceSource }) {
+  return (
+    <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-600">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-semibold text-slate-900">
+          {evidence.title || evidence.lawName || "근거 문서"}
+        </span>
+        <span className="font-bold text-[#315fbc]">
+          {formatScore(evidence.score ?? evidence.rerankScore ?? evidence.hybridScore)}
+        </span>
+      </div>
+      <div className="mt-1">
+        {[evidence.lawName, evidence.articleNo || evidence.articleRef, evidence.sectionTitle]
+          .filter(Boolean)
+          .join(" · ") || evidence.chunkType || "-"}
+      </div>
+    </div>
+  );
+}
+
+function EvidenceCard({ evidence }: { evidence: EvidenceSource }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-bold text-slate-950">
+            {evidence.title || evidence.lawName || "근거 문서"}
+          </div>
+          <div className="mt-1 text-xs text-slate-500">
+            {[evidence.lawName, evidence.articleNo || evidence.articleRef, evidence.sectionTitle]
+              .filter(Boolean)
+              .join(" · ") || evidence.chunkType || "-"}
+          </div>
+        </div>
+        <span className="rounded-full bg-[#edf4ff] px-2 py-1 text-xs font-bold text-[#315fbc]">
+          {formatScore(evidence.score ?? evidence.rerankScore ?? evidence.hybridScore)}
+        </span>
+      </div>
+
+      <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+        <ScoreChip label="hybrid" value={evidence.hybridScore} />
+        <ScoreChip label="rerank" value={evidence.rerankScore} />
+        <ScoreChip label="text" value={evidence.textScore} />
+        <ScoreChip label="vector" value={evidence.vectorScore} />
+      </div>
+
+      {evidence.matchedTerms?.length ? (
+        <div className="mt-3 flex flex-wrap gap-1">
+          {evidence.matchedTerms.slice(0, 6).map((term) => (
+            <span
+              key={term}
+              className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600"
+            >
+              {term}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      <p className="mt-3 line-clamp-6 text-xs leading-5 text-slate-600">
+        {evidence.content || "근거 내용 없음"}
+      </p>
+    </div>
+  );
+}
+
+function ScoreChip({
+  label,
+  value,
+}: {
+  label: string;
+  value: number | null | undefined;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5">
+      <span className="font-semibold text-slate-500">{label}</span>{" "}
+      <span className="font-bold text-slate-900">{formatScore(value)}</span>
+    </div>
+  );
+}
+
+function findSuggestion(
+  issue: JobPostingIssue,
+  suggestions: JobPostingImprovementSuggestion[],
+) {
+  return (
+    suggestions.find(
+      (suggestion) =>
+        suggestion.issueType === issue.issueType &&
+        suggestion.flaggedText === issue.flaggedText,
+    ) ??
+    suggestions.find((suggestion) => suggestion.issueType === issue.issueType) ??
+    null
   );
 }

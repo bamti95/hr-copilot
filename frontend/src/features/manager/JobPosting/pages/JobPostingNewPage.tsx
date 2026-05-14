@@ -1,10 +1,11 @@
 import { ArrowLeft, ShieldCheck, Upload } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PageIntro } from "../../../../common/components/PageIntro";
 import { JobProgressCard as SharedJobProgressCard } from "../components/JobProgressCard";
 import { Field } from "../components/JobPostingFields";
 import {
+  fetchActiveAnalysisJob,
   fetchAnalysisJob,
   submitAnalyzeFileJob,
   submitAnalyzeTextJob,
@@ -12,6 +13,33 @@ import {
 import type { JobPostingAiJob, JobPostingCreateRequest } from "../types";
 import { inputClassName, textareaClassName } from "../utils/display";
 import { useJobPolling } from "../hooks/useJobPolling";
+
+const ACTIVE_ANALYSIS_JOB_KEY = "hrCopilot.activeJobPostingAnalysisJob";
+
+function readStoredAnalysisJob(): JobPostingAiJob | null {
+  try {
+    const raw = window.localStorage.getItem(ACTIVE_ANALYSIS_JOB_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<JobPostingAiJob>;
+    return typeof parsed.jobId === "number" && typeof parsed.status === "string"
+      ? (parsed as JobPostingAiJob)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeAnalysisJob(job: JobPostingAiJob | null) {
+  try {
+    if (job) {
+      window.localStorage.setItem(ACTIVE_ANALYSIS_JOB_KEY, JSON.stringify(job));
+    } else {
+      window.localStorage.removeItem(ACTIVE_ANALYSIS_JOB_KEY);
+    }
+  } catch {
+    // Best-effort refresh recovery only.
+  }
+}
 
 export function JobPostingNewPage() {
   const navigate = useNavigate();
@@ -37,6 +65,7 @@ export function JobPostingNewPage() {
       const postingId = Number(resultPayload.job_posting_id ?? completedJob.targetId);
       const reportId = Number(resultPayload.job_posting_analysis_report_id);
       setIsSaving(false);
+      storeAnalysisJob(null);
       if (!postingId || !reportId) {
         setErrorMessage("분석 결과 리포트 정보를 찾지 못했습니다.");
         return;
@@ -55,6 +84,7 @@ export function JobPostingNewPage() {
     onCompleted: handleAnalysisCompleted,
     onFailed: (failedJob) => {
       setIsSaving(false);
+      storeAnalysisJob(null);
       setErrorMessage(failedJob.errorMessage || "채용공고 분석 작업이 실패했습니다.");
     },
     onError: (error) => {
@@ -64,6 +94,28 @@ export function JobPostingNewPage() {
       );
     },
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    const storedJob = readStoredAnalysisJob();
+    if (storedJob) {
+      setIsSaving(true);
+      startAnalysisPolling(storedJob);
+    }
+    void fetchActiveAnalysisJob()
+      .then((activeJob) => {
+        if (cancelled || !activeJob) return;
+        storeAnalysisJob(activeJob);
+        setIsSaving(true);
+        startAnalysisPolling(activeJob);
+      })
+      .catch(() => {
+        // Local storage recovery is enough when the active-job probe is delayed.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [startAnalysisPolling]);
 
   async function handleAnalyze() {
     if (!form.jobTitle.trim()) {
@@ -91,6 +143,7 @@ export function JobPostingNewPage() {
               companyName: form.companyName || undefined,
             })
           : await submitAnalyzeTextJob(form);
+      storeAnalysisJob(submittedJob);
       startAnalysisPolling(submittedJob);
     } catch (error) {
       setIsSaving(false);

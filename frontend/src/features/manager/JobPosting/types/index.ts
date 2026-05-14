@@ -49,6 +49,7 @@ export interface JobPostingCreateRequest {
 export interface EvidenceSource {
   chunkId?: number;
   sourceId?: number;
+  docId?: string | null;
   title?: string | null;
   sourceType?: string | null;
   chunkType?: string | null;
@@ -57,8 +58,17 @@ export interface EvidenceSource {
   pageEnd?: number | null;
   lawName?: string | null;
   articleNo?: string | null;
+  articleRef?: string | null;
+  effectiveDate?: string | null;
+  isLatest?: boolean | null;
   content?: string | null;
   score?: number | null;
+  textScore?: number | null;
+  vectorScore?: number | null;
+  keywordScore?: number | null;
+  hybridScore?: number | null;
+  rerankScore?: number | null;
+  matchedTerms?: string[];
 }
 
 export interface JobPostingIssue {
@@ -72,6 +82,13 @@ export interface JobPostingIssue {
   sources?: EvidenceSource[];
   relatedLaws?: Array<Record<string, unknown>>;
   possiblePenalty?: string | null;
+}
+
+export interface JobPostingImprovementSuggestion {
+  issueType?: string;
+  flaggedText?: string;
+  recommendedRevision?: string;
+  evidenceStrength?: string;
 }
 
 export interface JobPostingAnalysisReport {
@@ -98,7 +115,10 @@ export interface JobPostingAnalysisReport {
   issueSummary: JobPostingIssue[] | Record<string, unknown> | null;
   matchedEvidence: EvidenceSource[] | Record<string, unknown> | null;
   complianceWarnings: JobPostingIssue[] | Record<string, unknown> | null;
-  improvementSuggestions: unknown[] | Record<string, unknown> | null;
+  improvementSuggestions:
+    | JobPostingImprovementSuggestion[]
+    | Record<string, unknown>
+    | null;
   rewriteExamples: unknown[] | Record<string, unknown> | null;
   finalReport: Record<string, unknown> | null;
   errorMessage: string | null;

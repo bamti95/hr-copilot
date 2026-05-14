@@ -209,9 +209,15 @@ function toRecord(value: unknown): JsonRecord {
 
 function mapEvidence(value: unknown): EvidenceSource {
   const item = toRecord(value);
+  const textScore = numberOrNull(item.text_score ?? item.textScore);
+  const vectorScore = numberOrNull(item.vector_score ?? item.vectorScore);
+  const keywordScore = numberOrNull(item.keyword_score ?? item.keywordScore);
+  const hybridScore = numberOrNull(item.hybrid_score ?? item.hybridScore);
+  const rerankScore = numberOrNull(item.rerank_score ?? item.rerankScore);
   return {
     chunkId: Number(item.chunk_id ?? item.chunkId ?? 0) || undefined,
     sourceId: Number(item.source_id ?? item.sourceId ?? 0) || undefined,
+    docId: (item.doc_id as string | null | undefined) ?? (item.docId as string | null | undefined) ?? null,
     title: (item.title as string | null | undefined) ?? null,
     sourceType: (item.source_type as string | null | undefined) ?? null,
     chunkType: (item.chunk_type as string | null | undefined) ?? null,
@@ -230,14 +236,40 @@ function mapEvidence(value: unknown): EvidenceSource {
           : null,
     lawName: (item.law_name as string | null | undefined) ?? null,
     articleNo: (item.article_no as string | null | undefined) ?? null,
-    content: (item.content as string | null | undefined) ?? null,
-    score:
-      typeof item.score === "number"
-        ? item.score
-        : item.score
-          ? Number(item.score)
+    articleRef:
+      (item.article_ref as string | null | undefined) ??
+      (item.articleRef as string | null | undefined) ??
+      null,
+    effectiveDate:
+      (item.effective_date as string | null | undefined) ??
+      (item.effectiveDate as string | null | undefined) ??
+      null,
+    isLatest:
+      typeof item.is_latest === "boolean"
+        ? item.is_latest
+        : typeof item.isLatest === "boolean"
+          ? item.isLatest
           : null,
+    content: (item.content as string | null | undefined) ?? null,
+    score: numberOrNull(item.score) ?? rerankScore ?? hybridScore,
+    textScore,
+    vectorScore,
+    keywordScore,
+    hybridScore,
+    rerankScore,
+    matchedTerms: toArray<string>(item.matched_terms ?? item.matchedTerms),
   };
+}
+
+function numberOrNull(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
 }
 
 function mapIssue(value: unknown): JobPostingIssue {
@@ -261,6 +293,18 @@ function mapIssue(value: unknown): JobPostingIssue {
       (item.possible_penalty as string | null | undefined) ??
       (item.possiblePenalty as string | null | undefined) ??
       null,
+  };
+}
+
+function mapImprovementSuggestion(value: unknown) {
+  const item = toRecord(value);
+  return {
+    issueType: String(item.issue_type ?? item.issueType ?? ""),
+    flaggedText: String(item.flagged_text ?? item.flaggedText ?? ""),
+    recommendedRevision: String(
+      item.recommended_revision ?? item.recommendedRevision ?? "",
+    ),
+    evidenceStrength: String(item.evidence_strength ?? item.evidenceStrength ?? ""),
   };
 }
 
@@ -394,10 +438,9 @@ function mapReport(response: JobPostingReportApiResponse): JobPostingAnalysisRep
     complianceWarnings: Array.isArray(response.compliance_warnings)
       ? response.compliance_warnings.map(mapIssue)
       : (response.compliance_warnings as Record<string, unknown> | null),
-    improvementSuggestions: response.improvement_suggestions as
-      | unknown[]
-      | Record<string, unknown>
-      | null,
+    improvementSuggestions: Array.isArray(response.improvement_suggestions)
+      ? response.improvement_suggestions.map(mapImprovementSuggestion)
+      : (response.improvement_suggestions as Record<string, unknown> | null),
     rewriteExamples: response.rewrite_examples as
       | unknown[]
       | Record<string, unknown>
@@ -548,6 +591,19 @@ export async function fetchAnalysisJob(jobId: number): Promise<JobPostingAiJob> 
     skipGlobalLoading: true,
   });
   return mapAiJob(unwrap(response.data));
+}
+
+export async function fetchActiveAnalysisJob(
+  postingId?: number,
+): Promise<JobPostingAiJob | null> {
+  const response = await api.get<
+    JobPostingAiJobApiResponse | null | ApiEnvelope<JobPostingAiJobApiResponse | null>
+  >("/job-postings/analysis-jobs/active", {
+    params: { posting_id: postingId || undefined },
+    skipGlobalLoading: true,
+  });
+  const data = unwrap(response.data);
+  return data ? mapAiJob(data) : null;
 }
 
 export async function fetchJobPostingReports(

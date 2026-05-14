@@ -1,6 +1,7 @@
 import type {
   EvidenceSource,
   JobPostingAnalysisReport,
+  JobPostingImprovementSuggestion,
   JobPostingIssue,
 } from "../types";
 
@@ -40,4 +41,16 @@ export function toEvidenceList(
   value: JobPostingAnalysisReport["matchedEvidence"],
 ): EvidenceSource[] {
   return Array.isArray(value) ? value : [];
+}
+
+export function toImprovementSuggestionList(
+  value: JobPostingAnalysisReport["improvementSuggestions"],
+): JobPostingImprovementSuggestion[] {
+  return Array.isArray(value) ? value : [];
+}
+
+export function formatScore(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) return "-";
+  const normalized = value <= 1 ? value * 100 : value;
+  return `${Math.round(normalized)}점`;
 }

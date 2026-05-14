@@ -5,6 +5,7 @@ import { PageIntro } from "../../../../common/components/PageIntro";
 import { JobProgressCard as SharedJobProgressCard } from "../components/JobProgressCard";
 import { Info } from "../components/JobPostingFields";
 import {
+  fetchActiveAnalysisJob,
   fetchAnalysisJob,
   fetchJobPosting,
   fetchJobPostingReports,
@@ -17,6 +18,36 @@ import type {
 } from "../types";
 import { formatDateTime, riskStyle } from "../utils/display";
 import { useJobPolling } from "../hooks/useJobPolling";
+
+const ACTIVE_ANALYSIS_JOB_KEY = "hrCopilot.activeJobPostingAnalysisJob";
+
+function readStoredAnalysisJob(postingId: number): JobPostingAiJob | null {
+  try {
+    const raw = window.localStorage.getItem(ACTIVE_ANALYSIS_JOB_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<JobPostingAiJob>;
+    const targetId = Number(parsed.targetId ?? parsed.resultPayload?.job_posting_id);
+    return typeof parsed.jobId === "number" &&
+      typeof parsed.status === "string" &&
+      targetId === postingId
+      ? (parsed as JobPostingAiJob)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeAnalysisJob(job: JobPostingAiJob | null) {
+  try {
+    if (job) {
+      window.localStorage.setItem(ACTIVE_ANALYSIS_JOB_KEY, JSON.stringify(job));
+    } else {
+      window.localStorage.removeItem(ACTIVE_ANALYSIS_JOB_KEY);
+    }
+  } catch {
+    // Best-effort refresh recovery only.
+  }
+}
 
 export function JobPostingDetailPage() {
   const navigate = useNavigate();
@@ -34,6 +65,7 @@ export function JobPostingDetailPage() {
         completedJob.resultPayload?.job_posting_analysis_report_id,
       );
       setIsAnalyzing(false);
+      storeAnalysisJob(null);
       if (!reportId) {
         setErrorMessage("재분석 리포트 정보를 찾지 못했습니다.");
         return;
@@ -52,6 +84,7 @@ export function JobPostingDetailPage() {
     onCompleted: handleAnalysisCompleted,
     onFailed: (failedJob) => {
       setIsAnalyzing(false);
+      storeAnalysisJob(null);
       setErrorMessage(failedJob.errorMessage || "재분석 작업이 실패했습니다.");
     },
     onError: (error) => {
@@ -86,12 +119,36 @@ export function JobPostingDetailPage() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    const storedJob = readStoredAnalysisJob(id);
+    if (storedJob) {
+      setIsAnalyzing(true);
+      startAnalysisPolling(storedJob);
+    }
+    void fetchActiveAnalysisJob(id)
+      .then((activeJob) => {
+        if (cancelled || !activeJob) return;
+        storeAnalysisJob(activeJob);
+        setIsAnalyzing(true);
+        startAnalysisPolling(activeJob);
+      })
+      .catch(() => {
+        // Local storage recovery is enough when the active-job probe is delayed.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, startAnalysisPolling]);
+
   async function handleAnalyzeExisting() {
     setIsAnalyzing(true);
     setErrorMessage("");
     clearAnalysisJob();
     try {
       const submittedJob = await submitExistingAnalysisJob(id);
+      storeAnalysisJob(submittedJob);
       startAnalysisPolling(submittedJob);
     } catch (error) {
       setIsAnalyzing(false);
