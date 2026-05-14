@@ -227,6 +227,23 @@ async def get_job_posting_report(
 
 
 @router.get(
+    "/analysis-jobs/active",
+    response_model=JobPostingAiJobResponse | None,
+    summary="실행 중인 채용공고 분석 작업 조회",
+)
+async def get_active_job_posting_analysis_job(
+    posting_id: int | None = Query(None),
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> JobPostingAiJobResponse | None:
+    return await JobPostingService.get_active_analysis_job(
+        db=db,
+        actor_id=current_manager.id,
+        posting_id=posting_id,
+    )
+
+
+@router.get(
     "/analysis-jobs/{job_id}",
     response_model=JobPostingAiJobResponse,
     summary="채용공고 분석 비동기 작업 상태 조회",

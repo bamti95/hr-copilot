@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import asyncio
 import logging
 import math
 import mimetypes
@@ -182,7 +183,11 @@ class JobPostingKnowledgeService:
         await db.commit()
 
         try:
-            result = extract_text_from_file(source.file_path or "", source.file_ext)
+            result = await asyncio.to_thread(
+                extract_text_from_file,
+                source.file_path or "",
+                source.file_ext,
+            )
             source.extracted_text = result.extracted_text
             source.extract_status = result.extract_status
             source.metadata_json = {
@@ -219,7 +224,11 @@ class JobPostingKnowledgeService:
                 )
 
             await chunk_repo.delete_by_source_id(source.id)
-            chunks = build_chunks_for_source(source, result.extracted_text)
+            chunks = await asyncio.to_thread(
+                build_chunks_for_source,
+                source,
+                result.extracted_text,
+            )
             for chunk in chunks:
                 await chunk_repo.add(chunk)
             source.chunk_count = len(chunks)

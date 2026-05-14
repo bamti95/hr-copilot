@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import asyncio
 import logging
 import math
 import re
@@ -12,7 +13,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from fastapi import HTTPException, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.document_types import ALLOWED_EXTENSIONS, READ_CHUNK_SIZE
@@ -82,7 +83,12 @@ RISK_PATTERNS = [
     RiskPattern(
         issue_type="GENDER_DISCRIMINATION",
         severity="HIGH",
-        pattern=re.compile(r"(여성|남성|남자|여자)\s*(지원자|개발자|인재)?\s*(우대|선호|한정|지원 가능)"),
+        pattern=re.compile(
+            r"(여성|남성|남자|여자|남직원|여직원|군필\s*남성|군필자|병역필자)"
+            r"\s*(지원자|개발자|엔지니어|인재|인력|직원|경력자|비서|멤버)?"
+            r"\s*(?:를|을|는|은|만|에\s*한해)?\s*"
+            r"(우대|선호|한정|지원\s*가능|환영|우선\s*검토|채용|모집)"
+        ),
         reason="직무 수행과 무관하게 특정 성별을 우대하거나 제한하는 표현입니다.",
         replacement="성별과 무관하게 직무 경험과 역량을 기준으로 평가합니다.",
         query_terms=["성별", "남녀", "차별", "모집"],
@@ -181,6 +187,7 @@ RISK_PATTERNS = [
 class JobPostingService:
     @staticmethod
     def _job_response(job: AiJob, message: str) -> JobPostingAiJobResponse:
+        """AI 작업 엔티티를 채용공고 작업 응답 DTO로 변환한다."""
         return JobPostingAiJobResponse(
             job_id=job.id,
             status=job.status,
@@ -202,6 +209,7 @@ class JobPostingService:
         request: JobPostingCreateRequest,
         actor_id: int | None,
     ) -> JobPostingResponse:
+        """채용공고를 신규 등록하거나 기존 공고를 갱신한다."""
         repo = JobPostingRepository(db)
         entity = await upsert_posting(db=db, repo=repo, request=request, actor_id=actor_id)
         await db.commit()
@@ -305,7 +313,12 @@ class JobPostingService:
         company_name: str | None,
         actor_id: int | None,
     ) -> JobPostingAnalyzeResponse:
-        extracted = extract_text_from_file(file_path, file_ext)
+        """업로드된 파일에서 텍스트를 추출한 뒤 채용공고 분석을 수행한다."""
+        extracted = await asyncio.to_thread(
+            extract_text_from_file,
+            file_path,
+            file_ext,
+        )
         if extracted.extract_status != "SUCCESS" or not extracted.extracted_text:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -482,6 +495,39 @@ class JobPostingService:
         return JobPostingService._job_response(job, "채용공고 점검 작업 상태입니다.")
 
     @staticmethod
+    async def get_active_analysis_job(
+        *,
+        db: AsyncSession,
+        actor_id: int | None,
+        posting_id: int | None = None,
+    ) -> JobPostingAiJobResponse | None:
+        conditions = [
+            AiJob.job_type == AiJobType.JOB_POSTING_COMPLIANCE_ANALYSIS.value,
+            AiJob.status.in_(
+                [
+                    AiJobStatus.QUEUED.value,
+                    AiJobStatus.RUNNING.value,
+                    AiJobStatus.RETRYING.value,
+                ]
+            ),
+        ]
+        if actor_id is not None:
+            conditions.append(AiJob.requested_by == actor_id)
+        if posting_id is not None:
+            conditions.append(AiJob.target_id == posting_id)
+
+        result = await db.execute(
+            select(AiJob)
+            .where(*conditions)
+            .order_by(desc(AiJob.created_at), desc(AiJob.id))
+            .limit(1)
+        )
+        job = result.scalar_one_or_none()
+        if job is None:
+            return None
+        return JobPostingService._job_response(job, "채용공고 점검 작업 상태입니다.")
+
+    @staticmethod
     async def list_reports(
         *,
         db: AsyncSession,
@@ -558,7 +604,8 @@ class JobPostingService:
                     report.ai_job_id = job.id
                     job.target_id = posting.id
                 elif mode == "FILE":
-                    extracted = extract_text_from_file(
+                    extracted = await asyncio.to_thread(
+                        extract_text_from_file,
                         payload.get("file_path") or "",
                         payload.get("file_ext"),
                     )
@@ -709,7 +756,27 @@ async def run_rule_rag_analysis(
         if progress_callback is not None:
             await progress_callback(50, "detecting_risk_phrases")
         node_started_at = time.perf_counter()
+        logger.info(
+            "Job posting risk detection started. posting_id=%s report_id=%s text_length=%s",
+            posting.id,
+            report.id,
+            len(posting.posting_text or ""),
+        )
         issues = detect_issues(posting.posting_text)
+        logger.info(
+            "Job posting risk detection completed. posting_id=%s report_id=%s issue_count=%s issues=%s",
+            posting.id,
+            report.id,
+            len(issues),
+            [
+                {
+                    "issue_type": issue.get("issue_type"),
+                    "severity": issue.get("severity"),
+                    "flagged_text": issue.get("flagged_text"),
+                }
+                for issue in issues
+            ],
+        )
         await record_timed_node(
             trace,
             node_name="detect_risk_phrases",
@@ -741,6 +808,16 @@ async def run_rule_rag_analysis(
         evidence_items: list[dict[str, Any]] = []
         total_issues = max(len(issues), 1)
         for issue_index, issue in enumerate(issues):
+            logger.info(
+                "Job posting evidence retrieval started. posting_id=%s report_id=%s issue_index=%s/%s issue_type=%s flagged_text=%s query_terms=%s",
+                posting.id,
+                report.id,
+                issue_index + 1,
+                len(issues),
+                issue.get("issue_type"),
+                issue.get("flagged_text"),
+                issue.get("query_terms"),
+            )
             if progress_callback is not None:
                 retrieve_progress = 62 + int((issue_index / total_issues) * 18)
                 await progress_callback(
@@ -753,6 +830,26 @@ async def run_rule_rag_analysis(
                 limit=12,
             )
             evidence_payloads = [evidence.to_payload() for evidence in evidences]
+            logger.info(
+                "Job posting evidence retrieval completed. posting_id=%s report_id=%s issue_type=%s flagged_text=%s evidence_count=%s top_evidence=%s",
+                posting.id,
+                report.id,
+                issue.get("issue_type"),
+                issue.get("flagged_text"),
+                len(evidence_payloads),
+                [
+                    {
+                        "chunk_id": evidence.get("chunk_id"),
+                        "source_id": evidence.get("source_id"),
+                        "title": evidence.get("title"),
+                        "law_name": evidence.get("law_name"),
+                        "article_no": evidence.get("article_no"),
+                        "hybrid_score": evidence.get("hybrid_score"),
+                        "rerank_score": evidence.get("rerank_score"),
+                    }
+                    for evidence in evidence_payloads[:3]
+                ],
+            )
             await record_timed_node(
                 trace,
                 node_name="bm25_retrieve",
@@ -803,6 +900,12 @@ async def run_rule_rag_analysis(
             await progress_callback(82, "checking_evidence_sufficiency")
         node_started_at = time.perf_counter()
         sufficiency = build_evidence_sufficiency(issues=issues)
+        logger.info(
+            "Job posting evidence sufficiency checked. posting_id=%s report_id=%s sufficiency=%s",
+            posting.id,
+            report.id,
+            sufficiency,
+        )
         await record_timed_node(
             trace,
             node_name="check_evidence_sufficiency",
@@ -840,6 +943,15 @@ async def run_rule_rag_analysis(
             risk_level=risk_level,
             evidence_strength=evidence_strength,
             evidence_items=reranked_evidence_items[:20],
+        )
+        logger.info(
+            "Job posting structured report generated. posting_id=%s report_id=%s risk_level=%s issue_count=%s evidence_count=%s evidence_strength=%s",
+            posting.id,
+            report.id,
+            risk_level,
+            len(issues),
+            len(reranked_evidence_items),
+            evidence_strength,
         )
         await record_timed_node(
             trace,
@@ -944,8 +1056,20 @@ def detect_issues(posting_text: str) -> list[dict[str, Any]]:
             flagged = normalize_flagged_text(match.group(0))
             key = (risk_pattern.issue_type, flagged)
             if key in seen:
+                logger.debug(
+                    "Duplicate job posting risk match skipped. issue_type=%s flagged_text=%s",
+                    risk_pattern.issue_type,
+                    flagged,
+                )
                 continue
             seen.add(key)
+            logger.info(
+                "Job posting risk phrase matched. issue_type=%s severity=%s flagged_text=%s query_terms=%s",
+                risk_pattern.issue_type,
+                risk_pattern.severity,
+                flagged,
+                risk_pattern.query_terms,
+            )
             issues.append(
                 {
                     "issue_type": risk_pattern.issue_type,

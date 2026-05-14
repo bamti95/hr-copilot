@@ -19,15 +19,29 @@ BGE_RERANKER_MODEL = os.getenv(
 FALLBACK_EMBEDDING_MODEL = "local-hash-embedding-v1"
 
 
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "t", "yes", "y", "on"}
+
+
 def current_embedding_model_name() -> str:
+    if _env_flag("JOB_POSTING_DISABLE_EMBEDDING_MODEL"):
+        return FALLBACK_EMBEDDING_MODEL
     return BGE_M3_MODEL if _get_sentence_transformer() is not None else FALLBACK_EMBEDDING_MODEL
 
 
 def current_reranker_model_name() -> str:
+    if _env_flag("JOB_POSTING_DISABLE_RERANKER"):
+        return "heuristic-slot-rerank"
     return BGE_RERANKER_MODEL if _get_cross_encoder() is not None else "heuristic-slot-rerank"
 
 
 def embed_text(text: str) -> list[float]:
+    if _env_flag("JOB_POSTING_DISABLE_EMBEDDING_MODEL"):
+        return _hash_embed_text(text)
+
     model = _get_sentence_transformer()
     if model is None:
         return _hash_embed_text(text)
@@ -48,6 +62,9 @@ def rerank_pairs(query: str, documents: Sequence[str]) -> list[float]:
     if not documents:
         return []
 
+    if _env_flag("JOB_POSTING_DISABLE_RERANKER"):
+        return []
+
     model = _get_cross_encoder()
     if model is None:
         return []
@@ -65,6 +82,9 @@ def rerank_pairs(query: str, documents: Sequence[str]) -> list[float]:
 
 @lru_cache(maxsize=1)
 def _get_sentence_transformer():
+    if _env_flag("JOB_POSTING_DISABLE_EMBEDDING_MODEL"):
+        logger.info("BGE embedding model disabled; using hash embedding fallback.")
+        return None
     try:
         from sentence_transformers import SentenceTransformer
 
@@ -76,6 +96,9 @@ def _get_sentence_transformer():
 
 @lru_cache(maxsize=1)
 def _get_cross_encoder():
+    if _env_flag("JOB_POSTING_DISABLE_RERANKER"):
+        logger.info("BGE reranker disabled; using heuristic slot rerank.")
+        return None
     try:
         from sentence_transformers import CrossEncoder
 
