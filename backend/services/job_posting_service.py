@@ -84,6 +84,10 @@ logger = logging.getLogger(__name__)
 ProgressCallback = Callable[[int, str], Awaitable[None]]
 
 
+class JobPostingAnalysisCancelled(Exception):
+    """Raised when a running job posting analysis job is cancelled."""
+
+
 @dataclass(slots=True)
 class RiskPattern:
     issue_type: str
@@ -674,8 +678,46 @@ class JobPostingService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Job posting analysis job was not found.",
-            )
+        )
         return JobPostingService._job_response(job, "채용공고 점검 작업 상태입니다.")
+
+    @staticmethod
+    async def cancel_analysis_job(
+        *,
+        db: AsyncSession,
+        job_id: int,
+        actor_id: int | None,
+    ) -> JobPostingAiJobResponse:
+        result = await db.execute(
+            select(AiJob).where(
+                AiJob.id == job_id,
+                AiJob.job_type == AiJobType.JOB_POSTING_COMPLIANCE_ANALYSIS.value,
+            )
+        )
+        job = result.scalar_one_or_none()
+        if job is None or (actor_id is not None and job.requested_by != actor_id):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Job posting analysis job was not found.",
+            )
+
+        if job.status not in {
+            AiJobStatus.SUCCESS.value,
+            AiJobStatus.PARTIAL_SUCCESS.value,
+            AiJobStatus.FAILED.value,
+            AiJobStatus.CANCELLED.value,
+        }:
+            job.status = AiJobStatus.CANCELLED.value
+            job.current_step = "analysis_cancelled"
+            job.error_message = "사용자가 채용공고 분석 작업을 취소했습니다."
+            job.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+            await db.refresh(job)
+
+        return JobPostingService._job_response(
+            job,
+            "채용공고 점검 작업이 취소되었습니다.",
+        )
 
     @staticmethod
     async def get_active_analysis_job(
@@ -756,6 +798,8 @@ class JobPostingService:
                 payload = job.request_payload or {}
                 mode = payload.get("mode")
                 actor_id = job.requested_by
+                if job.status == AiJobStatus.CANCELLED.value:
+                    return
                 job.status = AiJobStatus.RUNNING.value
                 job.progress = 10
                 job.current_step = "analysis_started"
@@ -763,6 +807,9 @@ class JobPostingService:
                 await db.commit()
 
                 async def update_progress(progress: int, current_step: str) -> None:
+                    await db.refresh(job)
+                    if job.status == AiJobStatus.CANCELLED.value:
+                        raise JobPostingAnalysisCancelled()
                     job.progress = max(job.progress, min(progress, 99))
                     job.current_step = current_step
                     await db.commit()
@@ -835,6 +882,9 @@ class JobPostingService:
                 else:
                     raise ValueError(f"Unsupported job posting analysis mode: {mode}")
 
+                await db.refresh(job)
+                if job.status == AiJobStatus.CANCELLED.value:
+                    return
                 job.status = AiJobStatus.SUCCESS.value
                 job.progress = 100
                 job.current_step = "analysis_completed"
@@ -846,12 +896,34 @@ class JobPostingService:
                 }
                 job.completed_at = datetime.now(timezone.utc)
                 await db.commit()
+            except JobPostingAnalysisCancelled:
+                await db.rollback()
+                result = await db.execute(select(AiJob).where(AiJob.id == job_id))
+                cancelled_job = result.scalar_one_or_none()
+                if cancelled_job is not None:
+                    cancelled_job.status = AiJobStatus.CANCELLED.value
+                    cancelled_job.current_step = "analysis_cancelled"
+                    cancelled_job.error_message = (
+                        cancelled_job.error_message
+                        or "사용자가 채용공고 분석 작업을 취소했습니다."
+                    )
+                    cancelled_job.completed_at = (
+                        cancelled_job.completed_at or datetime.now(timezone.utc)
+                    )
+                    await db.commit()
             except Exception as exc:
                 logger.exception("Job posting analysis job failed. job_id=%s", job_id)
                 await db.rollback()
                 result = await db.execute(select(AiJob).where(AiJob.id == job_id))
                 failed_job = result.scalar_one_or_none()
                 if failed_job is not None:
+                    if failed_job.status == AiJobStatus.CANCELLED.value:
+                        failed_job.current_step = "analysis_cancelled"
+                        failed_job.completed_at = (
+                            failed_job.completed_at or datetime.now(timezone.utc)
+                        )
+                        await db.commit()
+                        return
                     failed_job.status = AiJobStatus.FAILED.value
                     failed_job.progress = 100
                     failed_job.current_step = "analysis_failed"

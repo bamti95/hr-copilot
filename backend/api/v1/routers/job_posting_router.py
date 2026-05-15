@@ -369,6 +369,23 @@ async def get_job_posting_analysis_job(
 
 
 @router.post(
+    "/analysis-jobs/{job_id}/cancel",
+    response_model=JobPostingAiJobResponse,
+    summary="채용공고 분석 비동기 작업 취소",
+)
+async def cancel_job_posting_analysis_job(
+    job_id: int,
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> JobPostingAiJobResponse:
+    return await JobPostingService.cancel_analysis_job(
+        db=db,
+        job_id=job_id,
+        actor_id=current_manager.id,
+    )
+
+
+@router.post(
     "/knowledge-sources/upload",
     response_model=KnowledgeSourceResponse,
     status_code=status.HTTP_201_CREATED,

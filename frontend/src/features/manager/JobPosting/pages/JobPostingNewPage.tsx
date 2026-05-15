@@ -5,6 +5,7 @@ import { PageIntro } from "../../../../common/components/PageIntro";
 import { JobProgressCard as SharedJobProgressCard } from "../components/JobProgressCard";
 import { Field } from "../components/JobPostingFields";
 import {
+  cancelAnalysisJob,
   fetchActiveAnalysisJob,
   fetchAnalysisJob,
   submitAnalyzeFileJob,
@@ -12,16 +13,25 @@ import {
 } from "../services/jobPostingService";
 import type { JobPostingAiJob, JobPostingCreateRequest } from "../types";
 import { inputClassName, textareaClassName } from "../utils/display";
+import {
+  forgetIgnoredJobId,
+  isIgnoredJobId,
+  rememberIgnoredJobId,
+} from "../utils/ignoredJobs";
 import { useJobPolling } from "../hooks/useJobPolling";
+import { JOB_POSTING_ANALYSIS_POLLING_TIMEOUT_MS } from "../constants/analysisPolling";
 
 const ACTIVE_ANALYSIS_JOB_KEY = "hrCopilot.activeJobPostingAnalysisJob";
+const IGNORED_ANALYSIS_JOB_IDS_KEY = "hrCopilot.ignoredJobPostingAnalysisJobIds";
 
 function readStoredAnalysisJob(): JobPostingAiJob | null {
   try {
     const raw = window.localStorage.getItem(ACTIVE_ANALYSIS_JOB_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<JobPostingAiJob>;
-    return typeof parsed.jobId === "number" && typeof parsed.status === "string"
+    return typeof parsed.jobId === "number" &&
+      typeof parsed.status === "string" &&
+      !isIgnoredJobId(IGNORED_ANALYSIS_JOB_IDS_KEY, parsed.jobId)
       ? (parsed as JobPostingAiJob)
       : null;
   } catch {
@@ -81,6 +91,7 @@ export function JobPostingNewPage() {
     clearJob: clearAnalysisJob,
   } = useJobPolling({
     fetcher: fetchAnalysisJob,
+    maxPollingMs: JOB_POSTING_ANALYSIS_POLLING_TIMEOUT_MS,
     onCompleted: handleAnalysisCompleted,
     onFailed: (failedJob) => {
       setIsSaving(false);
@@ -91,6 +102,14 @@ export function JobPostingNewPage() {
       setIsSaving(false);
       setErrorMessage(
         error instanceof Error ? error.message : "작업 상태를 불러오지 못했습니다.",
+      );
+    },
+    onTimeout: (timedOutJob) => {
+      setIsSaving(false);
+      storeAnalysisJob(null);
+      rememberIgnoredJobId(IGNORED_ANALYSIS_JOB_IDS_KEY, timedOutJob.jobId);
+      setErrorMessage(
+        "분석 작업 상태 조회를 중단했습니다. 서버 작업이 계속 실행 중이면 상세 화면에서 다시 확인할 수 있습니다.",
       );
     },
   });
@@ -105,6 +124,10 @@ export function JobPostingNewPage() {
     void fetchActiveAnalysisJob()
       .then((activeJob) => {
         if (cancelled || !activeJob) return;
+        if (isIgnoredJobId(IGNORED_ANALYSIS_JOB_IDS_KEY, activeJob.jobId)) {
+          storeAnalysisJob(null);
+          return;
+        }
         storeAnalysisJob(activeJob);
         setIsSaving(true);
         startAnalysisPolling(activeJob);
@@ -143,12 +166,31 @@ export function JobPostingNewPage() {
               companyName: form.companyName || undefined,
             })
           : await submitAnalyzeTextJob(form);
+      forgetIgnoredJobId(IGNORED_ANALYSIS_JOB_IDS_KEY, submittedJob.jobId);
       storeAnalysisJob(submittedJob);
       startAnalysisPolling(submittedJob);
     } catch (error) {
       setIsSaving(false);
       setErrorMessage(
         error instanceof Error ? error.message : "채용공고 분석을 실행하지 못했습니다.",
+      );
+    }
+  }
+
+  async function handleCancelAnalysisJob(job: JobPostingAiJob) {
+    rememberIgnoredJobId(IGNORED_ANALYSIS_JOB_IDS_KEY, job.jobId);
+    setIsSaving(false);
+    setErrorMessage("");
+    try {
+      const cancelledJob = await cancelAnalysisJob(job.jobId);
+      storeAnalysisJob(null);
+      clearAnalysisJob();
+      setErrorMessage(cancelledJob.errorMessage || "채용공고 분석 작업을 취소했습니다.");
+    } catch (error) {
+      storeAnalysisJob(null);
+      clearAnalysisJob();
+      setErrorMessage(
+        error instanceof Error ? error.message : "채용공고 분석 작업 취소에 실패했습니다.",
       );
     }
   }
@@ -283,7 +325,12 @@ export function JobPostingNewPage() {
             </div>
           ) : null}
 
-          {activeJob ? <SharedJobProgressCard job={activeJob} /> : null}
+          {activeJob ? (
+            <SharedJobProgressCard
+              job={activeJob}
+              onCancelJob={() => void handleCancelAnalysisJob(activeJob)}
+            />
+          ) : null}
 
           <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
             분석은 AiJob 백그라운드 작업으로 실행됩니다. 작업 중에도 다른 화면으로
