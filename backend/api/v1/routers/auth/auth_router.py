@@ -1,3 +1,5 @@
+"""관리자 인증 API 라우터다."""
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 

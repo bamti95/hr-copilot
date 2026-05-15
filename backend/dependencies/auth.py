@@ -1,3 +1,8 @@
+"""인증/인가 의존성을 제공한다.
+
+현재 로그인한 관리자 조회와 역할 검사를 공통 의존성으로 묶는다.
+"""
+
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -15,6 +20,7 @@ async def get_current_manager(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> Manager:
+    """Access token 기준 현재 관리자 계정을 조회한다."""
     token = credentials.credentials
 
     try:
@@ -51,6 +57,7 @@ async def get_current_manager(
 async def get_current_active_manager(
     manager: Manager = Depends(get_current_manager),
 ) -> Manager:
+    """활성 상태 관리자만 통과시킨다."""
     if manager.status != "ACTIVE":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -60,6 +67,7 @@ async def get_current_active_manager(
 
 
 def require_role_type(role_type: str):
+    """특정 역할 유형만 허용하는 의존성을 만든다."""
     async def dependency(
         manager: Manager = Depends(get_current_active_manager),
     ) -> Manager:

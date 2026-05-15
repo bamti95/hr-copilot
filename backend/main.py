@@ -1,3 +1,8 @@
+"""FastAPI 애플리케이션 진입점이다.
+
+라우터 등록, CORS 설정, 시작 시점 DB 연결 확인을 담당한다.
+"""
+
 import logging
 import os
 from contextlib import asynccontextmanager

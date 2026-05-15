@@ -1,3 +1,5 @@
+"""문서 종류별 텍스트 추출 전략을 모아둔 모듈이다."""
+
 from __future__ import annotations
 
 import logging
@@ -583,3 +585,4 @@ def extract_text_from_file(file_path: str, file_ext: str | None) -> ExtractedTex
             source_type="unknown",
             document_type="unknown",
         )
+

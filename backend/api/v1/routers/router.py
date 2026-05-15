@@ -1,3 +1,5 @@
+"""v1 API 하위 라우터를 하나로 묶는다."""
+
 from fastapi import APIRouter
 
 from api.v1.routers.auth.auth_router import router as auth_router

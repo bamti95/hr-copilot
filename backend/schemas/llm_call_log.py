@@ -1,3 +1,5 @@
+"""LLM 호출 로그 조회 응답 스키마를 정의한다."""
+
 from datetime import datetime
 from decimal import Decimal
 
@@ -79,3 +81,4 @@ class LlmCallLogListResponse(BaseModel):
             traceId=trace_id,
             items=items,
         )
+

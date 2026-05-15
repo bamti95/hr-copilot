@@ -1,3 +1,5 @@
+"""프롬프트 프로필 관리 스키마를 정의한다."""
+
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -53,3 +55,4 @@ class PromptProfileDeleteResponse(BaseModel):
     deleted_by: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
+

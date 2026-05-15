@@ -1,3 +1,9 @@
+"""채용공고 분석 결과를 구조화된 리포트로 조립한다.
+
+탐지된 이슈와 근거 문서를 사람이 읽기 쉬운 형태로 정리한다.
+근거 강도와 점수는 상세 화면과 저장 결과에서 함께 사용된다.
+"""
+
 from __future__ import annotations
 
 from typing import Any
@@ -13,6 +19,7 @@ def build_structured_compliance_report(
     evidence_strength: int,
     evidence_items: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    """최종 컴플라이언스 리포트 구조를 만든다."""
     structured_issues = []
     for issue in issues:
         sources = issue.get("sources") or []
@@ -81,6 +88,7 @@ def build_structured_compliance_report(
 
 
 def classify_issue_evidence_strength(sources: list[dict[str, Any]]) -> str:
+    """이슈별 근거 강도를 HIGH/MEDIUM/LOW로 분류한다."""
     has_law = any(source.get("law_name") or source.get("article_no") for source in sources)
     has_guide_or_case = any(
         source.get("source_type") in {"LEGAL_GUIDEBOOK", "LEGAL_MANUAL", "INSPECTION_CASE"}
@@ -97,6 +105,7 @@ def classify_issue_evidence_strength(sources: list[dict[str, Any]]) -> str:
 
 
 def calculate_evidence_strength(issues: list[dict[str, Any]]) -> int:
+    """이슈들의 근거 강도를 0~100 점수로 환산한다."""
     if not issues:
         return 92
     scores = {
@@ -113,6 +122,7 @@ def calculate_evidence_strength(issues: list[dict[str, Any]]) -> int:
 
 
 def find_penalty_text(sources: list[dict[str, Any]]) -> str | None:
+    """출처 본문에서 벌칙, 과태료 같은 제재 문구를 찾는다."""
     for source in sources:
         content = source.get("content") or ""
         if any(keyword in content for keyword in ["벌금", "과태료", "징역", "시정명령"]):
@@ -124,6 +134,7 @@ def build_evidence_sufficiency(
     *,
     issues: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    """이슈별 근거 충분성 점검 결과를 만든다."""
     checks = []
     for issue in issues:
         sources = issue.get("sources") or []

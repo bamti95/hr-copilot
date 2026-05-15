@@ -1,3 +1,5 @@
+"""관리자 refresh token 해시를 저장하는 모델이다."""
+
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String
@@ -19,3 +21,4 @@ class ManagerRefreshToken(Base, AuditBase):
     ip_address: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     manager = relationship("Manager", back_populates="refresh_tokens")
+

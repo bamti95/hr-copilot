@@ -1,3 +1,9 @@
+"""관리자 대시보드 집계 전용 리포지토리.
+
+문서 처리, 질문 생성, 검토 상태, LLM 비용처럼 대시보드에 바로 쓰는 숫자를 모은다.
+화면에서 필요한 묶음 기준에 맞춰 count와 최근 활동 목록을 함께 제공한다.
+"""
+
 from typing import Any
 from datetime import datetime
 
@@ -10,6 +16,7 @@ from models.interview_question import InterviewQuestion
 from models.interview_session import InterviewSession
 from models.llm_call_log import LlmCallLog
 
+# 문서 추출이 아직 끝나지 않은 상태 코드 묶음이다.
 PENDING_DOCUMENT_STATUSES = {"PENDING", "PROCESSING"}
 FAILED_DOCUMENT_STATUSES = {"FAILED"}
 PENDING_QUESTION_STATUSES = {"NOT_REQUESTED", "QUEUED", "PROCESSING"}
@@ -20,13 +27,17 @@ REVIEW_PROBLEM_STATUSES = {"needs_revision", "rejected"}
 
 
 class ManagerDashboardRepository:
+    """관리자 대시보드용 집계 쿼리를 모아 둔 객체."""
+
     def __init__(self, db: AsyncSession):
         self.db = db
 
     async def _scalar_int(self, stmt: Any) -> int:
+        """정수형 집계 결과를 일관된 형식으로 변환한다."""
         return int((await self.db.execute(stmt)).scalar_one() or 0)
 
     async def count_document_pending(self) -> int:
+        """처리 대기 중인 문서 수를 센다."""
         return await self._scalar_int(
             select(func.count(Document.id)).where(
                 Document.deleted_at.is_(None),
@@ -35,6 +46,7 @@ class ManagerDashboardRepository:
         )
 
     async def count_document_failed(self) -> int:
+        """처리 실패 문서 수를 센다."""
         return await self._scalar_int(
             select(func.count(Document.id)).where(
                 Document.deleted_at.is_(None),
@@ -43,6 +55,7 @@ class ManagerDashboardRepository:
         )
 
     async def count_document_analyzed_candidates(self) -> int:
+        """문서 분석이 완료된 후보자 수를 센다."""
         return await self._scalar_int(
             select(func.count(distinct(Document.candidate_id))).where(
                 Document.deleted_at.is_(None),
@@ -57,6 +70,7 @@ class ManagerDashboardRepository:
         )
 
     async def count_question_pending_sessions(self) -> int:
+        """질문 생성이 아직 끝나지 않은 세션 수를 센다."""
         return await self._scalar_int(
             select(func.count(InterviewSession.id)).where(
                 InterviewSession.deleted_at.is_(None),
@@ -67,6 +81,7 @@ class ManagerDashboardRepository:
         )
 
     async def count_question_failed_sessions(self) -> int:
+        """질문 생성 실패 세션 수를 센다."""
         return await self._scalar_int(
             select(func.count(InterviewSession.id)).where(
                 InterviewSession.deleted_at.is_(None),
@@ -75,6 +90,7 @@ class ManagerDashboardRepository:
         )
 
     async def count_partial_sessions(self) -> int:
+        """질문 생성이 일부만 끝난 세션 수를 센다."""
         return await self._scalar_int(
             select(func.count(InterviewSession.id)).where(
                 InterviewSession.deleted_at.is_(None),
@@ -85,6 +101,10 @@ class ManagerDashboardRepository:
         )
 
     async def count_review_problem_sessions(self) -> int:
+        """재검토가 필요한 세션 수를 센다.
+
+        명시적 반려 상태와 저점수 질문을 함께 본다.
+        """
         return await self._scalar_int(
             select(func.count(distinct(InterviewQuestion.interview_sessions_id))).where(
                 InterviewQuestion.deleted_at.is_(None),
@@ -96,11 +116,13 @@ class ManagerDashboardRepository:
         )
 
     async def count_candidates(self) -> int:
+        """활성 후보자 수를 센다."""
         return await self._scalar_int(
             select(func.count(Candidate.id)).where(Candidate.deleted_at.is_(None))
         )
 
     async def count_document_uploaded_candidates(self) -> int:
+        """문서를 한 건 이상 올린 후보자 수를 센다."""
         return await self._scalar_int(
             select(func.count(distinct(Document.candidate_id))).where(
                 Document.deleted_at.is_(None)
@@ -108,6 +130,7 @@ class ManagerDashboardRepository:
         )
 
     async def count_sessions(self) -> int:
+        """활성 면접 세션 수를 센다."""
         return await self._scalar_int(
             select(func.count(InterviewSession.id)).where(
                 InterviewSession.deleted_at.is_(None)
@@ -115,6 +138,7 @@ class ManagerDashboardRepository:
         )
 
     async def count_question_completed_sessions(self) -> int:
+        """질문 생성 완료 세션 수를 센다."""
         return await self._scalar_int(
             select(func.count(InterviewSession.id)).where(
                 InterviewSession.deleted_at.is_(None),
@@ -125,6 +149,10 @@ class ManagerDashboardRepository:
         )
 
     async def count_review_passed_sessions(self) -> int:
+        """승인 질문이 일정 개수 이상인 세션 수를 센다.
+
+        현재 기준은 승인 질문 5개 이상이다.
+        """
         approved_question_count = func.sum(
             case((InterviewQuestion.review_status == "approved", 1), else_=0)
         )
@@ -139,6 +167,7 @@ class ManagerDashboardRepository:
         )
 
     async def get_priority_session_rows(self):
+        """우선 확인이 필요한 세션 목록 원본 행을 반환한다."""
         result = await self.db.execute(
             select(
                 InterviewSession.id,
@@ -188,6 +217,7 @@ class ManagerDashboardRepository:
         return result.all()
 
     async def get_candidates_without_session_rows(self, limit: int = 10):
+        """아직 면접 세션이 없는 후보자 최근 목록을 가져온다."""
         result = await self.db.execute(
             select(Candidate.id, Candidate.name, Candidate.job_position, Candidate.updated_at)
             .outerjoin(
@@ -207,6 +237,7 @@ class ManagerDashboardRepository:
         return result.all()
 
     async def get_document_failed_candidate_rows(self, limit: int = 10):
+        """문서 추출이 실패한 후보자 최근 목록을 가져온다."""
         result = await self.db.execute(
             select(
                 Candidate.id,
@@ -227,6 +258,7 @@ class ManagerDashboardRepository:
         return result.all()
 
     async def get_recent_session_rows(self, limit: int = 8):
+        """최근 생성된 세션 목록과 질문 수를 함께 조회한다."""
         question_count = func.count(InterviewQuestion.id)
         result = await self.db.execute(
             select(
@@ -264,6 +296,7 @@ class ManagerDashboardRepository:
         return result.all()
 
     async def get_recent_candidate_activity_rows(self, limit: int = 8):
+        """최근 등록된 후보자 목록을 가져온다."""
         result = await self.db.execute(
             select(Candidate.id, Candidate.name, Candidate.job_position, Candidate.created_at)
             .where(Candidate.deleted_at.is_(None))
@@ -273,6 +306,7 @@ class ManagerDashboardRepository:
         return result.all()
 
     async def get_recent_document_activity_rows(self, limit: int = 8):
+        """최근 업로드된 문서 목록을 가져온다."""
         result = await self.db.execute(
             select(
                 Document.id,
@@ -289,6 +323,7 @@ class ManagerDashboardRepository:
         return result.all()
 
     async def get_recent_session_activity_rows(self, limit: int = 8):
+        """최근 생성된 세션 활동 목록을 가져온다."""
         result = await self.db.execute(
             select(
                 InterviewSession.id,
@@ -308,6 +343,7 @@ class ManagerDashboardRepository:
         return result.all()
 
     async def get_recent_question_activity_rows(self, limit: int = 8):
+        """최근 생성된 질문 활동 목록을 가져온다."""
         result = await self.db.execute(
             select(
                 InterviewQuestion.id,
@@ -337,6 +373,11 @@ class ManagerDashboardRepository:
         today_start: datetime,
         month_start: datetime,
     ):
+        """LLM 비용 대시보드 상단 요약 1행을 계산한다.
+
+        오늘 기준 수치와 월 기준 누적 수치를 함께 반환한다.
+        로컬 모델은 비용 집계 대상에서 제외한다.
+        """
         failed_call = case((LlmCallLog.call_status != "success", 1), else_=0)
         today_cost = func.sum(
             case(
@@ -379,6 +420,7 @@ class ManagerDashboardRepository:
         month_start: datetime,
         limit: int = 5,
     ):
+        """월 기준 비용 상위 노드를 집계한다."""
         result = await self.db.execute(
             select(
                 func.coalesce(LlmCallLog.node_name, "unknown").label("node_name"),

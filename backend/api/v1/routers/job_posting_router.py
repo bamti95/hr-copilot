@@ -1,3 +1,5 @@
+"""채용공고 분석과 지식 인덱싱 API 라우터다."""
+
 from __future__ import annotations
 
 from typing import Annotated

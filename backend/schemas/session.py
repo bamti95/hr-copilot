@@ -1,3 +1,5 @@
+"""면접 세션과 질문 생성 상태 API 스키마를 정의한다."""
+
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -127,3 +129,4 @@ class SessionQuestionGenerationResponse(BaseModel):
     success: bool = True
     data: SessionQuestionGenerationData
     message: str
+

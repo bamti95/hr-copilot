@@ -1,3 +1,5 @@
+"""생성/삭제 감사 컬럼 믹스인을 제공한다."""
+
 from datetime import datetime
 
 from sqlalchemy import DateTime, Integer, func
@@ -13,3 +15,4 @@ class AuditBase:
     created_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deleted_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+

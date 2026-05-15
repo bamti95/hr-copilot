@@ -1,3 +1,10 @@
+"""면접 질문 생성 파이프라인을 실행하고 결과를 저장한다.
+
+질문 생성 그래프를 선택해 호출하고,
+생성 결과를 세션 상태와 질문 테이블에 반영한다.
+전체 생성과 일부 질문 재생성을 같은 서비스에서 처리하는 것이 특징이다.
+"""
+
 import asyncio
 import json
 import logging
@@ -26,6 +33,7 @@ GraphRunner = Callable[
 
 
 def resolve_question_graph_runner(graph_impl: str) -> GraphRunner:
+    """요청된 구현 이름에 맞는 질문 생성 그래프 러너를 고른다."""
     impl = (graph_impl or "default").strip().lower()
     if impl == "jh":
         from ai.interview_graph_JH.runner import run_interview_question_graph
@@ -45,6 +53,8 @@ def resolve_question_graph_runner(graph_impl: str) -> GraphRunner:
 
 
 class QuestionGenerationService:
+    """질문 생성 실행과 저장을 담당하는 서비스다."""
+
     def __init__(self, db: AsyncSession | None = None):
         self.db = db
         self.question_repo = InterviewQuestionRepository(db) if db is not None else None
@@ -57,6 +67,7 @@ class QuestionGenerationService:
         *,
         graph_impl: str = "default",
     ) -> QuestionGenerationResponse:
+        """질문 생성 그래프를 호출해 결과를 받아온다."""
         logger.info(
             "Question Generation Request Payload\n%s",
             json.dumps(
@@ -87,6 +98,7 @@ class QuestionGenerationService:
         *,
         graph_impl: str = "default",
     ) -> QuestionGenerationResponse:
+        """세션 기준으로 질문 생성을 실행하고 DB에 반영한다."""
         if self.db is None or self.question_repo is None or self.session_repo is None:
             raise RuntimeError("QuestionGenerationService requires a database session.")
 
@@ -191,6 +203,7 @@ class QuestionGenerationService:
 
     @staticmethod
     def _serialize_existing_question(question: InterviewQuestion) -> dict:
+        """재생성 입력에 넣기 위해 기존 질문을 직렬화한다."""
         return {
             "id": str(question.id),
             "category": question.category,
@@ -208,6 +221,7 @@ class QuestionGenerationService:
 
     @staticmethod
     def _apply_question_item(entity: InterviewQuestion, item: InterviewQuestionItem) -> None:
+        """그래프가 반환한 질문 항목으로 기존 엔터티를 덮어쓴다."""
         review: ReviewResult = item.review
         entity.category = item.category
         entity.question_text = item.question_text
@@ -233,6 +247,7 @@ class QuestionGenerationService:
         target_question_ids: list[str],
         result: QuestionGenerationResponse,
     ) -> None:
+        """선택 재생성 대상 질문만 부분 갱신한다."""
         questions_by_id = {
             str(question.id): question
             for question in existing_questions
@@ -254,6 +269,7 @@ class QuestionGenerationService:
         actor_id: int | None,
         result: QuestionGenerationResponse,
     ) -> None:
+        """전체 재생성 결과로 질문 저장본을 교체한다."""
         if self.question_repo is None:
             raise RuntimeError("Question repository is not initialized.")
 
@@ -294,6 +310,7 @@ async def run_question_generation_background_job(
     target_question_ids: list[str] | None = None,
     graph_impl: str = "default",
 ) -> None:
+    """백그라운드 워커에서 질문 생성을 실행한다."""
     async with AsyncSessionLocal() as db:
         service = QuestionGenerationService(db)
         await service.generate_and_store_for_session(

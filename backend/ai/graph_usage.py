@@ -1,3 +1,5 @@
+"""그래프 실행 중 LLM 사용량 기록 보조 함수를 제공한다."""
+
 from typing import Any
 
 
@@ -35,3 +37,4 @@ def collect_llm_usage_update(
         return usages, len(usages), True
 
     return usages[saved_usage_count:], len(usages), True
+

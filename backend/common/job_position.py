@@ -1,3 +1,5 @@
+"""직무명과 직무 코드를 정규화하는 유틸리티다."""
+
 from __future__ import annotations
 
 import re
@@ -126,4 +128,5 @@ def normalize_job_position(value: str | None) -> str | None:
 
     suffix = extract_experience_suffix(value)
     return f"{code} ({suffix})" if suffix else code
+
 

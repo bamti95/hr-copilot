@@ -1,3 +1,10 @@
+"""면접 세션 생명주기를 관리한다.
+
+세션 생성과 수정, 질문 생성 트리거, 진행 상태 조회를 맡는다.
+질문 생성은 시간이 걸릴 수 있으므로 동기 처리 대신
+백그라운드 작업으로 넘기고 상태 필드로 진행 상황을 관리한다.
+"""
+
 import math
 from datetime import datetime, timezone
 
@@ -35,6 +42,8 @@ from services.session_generation_payload_assembler import SessionGenerationPaylo
 
 
 class SessionService:
+    """면접 세션 CRUD와 질문 생성 흐름을 관리하는 서비스다."""
+
     def __init__(self, db: AsyncSession):
         self.db = db
         self.session_repo = SessionRepository(db)
@@ -51,6 +60,11 @@ class SessionService:
         *,
         graph_impl: str = "default",
     ) -> SessionResponse:
+        """면접 세션을 생성하고 질문 생성 작업을 큐에 올린다.
+
+        세션을 만들자마자 질문 생성을 QUEUED 상태로 전환한다.
+        실제 생성은 백그라운드에서 처리해 API 응답을 빠르게 돌려준다.
+        """
         candidate = await self.candidate_repo.find_by_id_not_deleted(request.candidate_id)
         if not candidate:
             raise HTTPException(
@@ -102,6 +116,7 @@ class SessionService:
         candidate_id: int | None,
         target_job: str | None,
     ) -> SessionListData:
+        """면접 세션 목록과 페이지 정보를 반환한다."""
         total_items = await self.session_repo.count_list(
             candidate_id=candidate_id,
             target_job=target_job,
@@ -125,6 +140,7 @@ class SessionService:
         )
 
     async def get_session(self, session_id: int) -> SessionDetailResponse:
+        """세션 상세와 질문 생성 입력 미리보기를 함께 반환한다."""
         entity = await self.session_repo.get_detail_with_candidate(session_id)
         if not entity:
             raise HTTPException(
@@ -146,6 +162,7 @@ class SessionService:
         session_id: int,
         request: SessionUpdateRequest,
     ) -> SessionResponse:
+        """면접 세션의 기본 정보만 수정한다."""
         entity = await self.session_repo.find_by_id_not_deleted(session_id)
         if not entity:
             raise HTTPException(
@@ -171,6 +188,7 @@ class SessionService:
         session_id: int,
         actor_id: int | None,
     ) -> SessionDeleteResponse:
+        """면접 세션을 소프트 삭제한다."""
         entity = await self.session_repo.find_by_id_any(session_id)
         if not entity:
             raise HTTPException(
@@ -198,6 +216,11 @@ class SessionService:
         actor_id: int | None,
         background_tasks: BackgroundTasks,
     ) -> SessionTriggerData:
+        """질문 생성을 다시 요청한다.
+
+        전체 재생성뿐 아니라 일부 질문 재생성도 같은 진입점에서 처리한다.
+        실제 생성 로직은 백그라운드 작업으로 넘긴다.
+        """
         entity = await self.session_repo.find_by_id_not_deleted(session_id)
         if not entity:
             raise HTTPException(
@@ -228,6 +251,13 @@ class SessionService:
         self,
         session_id: int,
     ) -> SessionQuestionGenerationData:
+        """질문 생성 상태와 현재 질문 목록을 함께 반환한다.
+
+        저장 상태와 실제 질문 데이터가 어긋나는 경우가 있어
+        이 함수에서 한 번 더 상태를 보정한다.
+        대표적으로 질문은 이미 저장됐는데 세션 상태가
+        QUEUED나 PROCESSING에 머무는 경우를 여기서 정리한다.
+        """
         entity = await self.session_repo.find_by_id_not_deleted(session_id)
         if not entity:
             raise HTTPException(

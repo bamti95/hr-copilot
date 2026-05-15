@@ -1,3 +1,9 @@
+"""채용공고 분석용 지식 저장소 조회 로직.
+
+법령, 가이드, 사례 chunk를 검색 목적에 맞게 조회한다.
+무거운 `ILIKE` 조건은 줄이고, issue code 같은 구조화 필드를 우선 활용하는 것이 핵심 규칙이다.
+"""
+
 from __future__ import annotations
 
 from sqlalchemy import desc, func, literal, or_, select
@@ -9,6 +15,7 @@ from models.job_posting_knowledge_source import JobPostingKnowledgeSource
 from repositories.base_repository import BaseRepository
 
 
+# fallback 키워드는 많이 붙일수록 DB 조건이 급격히 커져 상한을 둔다.
 MAX_KEYWORD_TERMS = 5
 KEYWORD_STOPWORDS = {
     "채용공고",
@@ -27,6 +34,7 @@ KEYWORD_STOPWORDS = {
     "for",
     "with",
 }
+# issue code는 문자열 검색보다 exact match가 훨씬 안정적이라 별도 사전을 둔다.
 KNOWN_ISSUE_CODES = {
     "age_discrimination": "AGE_DISCRIMINATION",
     "benefit_vague": "BENEFIT_VAGUE",
@@ -45,6 +53,11 @@ KNOWN_ISSUE_CODES = {
 
 
 def normalize_keyword_terms(query_terms: list[str]) -> list[str]:
+    """fallback 검색에 쓸 핵심 토큰만 남긴다.
+
+    짧은 토큰, 불용어, issue code 자체는 제거한다.
+    결과 개수는 `MAX_KEYWORD_TERMS` 이내로 제한한다.
+    """
     normalized: list[str] = []
     for term in query_terms:
         value = (term or "").strip().lower()
@@ -62,6 +75,7 @@ def normalize_keyword_terms(query_terms: list[str]) -> list[str]:
 
 
 def extract_issue_codes(query_terms: list[str]) -> list[str]:
+    """질의 토큰 안의 issue code를 추출한다."""
     codes: list[str] = []
     for term in query_terms:
         code = KNOWN_ISSUE_CODES.get((term or "").strip().lower())
@@ -71,6 +85,8 @@ def extract_issue_codes(query_terms: list[str]) -> list[str]:
 
 
 class JobPostingKnowledgeSourceRepository(BaseRepository[JobPostingKnowledgeSource]):
+    """지식 원본 문서 메타데이터를 조회하는 저장소."""
+
     def __init__(self, db: AsyncSession):
         super().__init__(db, JobPostingKnowledgeSource)
 
@@ -141,10 +157,17 @@ class JobPostingKnowledgeSourceRepository(BaseRepository[JobPostingKnowledgeSour
 
 
 class JobPostingKnowledgeChunkRepository(BaseRepository[JobPostingKnowledgeChunk]):
+    """RAG 검색에 쓰이는 chunk 조회 저장소.
+
+    검색 경로는 metadata exact, full-text, keyword fallback, vector로 나뉜다.
+    각 경로는 비용과 정확도 성격이 달라 서비스 계층에서 조합해 쓴다.
+    """
+
     def __init__(self, db: AsyncSession):
         super().__init__(db, JobPostingKnowledgeChunk)
 
     async def delete_by_source_id(self, source_id: int) -> None:
+        """원본 문서 삭제 시 연결된 chunk도 함께 지운다."""
         chunks = await self.find_by_source_id(source_id, limit=100000)
         for chunk in chunks:
             await self.db.delete(chunk)
@@ -155,6 +178,7 @@ class JobPostingKnowledgeChunkRepository(BaseRepository[JobPostingKnowledgeChunk
         *,
         limit: int = 100,
     ) -> list[JobPostingKnowledgeChunk]:
+        """원본 문서에 속한 chunk를 순서대로 조회한다."""
         stmt = (
             select(JobPostingKnowledgeChunk)
             .where(
@@ -173,6 +197,11 @@ class JobPostingKnowledgeChunkRepository(BaseRepository[JobPostingKnowledgeChunk
         query_terms: list[str],
         limit: int = 30,
     ) -> list[JobPostingKnowledgeChunk]:
+        """관리성 후보 조회용 간단 검색이다.
+
+        summary와 law_name 중심으로만 찾는다.
+        긴 본문 검색은 제외해 관리 화면 조회 비용을 낮춘다.
+        """
         stmt = (
             select(JobPostingKnowledgeChunk)
             .options(selectinload(JobPostingKnowledgeChunk.knowledge_source))
@@ -208,6 +237,11 @@ class JobPostingKnowledgeChunkRepository(BaseRepository[JobPostingKnowledgeChunk
         query_terms: list[str],
         limit: int = 30,
     ) -> list[tuple[JobPostingKnowledgeChunk, float]]:
+        """PostgreSQL full-text 검색을 수행한다.
+
+        본문, 요약, issue_code, 법령명을 하나의 tsvector로 묶어 순위를 계산한다.
+        issue code가 질의에 포함되면 exact match 조건을 함께 붙인다.
+        """
         vector = func.to_tsvector(
             "simple",
             func.concat_ws(
@@ -247,6 +281,11 @@ class JobPostingKnowledgeChunkRepository(BaseRepository[JobPostingKnowledgeChunk
         query_terms: list[str],
         limit: int = 30,
     ) -> list[tuple[JobPostingKnowledgeChunk, float]]:
+        """full-text가 약할 때만 쓰는 가벼운 fallback 검색이다.
+
+        summary와 law_name에만 제한적으로 `ILIKE`를 건다.
+        점수는 낮은 기본값 0.01로 두어 본 검색보다 뒤에 오도록 한다.
+        """
         keyword_terms = normalize_keyword_terms(query_terms)
         issue_codes = extract_issue_codes(query_terms)
         conditions = []
@@ -282,6 +321,11 @@ class JobPostingKnowledgeChunkRepository(BaseRepository[JobPostingKnowledgeChunk
         query_terms: list[str],
         limit: int = 30,
     ) -> list[tuple[JobPostingKnowledgeChunk, float]]:
+        """구조화 필드 중심의 빠른 검색이다.
+
+        issue_code, risk_category, law_name처럼 인지하기 쉬운 슬롯을 먼저 확인한다.
+        Hybrid Lite 전략에서 가장 먼저 실행되는 경로다.
+        """
         issue_codes = extract_issue_codes(query_terms)
         if issue_type and issue_type not in issue_codes:
             issue_codes.append(issue_type)
@@ -291,6 +335,7 @@ class JobPostingKnowledgeChunkRepository(BaseRepository[JobPostingKnowledgeChunk
         if issue_codes:
             conditions.append(JobPostingKnowledgeChunk.issue_code.in_(issue_codes))
             conditions.append(JobPostingKnowledgeChunk.risk_category.in_(issue_codes))
+        # law_name은 부분 일치가 유용하지만 비용을 줄이기 위해 상위 3개 토큰만 허용한다.
         conditions.extend(JobPostingKnowledgeChunk.law_name.ilike(f"%{term}%") for term in keyword_terms[:3])
         if not conditions:
             return []
@@ -316,6 +361,7 @@ class JobPostingKnowledgeChunkRepository(BaseRepository[JobPostingKnowledgeChunk
         query_embedding: list[float],
         limit: int = 30,
     ) -> list[tuple[JobPostingKnowledgeChunk, float]]:
+        """pgvector 코사인 거리로 의미 유사 chunk를 찾는다."""
         if not query_embedding:
             return []
         distance = JobPostingKnowledgeChunk.embedding.cosine_distance(query_embedding)
@@ -340,6 +386,11 @@ class JobPostingKnowledgeChunkRepository(BaseRepository[JobPostingKnowledgeChunk
         query_terms: list[str],
         limit: int = 500,
     ) -> list[JobPostingKnowledgeChunk]:
+        """파이썬 벡터 fallback용 검색 풀을 좁혀 가져온다.
+
+        DB에서 먼저 대략적인 후보군을 줄인 뒤 메모리에서 코사인 유사도를 계산한다.
+        전체 테이블을 직접 순회하지 않게 하려는 의도다.
+        """
         stmt = (
             select(JobPostingKnowledgeChunk)
             .options(selectinload(JobPostingKnowledgeChunk.knowledge_source))

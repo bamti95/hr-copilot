@@ -1,3 +1,5 @@
+"""관리자 대시보드 API 라우터다."""
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,3 +19,4 @@ async def get_manager_dashboard_summary(
 ) -> ManagerDashboardSummaryResponse:
     service = ManagerDashboardService(db)
     return await service.get_summary()
+

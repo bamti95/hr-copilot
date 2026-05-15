@@ -1,3 +1,9 @@
+"""면접 세션 조회와 진행 상태 갱신 리포지토리.
+
+세션 목록 조회뿐 아니라 질문 생성 파이프라인의 진행 상태도 함께 관리한다.
+파이프라인 종류마다 단계 구성이 달라 진행률 규칙을 상수로 분리해 둔다.
+"""
+
 from datetime import datetime, timezone
 
 from sqlalchemy import func, select
@@ -9,6 +15,7 @@ from models.manager import Manager
 from repositories.base_repository import BaseRepository
 
 
+# 기본 질문 생성 파이프라인의 단계 순서다.
 DEFAULT_QUESTION_GENERATION_PROGRESS_STEPS = [
     ("build_state", "Input Build"),
     ("analyzer", "Document Analysis"),
@@ -22,6 +29,7 @@ DEFAULT_QUESTION_GENERATION_PROGRESS_STEPS = [
     ("final_formatter", "Result Formatting"),
 ]
 
+# JH 파이프라인은 단계 수가 더 적어 별도 진행 규칙을 쓴다.
 JH_QUESTION_GENERATION_PROGRESS_STEPS = [
     ("prepare_context", "Context Preparation"),
     ("verification_point_extractor", "Verification Point Extraction"),
@@ -80,10 +88,12 @@ PROGRESS_STEP_PREREQUISITES_BY_PIPELINE = {
 
 
 def _now_iso() -> str:
+    """UTC 현재 시각을 ISO 문자열로 반환한다."""
     return datetime.now(timezone.utc).isoformat()
 
 
 def _normalize_graph_impl(graph_impl: str | None) -> str:
+    """파이프라인 구현 이름을 내부 키로 정규화한다."""
     normalized = (graph_impl or "default").strip().lower()
     if normalized in QUESTION_GENERATION_PROGRESS_STEPS_BY_PIPELINE:
         return normalized
@@ -91,6 +101,7 @@ def _normalize_graph_impl(graph_impl: str | None) -> str:
 
 
 def _infer_pipeline_from_progress(progress: list[dict] | None) -> str:
+    """저장된 progress 구조를 보고 어떤 파이프라인인지 추정한다."""
     keys = {str(step.get("key") or "") for step in (progress or [])}
     if "prepare_context" in keys or "verification_point_extractor" in keys:
         return "jh"
@@ -98,6 +109,10 @@ def _infer_pipeline_from_progress(progress: list[dict] | None) -> str:
 
 
 def build_initial_question_generation_progress(graph_impl: str | None = None) -> list[dict]:
+    """질문 생성 진행률 초기 구조를 만든다.
+
+    첫 단계만 `PROCESSING`, 나머지는 `PENDING`으로 시작한다.
+    """
     pipeline = _normalize_graph_impl(graph_impl)
     steps = []
     for index, (key, label) in enumerate(
@@ -117,11 +132,17 @@ def build_initial_question_generation_progress(graph_impl: str | None = None) ->
 
 
 class SessionRepository(BaseRepository[InterviewSession]):
+    """면접 세션 조회와 질문 생성 상태 갱신을 담당한다."""
+
     def __init__(self, db: AsyncSession):
         super().__init__(db, InterviewSession)
 
     @staticmethod
     def _base_join_stmt():
+        """세션 목록 공통 조인 구문을 만든다.
+
+        후보자 이름과 생성자 이름을 함께 조회해 화면에서 바로 쓸 수 있게 한다.
+        """
         return (
             select(
                 InterviewSession,
@@ -144,6 +165,7 @@ class SessionRepository(BaseRepository[InterviewSession]):
 
     @staticmethod
     def _apply_filters(stmt, candidate_id: int | None, target_job: str | None):
+        """세션 목록 공통 필터를 적용한다."""
         if candidate_id is not None:
             stmt = stmt.where(InterviewSession.candidate_id == candidate_id)
         if target_job and target_job.strip():
@@ -151,6 +173,7 @@ class SessionRepository(BaseRepository[InterviewSession]):
         return stmt
 
     async def find_by_id_not_deleted(self, session_id: int) -> InterviewSession | None:
+        """삭제되지 않은 세션 1건을 조회한다."""
         stmt = select(InterviewSession).where(
             InterviewSession.id == session_id,
             InterviewSession.deleted_at.is_(None),
@@ -159,6 +182,7 @@ class SessionRepository(BaseRepository[InterviewSession]):
         return result.scalar_one_or_none()
 
     async def find_by_id_any(self, session_id: int) -> InterviewSession | None:
+        """삭제 여부와 관계없이 세션 1건을 조회한다."""
         stmt = select(InterviewSession).where(InterviewSession.id == session_id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
@@ -168,6 +192,7 @@ class SessionRepository(BaseRepository[InterviewSession]):
         session: InterviewSession,
         graph_impl: str | None = None,
     ) -> None:
+        """질문 생성을 대기 상태로 바꾸고 진행률을 초기화한다."""
         session.question_generation_status = "QUEUED"
         session.question_generation_error = None
         session.question_generation_requested_at = datetime.now(timezone.utc)
@@ -180,6 +205,7 @@ class SessionRepository(BaseRepository[InterviewSession]):
         self,
         session: InterviewSession,
     ) -> None:
+        """질문 생성 시작 상태로 갱신한다."""
         session.question_generation_status = "PROCESSING"
         session.question_generation_error = None
 
@@ -190,6 +216,11 @@ class SessionRepository(BaseRepository[InterviewSession]):
         status: str = "COMPLETED",
         error: str | None = None,
     ) -> None:
+        """진행률의 특정 노드 상태를 갱신한다.
+
+        완료된 노드의 다음 단계는 선행 조건을 만족할 때만 `PROCESSING`으로 올린다.
+        실패 시에는 다른 진행 중 단계들을 다시 `PENDING`으로 되돌려 흐름을 정리한다.
+        """
         progress = list(
             session.question_generation_progress
             or build_initial_question_generation_progress()
@@ -245,6 +276,11 @@ class SessionRepository(BaseRepository[InterviewSession]):
         *,
         refresh_completed_timestamp: bool = True,
     ) -> None:
+        """질문 생성 전체 완료 상태를 반영한다.
+
+        성공 계열 상태면 남은 진행 단계를 모두 완료 처리한다.
+        실패면 마지막 진행 중 단계만 실패로 남긴다.
+        """
         session.question_generation_status = status
         session.question_generation_error = error
         if refresh_completed_timestamp or session.question_generation_completed_at is None:
@@ -271,6 +307,7 @@ class SessionRepository(BaseRepository[InterviewSession]):
             session.question_generation_progress = progress
 
     async def get_detail_with_candidate(self, session_id: int) -> InterviewSession | None:
+        """세션 상세를 후보자 이름과 생성자 이름까지 포함해 조회한다."""
         stmt = self._base_join_stmt().where(InterviewSession.id == session_id)
         result = await self.db.execute(stmt)
         row = result.one_or_none()
@@ -287,6 +324,7 @@ class SessionRepository(BaseRepository[InterviewSession]):
         candidate_id: int | None = None,
         target_job: str | None = None,
     ) -> int:
+        """필터 조건에 맞는 세션 수를 계산한다."""
         stmt = (
             select(func.count(InterviewSession.id))
             .select_from(InterviewSession)
@@ -307,6 +345,7 @@ class SessionRepository(BaseRepository[InterviewSession]):
         candidate_id: int | None = None,
         target_job: str | None = None,
     ) -> list[InterviewSession]:
+        """세션 목록을 후보자/생성자 이름과 함께 페이지 조회한다."""
         offset = (page - 1) * limit
         stmt = self._base_join_stmt().order_by(InterviewSession.id.desc()).offset(offset).limit(limit)
         stmt = self._apply_filters(stmt, candidate_id, target_job)

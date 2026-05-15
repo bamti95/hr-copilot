@@ -1,3 +1,5 @@
+"""JY 그래프 상태 객체를 정의한다."""
+
 import operator
 from typing import Annotated, Any, TypedDict
 
@@ -72,3 +74,4 @@ class AgentState(TypedDict, total=False):
     llm_usages: Annotated[list[LlmUsageState], operator.add]
 
     final_response: dict[str, Any]
+

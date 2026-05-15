@@ -1,3 +1,5 @@
+"""면접 세션과 질문 생성 진행 상태를 저장하는 모델이다."""
+
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
@@ -38,3 +40,4 @@ class InterviewSession(Base, AuditBase):
         JSONB,
         nullable=True,
     )
+

@@ -1,3 +1,5 @@
+"""관리자 계정 관리 API 라우터다."""
+
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -90,3 +92,4 @@ async def delete_manager(
 ) -> Response:
     await ManagerService.delete_manager(db=db, manager_id=manager_id, actor_id=current_manager.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+

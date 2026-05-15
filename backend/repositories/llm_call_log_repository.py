@@ -1,3 +1,9 @@
+"""LLM 호출 로그 조회 리포지토리.
+
+면접 세션과 채용공고 분석 파이프라인에서 남긴 호출 로그를 조회하고 집계한다.
+운영 대시보드와 추적 화면에서 쓰는 요약 지표도 이 파일에서 계산한다.
+"""
+
 from sqlalchemy import case, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,10 +16,13 @@ from repositories.base_repository import BaseRepository
 
 
 class LlmCallLogRepository(BaseRepository[LlmCallLog]):
+    """LLM 호출 로그의 상세 조회와 집계를 담당한다."""
+
     def __init__(self, db: AsyncSession):
         super().__init__(db, LlmCallLog)
 
     async def find_by_session_id(self, session_id: int) -> list[LlmCallLog]:
+        """면접 세션 1건의 로그를 실행 순서대로 반환한다."""
         stmt = (
             select(LlmCallLog)
             .where(
@@ -34,6 +43,7 @@ class LlmCallLogRepository(BaseRepository[LlmCallLog]):
         session_id: int,
         node_name: str,
     ) -> list[LlmCallLog]:
+        """세션 안에서 특정 노드의 로그만 골라 반환한다."""
         stmt = (
             select(LlmCallLog)
             .where(
@@ -55,6 +65,7 @@ class LlmCallLogRepository(BaseRepository[LlmCallLog]):
         log_id: int,
         session_id: int,
     ) -> LlmCallLog | None:
+        """세션 범위를 벗어나지 않도록 로그 1건을 조회한다."""
         stmt = (
             select(LlmCallLog)
             .where(
@@ -70,6 +81,7 @@ class LlmCallLogRepository(BaseRepository[LlmCallLog]):
         self,
         report_id: int,
     ) -> list[LlmCallLog]:
+        """채용공고 분석 리포트 1건에 연결된 로그를 순서대로 반환한다."""
         stmt = (
             select(LlmCallLog)
             .where(
@@ -86,6 +98,7 @@ class LlmCallLogRepository(BaseRepository[LlmCallLog]):
         return list(result.scalars().all())
 
     async def find_by_job_posting_id(self, job_posting_id: int) -> list[LlmCallLog]:
+        """채용공고 1건의 분석 로그를 최신 생성 시점 기준으로 조회한다."""
         stmt = (
             select(LlmCallLog)
             .where(
@@ -103,6 +116,10 @@ class LlmCallLogRepository(BaseRepository[LlmCallLog]):
         return list(result.scalars().all())
 
     async def get_usage_metrics_row(self, pipeline_type: str | None = None):
+        """전체 사용량 요약 1행을 계산한다.
+
+        토큰, 비용, 평균 지연 시간, 실패 호출 수를 한 번에 본다.
+        """
         failed_call = case((LlmCallLog.call_status != "success", 1), else_=0)
         stmt = select(
             func.count(LlmCallLog.id),
@@ -119,6 +136,7 @@ class LlmCallLogRepository(BaseRepository[LlmCallLog]):
         return result.one()
 
     async def get_usage_by_node_rows(self, pipeline_type: str | None = None):
+        """노드별 사용량을 비용 기준 내림차순으로 집계한다."""
         failed_call = case((LlmCallLog.call_status != "success", 1), else_=0)
         stmt = (
             select(
@@ -140,6 +158,10 @@ class LlmCallLogRepository(BaseRepository[LlmCallLog]):
         return result.all()
 
     async def get_usage_by_session_rows(self, limit: int, pipeline_type: str | None = None):
+        """세션 단위 사용량을 조회한다.
+
+        채용공고 분석 파이프라인은 세션 구조가 달라 별도 집계 함수로 위임한다.
+        """
         if pipeline_type == "JOB_POSTING_COMPLIANCE":
             return await self.get_usage_by_job_posting_analysis_rows(limit)
 
@@ -174,6 +196,7 @@ class LlmCallLogRepository(BaseRepository[LlmCallLog]):
         return result.all()
 
     async def get_usage_by_job_posting_analysis_rows(self, limit: int):
+        """채용공고 분석 리포트 단위 사용량을 집계한다."""
         result = await self.db.execute(
             select(
                 LlmCallLog.pipeline_type,
@@ -210,6 +233,7 @@ class LlmCallLogRepository(BaseRepository[LlmCallLog]):
         return result.all()
 
     async def get_recent_usage_rows(self, limit: int, pipeline_type: str | None = None):
+        """최근 호출 로그를 최신순으로 가져온다."""
         stmt = (
             select(LlmCallLog, Candidate.name, JobPosting.job_title)
             .outerjoin(Candidate, Candidate.id == LlmCallLog.candidate_id)

@@ -1,3 +1,5 @@
+"""LLM 호출 로그 조회 API 라우터다."""
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -86,3 +88,4 @@ async def get_job_posting_logs(
 ) -> LlmCallLogListResponse:
     service = LlmCallLogService(db)
     return await service.get_job_posting_logs(job_posting_id)
+

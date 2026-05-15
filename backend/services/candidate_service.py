@@ -1,3 +1,11 @@
+"""지원자와 지원자 문서 관리를 담당한다.
+
+지원자 CRUD, 문서 업로드/교체/삭제, 샘플 데이터 일괄 등록,
+문서 추출 작업 연결까지 포함한 서비스다.
+파일 저장과 DB 반영이 함께 일어나므로, 입력 검증과 경로 검증을
+초기에 분명히 해 두는 것이 중요한 영역이다.
+"""
+
 import asyncio
 import json
 import logging
@@ -74,6 +82,7 @@ _SAMPLE_DOCUMENT_SUFFIX_MAP = {
 
 
 def _assert_extra_email_rules(email: str) -> None:
+    """기본 검증 외에 서비스에서 추가로 보는 이메일 형식을 확인한다."""
     normalized = email.strip()
     if "@" not in normalized:
         raise HTTPException(
@@ -89,6 +98,7 @@ def _assert_extra_email_rules(email: str) -> None:
 
 
 def _assert_phone_format(phone: str) -> None:
+    """전화번호 자릿수를 기준으로 최소 형식을 확인한다."""
     digits = re.sub(r"\D", "", phone)
     if len(digits) < 10 or len(digits) > 15:
         raise HTTPException(
@@ -98,10 +108,16 @@ def _assert_phone_format(phone: str) -> None:
 
 
 def _phone_digits(phone: str) -> str:
+    """중복 비교용으로 전화번호의 숫자만 남긴다."""
     return re.sub(r"\D", "", phone)
 
 
 def _expand_document_types(document_types: list[str], file_count: int) -> list[str]:
+    """문서 유형 입력을 파일 개수에 맞게 펼친다.
+
+    문서 유형이 하나만 오면 모든 파일에 같은 유형을 적용한다.
+    여러 개가 오면 파일 수와 정확히 맞아야 한다.
+    """
     normalized_types = [
         document_type.strip()
         for document_type in document_types
@@ -126,6 +142,7 @@ def _expand_document_types(document_types: list[str], file_count: int) -> list[s
 
 
 def _iter_sample_candidate_groups(folder_path: Path) -> list[tuple[str, dict[str, Path]]]:
+    """샘플 폴더 안의 파일을 지원자 단위로 묶는다."""
     grouped: dict[str, dict[str, Path]] = {}
     for file_path in folder_path.rglob("*"):
         if not file_path.is_file():
@@ -141,6 +158,11 @@ def _iter_sample_candidate_groups(folder_path: Path) -> list[tuple[str, dict[str
 
 
 def _resolve_sample_folder(folder_name: str) -> Path:
+    """샘플 데이터 폴더 경로를 안전하게 해석한다.
+
+    허용된 루트 밖으로 벗어나는 경로는 막는다.
+    샘플 import 기능에서 가장 먼저 지켜야 할 안전장치다.
+    """
     folder_path = (SAMPLE_DATA_ROOT / folder_name).resolve()
     sample_root = SAMPLE_DATA_ROOT.resolve()
     if sample_root not in folder_path.parents:
@@ -157,11 +179,13 @@ def _resolve_sample_folder(folder_name: str) -> Path:
 
 
 def _load_json_file(file_path: Path) -> dict:
+    """샘플 메타 파일을 JSON으로 읽는다."""
     with file_path.open("r", encoding="utf-8") as file:
         return json.load(file)
 
 
 def _build_birth_date(source_payload: dict) -> date | None:
+    """출생 연도만 있을 때 1월 1일 기준 날짜로 보정한다."""
     birth_year = ((source_payload.get("candidate_profile") or {}).get("birth_year"))
     if not birth_year:
         return None
@@ -172,6 +196,7 @@ def _build_birth_date(source_payload: dict) -> date | None:
 
 
 def _document_type_for_sample_file(file_path: Path) -> str | None:
+    """샘플 파일명 접미사로 문서 유형을 판단한다."""
     lower_name = file_path.name.lower()
     for suffix, document_type in _SAMPLE_DOCUMENT_SUFFIX_MAP.items():
         if lower_name.endswith(suffix):
@@ -185,6 +210,7 @@ def _copy_sample_document(
     source_path: Path,
     document_type: str,
 ) -> tuple[Document, int]:
+    """샘플 문서를 운영 저장 구조에 맞춰 복사한다."""
     target_dir = resolve_document_dir(candidate_id, document_type)
     target_dir.mkdir(parents=True, exist_ok=True)
 
@@ -253,8 +279,11 @@ async def _find_latest_candidate_screening_result(
 
 
 class CandidateService:
+    """지원자와 문서 관련 업무를 처리하는 서비스다."""
+
     @staticmethod
     async def list_sample_folders() -> CandidateSampleFolderListResponse:
+        """샘플 데이터 루트 아래의 가져오기 가능한 폴더를 반환한다."""
         if not SAMPLE_DATA_ROOT.exists():
             return CandidateSampleFolderListResponse(folders=[])
 

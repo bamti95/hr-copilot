@@ -1,3 +1,5 @@
+"""기본 그래프 내부 라우팅 판단을 담당한다."""
+
 from ai.interview_graph.state import AgentState
 
 FOLLOW_UP_WEAK_FLAGS = {
@@ -83,3 +85,4 @@ def route_after_scoring(state: AgentState) -> str:
         return "retry_questioner"
 
     return "selector"
+

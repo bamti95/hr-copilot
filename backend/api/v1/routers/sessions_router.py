@@ -1,3 +1,5 @@
+"""면접 세션과 질문 생성 API 라우터다."""
+
 import json
 import logging
 
@@ -31,6 +33,7 @@ async def _create_session_core(
     graph_impl: str,
     success_message: str,
 ) -> SessionSingleResponse:
+    """세션 생성 공통 흐름과 로깅을 한 곳에 모은다."""
     logger.info(
         "Session Create Request Payload\n%s",
         json.dumps(

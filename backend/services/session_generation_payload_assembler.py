@@ -1,3 +1,10 @@
+"""면접 질문 생성용 입력 페이로드를 조립한다.
+
+세션, 지원자, 문서, 프롬프트 프로필을 한 구조로 묶어
+질문 생성 그래프가 바로 소비할 수 있는 형태로 만든다.
+데이터를 읽어오는 책임과 응답 DTO로 바꾸는 책임을 함께 가진다.
+"""
+
 import json
 import logging
 
@@ -24,6 +31,8 @@ logger = logging.getLogger(__name__)
 
 
 class SessionGenerationPayloadAssembler:
+    """세션 기반 질문 생성 입력을 조합하는 전용 도우미다."""
+
     def __init__(self, db: AsyncSession):
         self.db = db
         self.session_repo = SessionRepository(db)
@@ -35,6 +44,11 @@ class SessionGenerationPayloadAssembler:
         session_id: int,
         manager_id: int | None = None,
     ) -> CandidateInterviewPrepInput:
+        """질문 생성 그래프에 넘길 전체 입력 페이로드를 만든다.
+
+        세션과 지원자, 문서, 프롬프트 프로필을 한 번에 모은다.
+        마지막에 로그용 축약 페이로드를 남겨 실제 입력 내용을 추적한다.
+        """
         session = await self._get_session_or_raise(session_id)
         candidate = await self._get_candidate_or_raise(session.candidate_id)
         documents = await self.candidate_repo.find_active_documents_by_candidate_id(candidate.id)
@@ -66,6 +80,7 @@ class SessionGenerationPayloadAssembler:
         return payload
 
     async def _get_session_or_raise(self, session_id: int) -> InterviewSession:
+        """삭제되지 않은 세션만 허용한다."""
         session = await self.session_repo.find_by_id_not_deleted(session_id)
         if not session:
             raise HTTPException(
@@ -75,6 +90,7 @@ class SessionGenerationPayloadAssembler:
         return session
 
     async def _get_candidate_or_raise(self, candidate_id: int) -> Candidate:
+        """세션에 연결된 지원자가 실제로 존재하는지 확인한다."""
         candidate = await self.candidate_repo.find_by_id_not_deleted(candidate_id)
         if not candidate:
             raise HTTPException(
@@ -87,6 +103,7 @@ class SessionGenerationPayloadAssembler:
         self,
         prompt_profile_id: int | None,
     ) -> PromptProfile | None:
+        """프롬프트 프로필이 있으면 활성 상태인지 확인해 반환한다."""
         if prompt_profile_id is None:
             return None
         prompt_profile = await self.prompt_profile_repo.find_by_id_active(prompt_profile_id)
@@ -99,6 +116,7 @@ class SessionGenerationPayloadAssembler:
 
     @staticmethod
     def _to_candidate_payload(candidate: Candidate) -> CandidatePayload:
+        """지원자 엔터티를 질문 생성 입력 DTO로 변환한다."""
         return CandidatePayload(
             candidate_id=candidate.id,
             name=candidate.name,
@@ -111,6 +129,7 @@ class SessionGenerationPayloadAssembler:
 
     @staticmethod
     def _to_document_payload(document: Document) -> CandidateDocumentPayload:
+        """문서 엔터티를 질문 생성 입력 DTO로 변환한다."""
         return CandidateDocumentPayload(
             document_id=document.id,
             document_type=document.document_type,
@@ -129,6 +148,7 @@ class SessionGenerationPayloadAssembler:
     def _to_prompt_profile_payload(
         prompt_profile: PromptProfile | None,
     ) -> PromptProfilePayload | None:
+        """프롬프트 프로필 엔터티를 입력 DTO로 변환한다."""
         if prompt_profile is None:
             return None
         return PromptProfilePayload(

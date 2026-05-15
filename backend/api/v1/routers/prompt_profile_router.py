@@ -1,3 +1,5 @@
+"""프롬프트 프로필 관리 API 라우터다."""
+
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -92,3 +94,4 @@ async def delete_prompt_profile(
         profile_id=profile_id,
         actor_id=current_manager.id,
     )
+

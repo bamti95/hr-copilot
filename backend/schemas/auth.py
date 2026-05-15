@@ -1,3 +1,5 @@
+"""인증 API 요청과 응답 스키마를 정의한다."""
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from schemas.manager import ManagerResponse
@@ -37,3 +39,4 @@ class LogoutRequest(BaseModel):
     refresh_token: str | None = Field(None, alias="refreshToken")
 
     model_config = ConfigDict(populate_by_name=True)
+

@@ -1,3 +1,5 @@
+"""질문 생성용 프롬프트 프로필을 저장하는 모델이다."""
+
 from datetime import datetime
 
 from sqlalchemy import DateTime, Integer, String, Text
@@ -16,3 +18,4 @@ class PromptProfile(Base, AuditBase):
     output_schema: Mapped[str | None] = mapped_column(Text, nullable=True)
     target_job: Mapped[str | None] = mapped_column(String(50), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+

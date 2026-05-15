@@ -1,3 +1,5 @@
+"""LLM 호출 로그와 사용량 메타데이터를 저장하는 모델이다."""
+
 from datetime import datetime
 from decimal import Decimal
 
@@ -80,3 +82,4 @@ class LlmCallLog(Base, AuditBase):
     # 시간 추적
     started_at: Mapped[datetime | None] = mapped_column(nullable=True)
     ended_at: Mapped[datetime | None] = mapped_column(nullable=True)
+

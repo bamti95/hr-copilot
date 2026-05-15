@@ -1,3 +1,8 @@
+"""관리자 인증 업무를 처리한다.
+
+로그인, 토큰 재발급, 로그아웃과 refresh token 저장을 담당한다.
+"""
+
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
@@ -19,6 +24,8 @@ from schemas.manager import ManagerResponse
 
 
 class AuthService:
+    """관리자 인증 관련 서비스다."""
+
     @staticmethod
     async def login(
         db: AsyncSession,
@@ -27,6 +34,7 @@ class AuthService:
         ip_address: str | None = None,
         user_agent: str | None = None,
     ) -> LoginResponse:
+        """로그인 ID와 비밀번호를 검증하고 토큰을 발급한다."""
         if len(password.encode("utf-8")) > 72:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -92,6 +100,7 @@ class AuthService:
         db: AsyncSession,
         refresh_token: str,
     ) -> RefreshTokenResponse:
+        """유효한 refresh token으로 새 토큰 쌍을 발급한다."""
         payload = decode_token(refresh_token)
 
         if payload.get("type") != "refresh":
@@ -175,6 +184,7 @@ class AuthService:
         manager: Manager,
         refresh_token: str | None = None,
     ) -> None:
+        """주어진 refresh token을 폐기한다."""
         if not refresh_token:
             return
 

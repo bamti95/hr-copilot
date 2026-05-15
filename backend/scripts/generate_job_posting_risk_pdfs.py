@@ -1,3 +1,5 @@
+"""채용공고 리스크 샘플 PDF를 생성하는 스크립트다."""
+
 import json
 from pathlib import Path
 
@@ -150,3 +152,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

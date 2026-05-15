@@ -1,3 +1,5 @@
+"""텍스트 정규화 보조 함수를 제공한다."""
+
 from __future__ import annotations
 
 import logging
@@ -536,3 +538,4 @@ def run_llm_normalization(
             document_kind,
         )
         return None, str(exc)
+

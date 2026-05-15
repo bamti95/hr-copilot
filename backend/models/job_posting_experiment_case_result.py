@@ -1,3 +1,9 @@
+"""채용공고 실험의 케이스별 결과 모델.
+
+한 실험 안에서 개별 공고가 어떻게 예측되었는지 저장한다.
+정답 라벨, 예측 라벨, 위험 유형, 검색 성공 여부, 지연 시간까지 함께 남겨 후속 분석에 쓴다.
+"""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -14,6 +20,11 @@ if TYPE_CHECKING:
 
 
 class JobPostingExperimentCaseResult(Base, AuditBase):
+    """실험 케이스 1건의 실행 결과를 저장한다.
+
+    실험 요약 지표는 이 테이블의 누적 결과를 바탕으로 계산한다.
+    문제 케이스를 다시 추적할 수 있도록 평가 payload와 리포트 payload도 함께 보관한다.
+    """
     __tablename__ = "job_posting_experiment_case_result"
     __table_args__ = (
         UniqueConstraint("experiment_run_id", "case_id", name="uq_job_posting_experiment_case"),

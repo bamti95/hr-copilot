@@ -1,3 +1,5 @@
+"""관리자 계정 정보를 저장하는 모델이다."""
+
 from datetime import datetime
 
 from sqlalchemy import DateTime, Integer, String
@@ -20,3 +22,4 @@ class Manager(Base, AuditBase):
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     refresh_tokens = relationship("ManagerRefreshToken", back_populates="manager")
+

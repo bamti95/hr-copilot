@@ -1,3 +1,5 @@
+"""지원자 업로드 문서 메타데이터와 추출 상태를 저장하는 모델이다."""
+
 from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, ForeignKey, Integer, String, Text
@@ -31,3 +33,4 @@ class Document(Base, AuditBase):
         "Candidate",
         back_populates="documents",
     )
+

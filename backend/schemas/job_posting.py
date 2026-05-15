@@ -1,3 +1,5 @@
+"""채용공고 분석과 지식 검색 API 스키마를 정의한다."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -464,3 +466,4 @@ class JobPostingExperimentRunListResponse(BaseModel):
 class JobPostingExperimentRunDetailResponse(BaseModel):
     run: JobPostingExperimentRunResponse
     case_results: list[JobPostingExperimentCaseResultResponse]
+

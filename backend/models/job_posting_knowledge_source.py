@@ -1,3 +1,5 @@
+"""채용공고 분석에 쓰는 지식 원천 문서를 저장하는 모델이다."""
+
 from __future__ import annotations
 
 from datetime import datetime

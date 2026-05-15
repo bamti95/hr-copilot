@@ -1,3 +1,9 @@
+"""채용공고 분석 실험 실행 단위 모델.
+
+한 번의 실험 요청이 어떤 데이터셋으로, 어떤 설정으로 돌았는지 저장한다.
+케이스별 상세 결과는 별도 테이블에 두고, 이 모델은 요약 지표와 실행 상태를 관리한다.
+"""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -16,6 +22,7 @@ if TYPE_CHECKING:
 
 
 class JobPostingExperimentStatus(StrEnum):
+    """실험 배치의 진행 상태."""
     QUEUED = "QUEUED"
     RUNNING = "RUNNING"
     SUCCESS = "SUCCESS"
@@ -23,6 +30,11 @@ class JobPostingExperimentStatus(StrEnum):
 
 
 class JobPostingExperimentRun(Base, AuditBase):
+    """채용공고 실험 1회를 나타내는 상위 엔터티.
+
+    데이터셋 이름, 실험 타입, 요약 지표, 실행 상태를 저장한다.
+    비교 실험을 할 때 차수별 기준선을 남기는 중심 레코드다.
+    """
     __tablename__ = "job_posting_experiment_run"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

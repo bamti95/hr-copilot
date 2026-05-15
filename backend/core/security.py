@@ -1,3 +1,5 @@
+"""비밀번호 해시와 JWT 발급/검증을 담당한다."""
+
 import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -14,10 +16,12 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__trunca
 
 
 def hash_password(password: str) -> str:
+    """평문 비밀번호를 bcrypt 해시로 변환한다."""
     return pwd_context.hash(password)
 
 
 def verify_password(password: str, password_hash: str) -> bool:
+    """입력 비밀번호와 저장된 해시가 일치하는지 확인한다."""
     if not password or not password_hash:
         return False
 
@@ -29,6 +33,7 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 def create_access_token(subject: str, extra: dict[str, Any] | None = None) -> str:
+    """Access token을 발급한다."""
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
     )
@@ -44,6 +49,7 @@ def create_access_token(subject: str, extra: dict[str, Any] | None = None) -> st
 
 
 def create_refresh_token(subject: str) -> str:
+    """Refresh token을 발급한다."""
     expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     payload = {
         "sub": subject,
@@ -55,6 +61,7 @@ def create_refresh_token(subject: str) -> str:
 
 
 def decode_token(token: str) -> dict[str, Any]:
+    """JWT를 검증하고 payload를 반환한다."""
     try:
         return jwt.decode(
             token,
@@ -69,4 +76,5 @@ def decode_token(token: str) -> dict[str, Any]:
 
 
 def hash_token(token: str) -> str:
+    """토큰 원문을 저장하지 않기 위해 SHA-256 해시로 변환한다."""
     return hashlib.sha256(token.encode("utf-8")).hexdigest()

@@ -1,3 +1,5 @@
+"""관리자 대시보드 응답 스키마를 정의한다."""
+
 from datetime import datetime
 from decimal import Decimal
 
@@ -89,3 +91,4 @@ class ManagerDashboardSummaryResponse(BaseModel):
     success: bool = True
     data: ManagerDashboardSummaryData
     message: str
+

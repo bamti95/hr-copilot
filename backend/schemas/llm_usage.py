@@ -1,3 +1,5 @@
+"""LLM 사용량 대시보드 스키마를 정의한다."""
+
 from datetime import datetime
 from decimal import Decimal
 
@@ -80,3 +82,4 @@ class LlmUsageSummaryResponse(BaseModel):
     success: bool = True
     data: LlmUsageSummaryData
     message: str
+

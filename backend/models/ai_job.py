@@ -1,3 +1,5 @@
+"""백그라운드 AI 작업 상태를 저장하는 모델이다."""
+
 from datetime import datetime
 from enum import StrEnum
 
@@ -163,3 +165,4 @@ class AiJob(Base, AuditBase):
         server_default=func.now(),
         onupdate=func.now(),
     )
+

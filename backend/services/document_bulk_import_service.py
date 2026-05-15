@@ -1,3 +1,10 @@
+"""지원자 문서 일괄등록의 미리보기와 확정 등록을 처리한다.
+
+ZIP 또는 다중 파일 업로드를 임시 보관한 뒤,
+문서 추출과 프로필 추론을 거쳐 등록 가능 여부를 미리 보여준다.
+확정 단계에서는 미리보기 결과를 기준으로 실제 지원자와 문서를 생성한다.
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -210,6 +217,8 @@ CONCRETE_EVIDENCE_PATTERNS = (
 
 @dataclass(slots=True)
 class StagedDocument:
+    """미리보기 단계에서 임시 보관 중인 문서 정보를 담는다."""
+
     group_key: str
     original_file_name: str
     stored_file_name: str
@@ -222,6 +231,7 @@ class StagedDocument:
 
 
 def _normalize_default_job_position(value: str | None) -> str | None:
+    """기본 직무 값을 공통 직무 코드 체계에 맞게 정리한다."""
     normalized = normalize_job_position(value)
     if normalized:
         return normalized
@@ -230,6 +240,7 @@ def _normalize_default_job_position(value: str | None) -> str | None:
 
 
 def _validate_apply_status(value: str | None) -> str:
+    """기본 지원 상태가 허용된 enum 값인지 확인한다."""
     normalized = (value or ApplyStatus.APPLIED.value).strip().upper()
     try:
         return ApplyStatus(normalized).value
@@ -241,6 +252,7 @@ def _validate_apply_status(value: str | None) -> str:
 
 
 def _safe_zip_member_path(member_name: str) -> PurePosixPath:
+    """ZIP 내부 경로가 안전한지 확인한다."""
     normalized = member_name.replace("\\", "/")
     path = PurePosixPath(normalized)
     if path.is_absolute() or ".." in path.parts:
@@ -389,6 +401,7 @@ def _normalize_birth_date_for_candidate(value: str | None) -> tuple[str | None, 
 
 
 def _build_text_preview(text: str | None, limit: int = 240) -> str | None:
+    """긴 추출 텍스트를 미리보기용 짧은 문자열로 줄인다."""
     normalized = re.sub(r"\s+", " ", text or "").strip()
     if not normalized:
         return None
@@ -404,6 +417,7 @@ def _normalize_for_screening(value: str | None) -> str:
 def _screening_document_readiness(
     documents: list[DocumentBulkImportPreviewDocument],
 ) -> tuple[int, list[str], list[str], dict]:
+    """문서 추출 상태와 문서 구성의 준비도를 점수화한다."""
     document_types = {document.document_type for document in documents}
     success_documents = [
         document for document in documents if document.extract_status == "SUCCESS"
@@ -466,6 +480,7 @@ def _screening_profile_completeness(
     profile: CandidateProfileExtractionOutput,
     candidate: dict,
 ) -> tuple[int, list[str], list[str], dict]:
+    """이름, 연락처, 직무 등 프로필 완성도를 점수화한다."""
     score = 0
     missing_evidence: list[str] = []
     warnings: list[str] = []
@@ -501,6 +516,7 @@ def _screening_job_fit(
     merged_text: str,
     job_position: str | None,
 ) -> tuple[int, list[str], list[str], dict]:
+    """문서 내용이 목표 직무와 얼마나 맞는지 휴리스틱으로 본다."""
     normalized_text = _normalize_for_screening(merged_text)
     normalized_job = normalize_job_position(job_position) or (job_position or "").strip()
     job_code = normalize_job_position_code(normalized_job)
@@ -539,6 +555,7 @@ def _screening_job_fit(
 
 
 def _screening_evidence_quality(merged_text: str) -> tuple[int, list[str], list[str], dict]:
+    """정량 근거와 구체 표현이 충분한지 본다."""
     normalized_text = _normalize_for_screening(merged_text)
     matched_patterns = [
         pattern
@@ -566,6 +583,7 @@ def _screening_risk_adjustment(
     errors: list[str],
     warnings: list[str],
 ) -> tuple[int, list[str], list[str], dict]:
+    """민감정보, 중복 지원자, 추출 실패 같은 위험 요소를 감점한다."""
     normalized_text = _normalize_for_screening(merged_text)
     risk_factors: list[str] = []
     screening_warnings: list[str] = []
@@ -609,6 +627,7 @@ def _build_screening_preview(
     errors: list[str],
     warnings: list[str],
 ) -> ScreeningPreviewResult:
+    """미리보기 한 건의 등록 적합도를 종합 평가한다."""
     profile_score, profile_warnings, profile_missing, profile_breakdown = (
         _screening_profile_completeness(profile, candidate)
     )
@@ -834,6 +853,7 @@ async def _extract_profile_with_llm(
     inferred_name: str | None,
     default_job_position: str | None,
 ) -> CandidateProfileExtractionOutput | None:
+    """LLM으로 지원자 프로필을 구조화 추출한다."""
     if not (settings.OPENAI_API_KEY or "").strip() or not text.strip():
         return None
 
@@ -882,6 +902,7 @@ async def _extract_profile(
     inferred_name: str | None,
     default_job_position: str | None,
 ) -> CandidateProfileExtractionOutput:
+    """지원자 프로필 추출의 통합 진입점이다."""
     llm_profile = await _extract_profile_with_llm(
         text=text,
         inferred_name=inferred_name,
@@ -905,6 +926,8 @@ async def _extract_profile(
 
 
 class DocumentBulkImportService:
+    """문서 일괄등록 미리보기와 확정 등록을 담당한다."""
+
     @staticmethod
     async def start_preview_zip(
         *,
@@ -914,6 +937,7 @@ class DocumentBulkImportService:
         default_apply_status: str | None,
         actor_id: int | None,
     ) -> DocumentBulkImportPreviewStartResponse:
+        """ZIP 업로드 기반 미리보기 작업을 큐에 등록한다."""
         if zip_file.filename is None or get_extension(zip_file.filename) != "zip":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -1148,6 +1172,7 @@ class DocumentBulkImportService:
         request: DocumentBulkImportConfirmRequest,
         actor_id: int | None,
     ) -> DocumentBulkImportConfirmResponse:
+        """미리보기 결과를 바탕으로 실제 지원자와 문서를 등록한다."""
         job_result = await db.execute(
             select(AiJob).where(
                 AiJob.id == request.job_id,
@@ -1614,6 +1639,7 @@ class DocumentBulkImportService:
         default_apply_status: str | None,
         incremental: bool = False,
     ) -> DocumentBulkImportPreviewResponse:
+        """임시 문서 목록으로부터 미리보기 응답을 조립한다."""
         if not staged_documents:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -1712,6 +1738,7 @@ class DocumentBulkImportService:
         default_job_position: str | None,
         default_apply_status: str,
     ) -> DocumentBulkImportPreviewRow:
+        """문서 그룹 한 건에 대한 미리보기 행을 만든다."""
         extracted_texts: list[str] = []
         preview_documents: list[DocumentBulkImportPreviewDocument] = []
         errors: list[str] = []

@@ -1,3 +1,5 @@
+"""질문 생성 그래프 입력과 로깅용 스키마를 정의한다."""
+
 import json
 from datetime import date, datetime
 from typing import Any
@@ -112,3 +114,4 @@ def build_candidate_interview_prep_log_payload(
             "items": document_items,
         },
     }
+

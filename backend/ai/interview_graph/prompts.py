@@ -1,3 +1,5 @@
+"""기본 그래프에서 사용하는 프롬프트 상수를 정의한다."""
+
 ANALYZER_SYSTEM_PROMPT = """
 당신은 HR-Copilot의 Analyzer 에이전트입니다.
 지원자 정보, 추출 문서, 채용 기준, 프롬프트 프로필을 분석하여
@@ -367,3 +369,4 @@ SELECTOR_USER_PROMPT = """
 점수 결과:
 {scores}
 """
+

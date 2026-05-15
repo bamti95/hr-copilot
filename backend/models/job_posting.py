@@ -1,3 +1,5 @@
+"""채용공고 원문과 정규화 메타데이터를 저장하는 모델이다."""
+
 from __future__ import annotations
 
 from datetime import datetime

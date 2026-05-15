@@ -1,3 +1,5 @@
+"""채용공고 분석 결과 리포트를 저장하는 모델이다."""
+
 from __future__ import annotations
 
 from datetime import datetime

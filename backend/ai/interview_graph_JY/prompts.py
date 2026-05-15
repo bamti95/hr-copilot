@@ -1,3 +1,5 @@
+"""JY 그래프 프롬프트 상수를 정의한다."""
+
 ANALYZER_SYSTEM_PROMPT = """
 당신은 HR-Copilot JY 파이프라인의 Analyzer 에이전트입니다.
 지원자 문서와 채용 기준에서 면접 질문으로 전환할 수 있는 근거만 추출하세요.
@@ -164,3 +166,4 @@ REVIEWER_USER_PROMPT = """
 
 각 question_id마다 approved, needs_revision, rejected 중 하나로 판정하고 사유와 수정 제안을 반환하세요.
 """
+

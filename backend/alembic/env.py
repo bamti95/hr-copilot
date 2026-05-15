@@ -1,3 +1,5 @@
+"""Alembic 마이그레이션 실행 환경을 구성한다."""
+
 from __future__ import annotations
 
 import asyncio

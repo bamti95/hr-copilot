@@ -1,3 +1,5 @@
+"""채용공고 실험 케이스 유효성을 점검하는 스크립트다."""
+
 from __future__ import annotations
 
 import json
@@ -60,3 +62,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

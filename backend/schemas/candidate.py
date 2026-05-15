@@ -1,3 +1,5 @@
+"""지원자와 문서 관리 API 스키마를 정의한다."""
+
 from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -275,3 +277,4 @@ class CandidateStatisticsResponse(BaseModel):
     by_apply_status: list[ApplyStatusCountRow]
     by_target_job: list[TargetJobCountRow]
     active_without_interview_session_count: int
+

@@ -1,3 +1,5 @@
+"""기본 면접 질문 생성 그래프 실행 진입점이다."""
+
 import logging
 import uuid
 from collections.abc import Awaitable, Callable
@@ -290,3 +292,4 @@ async def run_interview_question_graph(
     except Exception as exc:  # noqa: BLE001 - service should receive typed failed result.
         await save_llm_call_logs(payload=payload, usages=collected_llm_usages)
         return _failed_response(payload, exc)
+

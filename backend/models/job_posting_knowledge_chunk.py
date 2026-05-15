@@ -1,3 +1,9 @@
+"""채용공고 분석에 쓰는 지식 chunk 모델.
+
+법령, 가이드, 사례, 리스크 패턴을 검색 가능한 단위로 잘라 저장한다.
+본문과 메타데이터, 임베딩을 함께 들고 있어 RAG 검색과 실험 평가의 공통 기반이 된다.
+"""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -22,6 +28,7 @@ if TYPE_CHECKING:
 
 
 class JobPostingKnowledgeChunkType(StrEnum):
+    """지식 chunk의 출처 성격을 구분하는 코드."""
     LEGAL_CLAUSE = "LEGAL_CLAUSE"
     LEGAL_GUIDE = "LEGAL_GUIDE"
     LEGAL_CHECKLIST = "LEGAL_CHECKLIST"
@@ -32,6 +39,7 @@ class JobPostingKnowledgeChunkType(StrEnum):
 
 
 class JobPostingRiskSeverity(StrEnum):
+    """지식 항목이나 패턴이 가리키는 기본 위험도 단계."""
     CRITICAL = "CRITICAL"
     HIGH = "HIGH"
     MEDIUM = "MEDIUM"
@@ -43,10 +51,9 @@ class JobPostingKnowledgeChunk(Base, AuditBase):
     """
     채용공고 분석용 RAG chunk 테이블.
 
-    PDF 법령/가이드 문서에서 추출한 조항, 체크리스트, 위반 사례와
-    엑셀 데이터셋의 row 단위 리스크 패턴을 저장
-    pgvector embedding을 함께 저장하여 채용공고 분석 시
-    유사한 법령 근거, 위반 사례, 리스크 패턴을 검색하는 데 사용
+    법령/가이드 문서에서 추출한 조항, 체크리스트, 위반 사례와
+    데이터셋 기반 리스크 패턴을 한 단위로 저장한다.
+    검색 시에는 본문, 메타데이터, 임베딩을 함께 사용한다.
     """
     __tablename__ = "job_posting_knowledge_chunk"
 

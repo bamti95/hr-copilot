@@ -1,3 +1,9 @@
+"""채용공고 분석용 지식 소스의 등록, 인덱싱, 검색을 담당한다.
+
+법령, 가이드, 사례 문서를 업로드하거나 시드 데이터로 적재한 뒤,
+텍스트 추출과 청킹, 임베딩 생성을 거쳐 검색 가능한 지식 베이스로 만든다.
+"""
+
 from __future__ import annotations
 
 import hashlib
@@ -69,8 +75,11 @@ logger = logging.getLogger(__name__)
 
 
 class JobPostingKnowledgeService:
+    """채용공고 지식 베이스 운영 서비스다."""
+
     @staticmethod
     def _job_response(job: AiJob, message: str) -> JobPostingAiJobResponse:
+        """AI 작업 엔터티를 API 응답 형태로 변환한다."""
         return JobPostingAiJobResponse(
             job_id=job.id,
             status=job.status,
@@ -96,6 +105,7 @@ class JobPostingKnowledgeService:
         source_url: str | None,
         actor_id: int | None,
     ) -> KnowledgeSourceResponse:
+        """지식 소스 파일을 업로드하고 메타데이터를 등록한다."""
         saved = await _save_knowledge_upload(upload_file)
         request = KnowledgeSourceCreateRequest(
             source_type=source_type,
@@ -123,6 +133,7 @@ class JobPostingKnowledgeService:
         request: KnowledgeSourceCreateRequest,
         actor_id: int | None,
     ) -> JobPostingKnowledgeSource:
+        """같은 파일 경로가 있으면 갱신하고, 없으면 새 소스를 만든다."""
         source_repo = JobPostingKnowledgeSourceRepository(db)
         source_type = request.source_type or infer_source_type(
             request.title or request.source_name or request.file_path
@@ -169,6 +180,7 @@ class JobPostingKnowledgeService:
         db: AsyncSession,
         source_id: int,
     ) -> KnowledgeIndexResponse:
+        """한 개의 지식 소스를 추출, 청킹, 임베딩까지 인덱싱한다."""
         source_repo = JobPostingKnowledgeSourceRepository(db)
         chunk_repo = JobPostingKnowledgeChunkRepository(db)
         source = await source_repo.find_by_id_not_deleted(source_id)
@@ -268,6 +280,7 @@ class JobPostingKnowledgeService:
         source_id: int,
         actor_id: int | None,
     ) -> JobPostingAiJobResponse:
+        """지식 소스 인덱싱 백그라운드 작업을 생성한다."""
         source_repo = JobPostingKnowledgeSourceRepository(db)
         source = await source_repo.find_by_id_not_deleted(source_id)
         if source is None:
@@ -303,6 +316,7 @@ class JobPostingKnowledgeService:
         db: AsyncSession,
         actor_id: int | None,
     ) -> JobPostingAiJobResponse:
+        """sample_data 기반 시드 적재 작업을 생성한다."""
         job = AiJob(
             job_type=AiJobType.JOB_POSTING_KNOWLEDGE_INDEXING.value,
             status=AiJobStatus.QUEUED.value,
@@ -327,6 +341,7 @@ class JobPostingKnowledgeService:
         db: AsyncSession,
         job_id: int,
     ) -> JobPostingAiJobResponse:
+        """지식 인덱싱 작업의 단건 상태를 조회한다."""
         result = await db.execute(
             select(AiJob).where(
                 AiJob.id == job_id,
@@ -347,6 +362,7 @@ class JobPostingKnowledgeService:
         db: AsyncSession,
         actor_id: int | None,
     ) -> JobPostingAiJobResponse | None:
+        """현재 진행 중인 지식 인덱싱 작업이 있으면 반환한다."""
         conditions = [
             AiJob.job_type == AiJobType.JOB_POSTING_KNOWLEDGE_INDEXING.value,
             AiJob.status.in_(
@@ -376,6 +392,7 @@ class JobPostingKnowledgeService:
 
     @staticmethod
     async def run_index_job(job_id: int) -> None:
+        """백그라운드 인덱싱 작업의 실제 실행 진입점이다."""
         async with AsyncSessionLocal() as db:
             result = await db.execute(select(AiJob).where(AiJob.id == job_id))
             job = result.scalar_one_or_none()
@@ -447,6 +464,7 @@ class JobPostingKnowledgeService:
         source_type: str | None,
         keyword: str | None,
     ) -> KnowledgeSourceListResponse:
+        """등록된 지식 소스 목록을 페이지 단위로 반환한다."""
         repo = JobPostingKnowledgeSourceRepository(db)
         total_count = await repo.count_list(source_type=source_type, keyword=keyword)
         rows = await repo.find_list(
@@ -469,6 +487,7 @@ class JobPostingKnowledgeService:
         source_id: int,
         limit: int,
     ) -> KnowledgeChunkListResponse:
+        """특정 소스에 속한 청크 목록을 조회한다."""
         source_repo = JobPostingKnowledgeSourceRepository(db)
         source = await source_repo.find_by_id_not_deleted(source_id)
         if source is None:
@@ -489,6 +508,7 @@ class JobPostingKnowledgeService:
         db: AsyncSession,
         actor_id: int | None,
     ) -> KnowledgeSeedResponse:
+        """sample_data/source_data의 문서를 지식 소스로 일괄 등록한다."""
         indexed_sources: list[KnowledgeSourceResponse] = []
         total_chunks = 0
         seed_files = collect_seed_source_files(SOURCE_DATA_DIR)
@@ -533,6 +553,7 @@ class JobPostingKnowledgeService:
         db: AsyncSession,
         request: KnowledgeSearchRequest,
     ) -> KnowledgeSearchResponse:
+        """지식 청크를 키워드와 벡터 기준으로 검색한다."""
         query_terms = extract_query_terms(request.query)
         query_embedding = embed_text(request.query)
         chunk_repo = JobPostingKnowledgeChunkRepository(db)
@@ -1136,6 +1157,7 @@ def compute_latest_flags(paths: list[Path]) -> dict[str, bool]:
 
 
 async def _save_knowledge_upload(upload_file: UploadFile) -> dict[str, Any]:
+    """업로드 파일을 지식 저장 디렉터리에 저장한다."""
     if upload_file.filename is None or not upload_file.filename.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file name is missing.")
     extension = get_extension(upload_file.filename)
@@ -1173,6 +1195,7 @@ async def _save_knowledge_upload(upload_file: UploadFile) -> dict[str, Any]:
 
 
 def _ensure_seed_file_under_upload_root(path: Path) -> str:
+    """시드 문서를 업로드 루트 아래 복사해 동일한 경로 체계를 맞춘다."""
     upload_root = get_upload_root()
     target_dir = upload_root / KNOWLEDGE_UPLOAD_DIR / "seed_source_data"
     target_dir.mkdir(parents=True, exist_ok=True)

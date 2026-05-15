@@ -1,3 +1,5 @@
+"""JY 그래프 노드 로직을 구현한다."""
+
 import asyncio
 import json
 import logging
@@ -1340,3 +1342,4 @@ async def final_formatter_node(state: AgentState) -> dict[str, Any]:
         },
     )
     return {"final_response": response.model_dump(mode="json")}
+

@@ -1,3 +1,5 @@
+"""백엔드에서 사용하는 SQLAlchemy 모델을 한 곳에서 노출한다."""
+
 from models.ai_job import AiJob, AiJobStatus, AiJobTargetType, AiJobType
 from models.candidate import ApplyStatus, Candidate
 from models.document import Document
@@ -65,3 +67,4 @@ __all__ = [
     "JobPostingExperimentRun",
     "JobPostingExperimentStatus",
 ]
+

@@ -1,3 +1,5 @@
+"""기본 그래프 노드 로직을 구현한다."""
+
 import json
 import logging
 from typing import Any, TypeVar
@@ -1280,3 +1282,4 @@ async def final_formatter_node(state: AgentState) -> AgentState:
     )
 
     return {"final_response": response.model_dump(mode="json")}
+

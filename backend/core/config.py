@@ -1,3 +1,8 @@
+"""환경 변수 기반 애플리케이션 설정을 관리한다.
+
+백엔드 전역에서 공통으로 쓰는 DB, 인증, OpenAI 관련 설정을 모은다.
+"""
+
 import os
 from pathlib import Path
 
@@ -10,12 +15,15 @@ DEFAULT_OPENAI_MODEL = "gpt-5-mini"
 load_dotenv(BASE_DIR / ".env")
 
 def _parse_bool(value: str | None, default: bool = False) -> bool:
+    """문자열 환경 변수를 bool 값으로 해석한다."""
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "y", "yes", "on"}
 
 
 class Settings:
+    """애플리케이션 전역 설정 객체다."""
+
     DB_HOST: str = os.getenv("DB_HOST", "")
     DB_PORT: int = int(os.getenv("DB_PORT", 5432))
     DB_NAME: str = os.getenv("DB_NAME", "")
@@ -78,4 +86,5 @@ settings = Settings()
 
 
 def get_settings():
+    """싱글턴 설정 객체를 반환한다."""
     return settings

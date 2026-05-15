@@ -1,3 +1,11 @@
+"""관리자 대시보드 요약 데이터를 만든다.
+
+지원자, 문서, 면접 세션, LLM 사용량을 한 화면에서 볼 수 있도록
+여러 저장소의 집계 값을 모아 대시보드 전용 응답으로 조합한다.
+우선순위 후보와 최근 활동은 운영자가 바로 확인할 대상을
+빠르게 찾게 하는 데 목적이 있다.
+"""
+
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -22,26 +30,32 @@ from schemas.manager_dashboard import (
 
 
 def _int_value(value: object) -> int:
+    """집계 결과의 null 값을 0으로 보정한다."""
     return int(value or 0)
 
 
 def _float_value(value: object) -> float:
+    """평균 시간 같은 집계 수치를 실수로 변환한다."""
     return float(value or 0)
 
 
 def _decimal_value(value: object) -> Decimal:
+    """비용 수치를 Decimal로 변환한다."""
     return Decimal(str(value or 0))
 
 
 def _session_path(session_id: int) -> str:
+    """세션 상세 화면 경로를 만든다."""
     return f"/manager/interview-sessions/{session_id}"
 
 
 def _candidate_path(candidate_id: int) -> str:
+    """지원자 상세 화면 경로를 만든다."""
     return f"/manager/candidates/{candidate_id}"
 
 
 def _status_label(status: str | None) -> str:
+    """대시보드 표시용 상태 라벨을 반환한다."""
     labels = {
         "NOT_REQUESTED": "미요청",
         "QUEUED": "대기",
@@ -54,14 +68,22 @@ def _status_label(status: str | None) -> str:
 
 
 def _priority_rank(priority: str) -> int:
+    """우선순위 정렬용 숫자 값을 반환한다."""
     return {"HIGH": 0, "MEDIUM": 1, "LOW": 2}.get(priority, 3)
 
 
 class ManagerDashboardService:
+    """관리자 홈 대시보드에 필요한 종합 데이터를 구성한다."""
+
     def __init__(self, db: AsyncSession):
         self.repository = ManagerDashboardRepository(db)
 
     async def get_summary(self) -> ManagerDashboardSummaryResponse:
+        """대시보드 첫 화면에 필요한 모든 요약 정보를 반환한다.
+
+        KPI, 할 일, 파이프라인 현황, 비용, 우선순위 후보, 최근 활동을
+        한 번에 구성해 프론트가 추가 계산 없이 바로 그릴 수 있게 한다.
+        """
         document_pending_count = await self.repository.count_document_pending()
         document_failed_count = await self.repository.count_document_failed()
         document_analyzed_candidate_count = (
@@ -182,6 +204,7 @@ class ManagerDashboardService:
         )
 
     async def _build_llm_cost_summary(self) -> DashboardLlmCostSummary:
+        """오늘과 이번 달의 LLM 비용 집계를 구성한다."""
         now = datetime.now(timezone.utc)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         month_start = now.replace(
@@ -221,6 +244,12 @@ class ManagerDashboardService:
         )
 
     async def _build_priority_candidates(self) -> list[DashboardPriorityCandidate]:
+        """지금 먼저 봐야 할 지원자/세션 목록을 만든다.
+
+        실패, 반려, 낮은 점수, 수정 필요 같은 운영 리스크를 우선한다.
+        같은 대상이 여러 조건에 걸리면 마지막 상태로 덮지 않고,
+        고유 키로 한 번만 남긴 뒤 우선순위와 최신 시각으로 정렬한다.
+        """
         rows = await self.repository.get_priority_session_rows()
         items: list[DashboardPriorityCandidate] = []
         for row in rows:
@@ -331,6 +360,7 @@ class ManagerDashboardService:
         )[:10]
 
     async def _build_recent_sessions(self) -> list[DashboardRecentSession]:
+        """최근 생성되거나 진행된 세션 목록을 반환한다."""
         rows = await self.repository.get_recent_session_rows()
         return [
             DashboardRecentSession(
@@ -347,6 +377,7 @@ class ManagerDashboardService:
         ]
 
     async def _build_recent_activities(self) -> list[DashboardRecentActivity]:
+        """지원자, 문서, 세션, 질문 단위 최근 활동을 시간순으로 합친다."""
         activities: list[DashboardRecentActivity] = []
 
         for candidate_id, name, job_position, created_at in (

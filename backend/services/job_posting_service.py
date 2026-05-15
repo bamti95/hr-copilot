@@ -1,3 +1,5 @@
+"""채용공고 분석 실행과 실험 평가를 총괄하는 서비스다."""
+
 from __future__ import annotations
 
 import hashlib
@@ -1146,6 +1148,11 @@ async def run_rule_rag_analysis(
     actor_id: int | None,
     progress_callback: ProgressCallback | None = None,
 ) -> JobPostingAnalysisReport:
+    """채용공고 1건의 분석 파이프라인을 실행한다.
+
+    룰 기반 위험 표현 탐지와 RAG 근거 검색을 한 흐름으로 묶는다.
+    각 단계의 결과는 보고서와 추적 로그에 함께 남겨 이후 실험 비교에 쓴다.
+    """
     started_at = datetime.now(timezone.utc)
     report = JobPostingAnalysisReport(
         job_posting_id=posting.id,
@@ -1221,6 +1228,7 @@ async def run_rule_rag_analysis(
             elapsed_started_at=node_started_at,
         )
 
+        # 이슈별 근거를 분리해 붙여야 최종 리포트에서 어떤 문제를 왜 판단했는지 설명할 수 있다.
         retrieval_service = JobPostingRetrievalService(db)
         evidence_items: list[dict[str, Any]] = []
         total_issues = max(len(issues), 1)
@@ -1375,6 +1383,7 @@ async def run_rule_rag_analysis(
         if progress_callback is not None:
             await progress_callback(92, "generating_structured_report")
         node_started_at = time.perf_counter()
+        # 최종 위험도는 탐지 개수보다 issue의 성격과 법적 리스크를 더 중요하게 본다.
         risk_level = calculate_risk_level_with_evidence(issues)
         violation_count = sum(1 for issue in issues if issue["category"] == "LEGAL")
         warning_count = max(0, len(issues) - violation_count)
@@ -1758,10 +1767,21 @@ def calculate_risk_level(issues: list[dict[str, Any]]) -> str:
 
 
 def calculate_risk_level_with_evidence(issues: list[dict[str, Any]]) -> str:
+    """탐지 결과를 최종 위험도로 변환한다.
+
+    실제 계산은 `calculate_risk_level_from_issues`로 위임한다.
+    호출부에서는 이 함수를 통해 위험도 산정 규칙을 한 이름으로 사용한다.
+    """
     return calculate_risk_level_from_issues(issues)
 
 
 def calculate_risk_level_from_issues(issues: list[dict[str, Any]]) -> str:
+    """issue 목록을 법적 리스크 기준으로 위험도 단계에 매핑한다.
+
+    직접 법 위반 가능성이 큰 유형은 HIGH 축으로 올린다.
+    허위공고와 특정 파트너 이슈가 함께 나오면 CRITICAL로 본다.
+    표현상 비권장이나 모호성 위주의 이슈는 MEDIUM 또는 LOW에 머무르게 한다.
+    """
     if not issues:
         return "CLEAN"
 
@@ -1785,6 +1805,7 @@ def calculate_risk_level_from_issues(issues: list[dict[str, Any]]) -> str:
         "REPEATED_POSTING",
     }
 
+    # 입력 구조가 달라도 위험도 계산에 필요한 핵심 값만 정규화해서 사용한다.
     normalized = [
         {
             "issue_type": issue.get("issue_type"),
@@ -1989,6 +2010,11 @@ async def save_job_posting_upload(upload_file: UploadFile) -> dict[str, Any]:
 
 
 def load_experiment_dataset(dataset_name: str) -> list[dict[str, Any]]:
+    """실험용 데이터셋 폴더를 읽어 케이스 목록으로 반환한다.
+
+    `meta.json`의 정답 정보와 `source.json`의 원문 정보를 합쳐
+    실험 실행기가 바로 돌릴 수 있는 형태로 정리한다.
+    """
     dataset_root = Path(__file__).resolve().parent.parent / "sample_data" / "source_data" / dataset_name
     if not dataset_root.exists():
         raise ValueError(f"Experiment dataset was not found: {dataset_name}")
@@ -2016,6 +2042,7 @@ def load_experiment_dataset(dataset_name: str) -> list[dict[str, Any]]:
 
 
 def build_experiment_case_request(case: dict[str, Any]) -> JobPostingAnalyzeTextRequest:
+    """실험 케이스를 실제 분석 요청 DTO로 변환한다."""
     source = case["source"]
     return JobPostingAnalyzeTextRequest(
         company_name=source.get("company_name"),
@@ -2047,6 +2074,11 @@ def evaluate_experiment_case(
     report: JobPostingAnalysisReportResponse,
     latency_ms: float,
 ) -> dict[str, Any]:
+    """케이스 1건의 예측 결과를 정답과 비교한다.
+
+    라벨, 위험 유형, 위험도, 근거 포함 여부를 한 번에 정리한다.
+    `retrieval_hit_at_5`는 기대한 위험 유형별로 상위 5개 근거가 붙었는지를 본다.
+    """
     expected_risk_types = list(case.get("risk_types") or [])
     predicted_risk_types = sorted(set(report.detected_issue_types or []))
     predicted_label = "CLEAN" if not predicted_risk_types else "VIOLATION"
@@ -2063,6 +2095,8 @@ def evaluate_experiment_case(
         sources = list((matching_issue or {}).get("sources") or [])
         per_expected_hits[risk_type] = len(sources[:5]) > 0
 
+    # 정답 위험 유형이 있으면 각 유형마다 근거가 붙었는지 본다.
+    # 정답 위험 유형이 없으면 CLEAN 예측 또는 상위 근거 존재를 성공으로 본다.
     retrieval_hit_at_5 = (
         all(per_expected_hits.values()) if expected_risk_types else len(matched_top5) > 0 or predicted_label == "CLEAN"
     )
@@ -2098,6 +2132,11 @@ def evaluate_experiment_case(
 def summarize_experiment_results(
     case_results: list[JobPostingExperimentCaseResult],
 ) -> dict[str, float | int]:
+    """케이스별 결과를 실험 요약 지표로 집계한다.
+
+    label_accuracy, retrieval_recall_at_5, macro_f1, high_risk_recall,
+    source_omission_rate, avg_latency_ms를 한 번에 계산한다.
+    """
     successful = [item for item in case_results if item.status == "SUCCESS"]
     if not successful:
         return {
@@ -2119,6 +2158,7 @@ def summarize_experiment_results(
         )
         for item in successful
     ]
+    # 현재 실험은 이진 라벨 기준이라 CLEAN/VIOLATION 두 축의 F1 평균을 macro_f1로 쓴다.
     labels = ["CLEAN", "VIOLATION"]
     f1_scores = [
         binary_f1_for_label(label_pairs=label_pairs, positive_label=label)
@@ -2191,3 +2231,4 @@ def binary_f1_for_label(
     if precision + recall == 0:
         return 0.0
     return (2 * precision * recall) / (precision + recall)
+

@@ -1,3 +1,5 @@
+"""면접 세션에 속한 생성 질문을 저장하는 모델이다."""
+
 from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -31,3 +33,4 @@ class InterviewQuestion(Base, AuditBase):
     review_recommended_revision: Mapped[str | None] = mapped_column(Text, nullable=True)
     score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     score_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+

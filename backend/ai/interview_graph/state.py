@@ -1,3 +1,5 @@
+"""기본 그래프 상태 객체를 정의한다."""
+
 import operator
 from typing import Annotated, Any, Optional, TypedDict
 
@@ -95,3 +97,4 @@ class AgentState(
     total=False,
 ):
     pass
+

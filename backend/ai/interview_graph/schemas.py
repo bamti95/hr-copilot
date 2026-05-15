@@ -1,3 +1,5 @@
+"""기본 그래프 입출력 스키마를 정의한다."""
+
 from typing import Any, Literal
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
@@ -356,3 +358,4 @@ class QuestionInteractionRequest(GraphBaseModel):
     ]
     target_question_ids: list[str] = Field(default_factory=list)
     additional_instruction: str | None = None
+

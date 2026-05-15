@@ -1,3 +1,5 @@
+"""문서 업로드 허용 형식과 공통 상수를 정의한다."""
+
 from __future__ import annotations
 
 import re
@@ -190,3 +192,4 @@ class PageTextSnapshot:
     direct_text: str | None
     selected_text: str | None
     source_mode: str
+

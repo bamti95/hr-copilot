@@ -1,3 +1,5 @@
+"""JH 그래프용 LLM 사용량 기록 보조 모듈이다."""
+
 import asyncio
 import logging
 import time
@@ -177,3 +179,4 @@ async def call_structured_output_with_usage(
         f"Structured output call failed for {response_model.__name__}",
         usages,
     ) from last_error
+

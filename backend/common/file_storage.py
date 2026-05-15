@@ -1,3 +1,5 @@
+"""파일 저장 경로 계산과 공용 파일 루트 접근 함수를 제공한다."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -217,3 +219,4 @@ async def save_upload_files(
         candidate_id=candidate_id,
         document_file_pairs=[(document_type, file) for file in files],
     )
+

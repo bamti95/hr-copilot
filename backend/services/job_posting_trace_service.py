@@ -1,3 +1,5 @@
+"""채용공고 분석 단계별 추적 로그를 기록하는 서비스다."""
+
 from __future__ import annotations
 
 import time
@@ -93,3 +95,4 @@ async def record_timed_node(
         elapsed_ms=int((time.perf_counter() - elapsed_started_at) * 1000),
         model_name=model_name,
     )
+

@@ -1,3 +1,5 @@
+"""지원자 기본 정보와 상태를 저장하는 모델이다."""
+
 from typing import TYPE_CHECKING
 
 from datetime import date, datetime

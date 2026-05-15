@@ -1,3 +1,5 @@
+"""관리자 계정 관리 API 스키마를 정의한다."""
+
 from datetime import datetime
 from typing import Literal
 
@@ -74,3 +76,4 @@ class ManagerListResponse(BaseModel):
             totalCount=total_count,
             totalPages=total_pages,
         )
+

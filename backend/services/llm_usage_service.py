@@ -1,3 +1,10 @@
+"""LLM 사용량 요약 데이터를 조합한다.
+
+원시 로그를 그대로 노출하지 않고,
+메트릭, 노드별 집계, 세션별 집계, 최근 호출 내역으로 나눠
+대시보드에서 바로 쓸 수 있는 형태로 변환한다.
+"""
+
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,18 +21,22 @@ from schemas.llm_usage import (
 
 
 def _int_value(value: object) -> int:
+    """집계 결과의 null 값을 0으로 보정해 정수로 변환한다."""
     return int(value or 0)
 
 
 def _float_value(value: object) -> float:
+    """평균 시간 같은 수치를 안전하게 실수로 변환한다."""
     return float(value or 0)
 
 
 def _decimal_value(value: object) -> Decimal:
+    """비용 합계를 부동소수 오차 없이 Decimal로 변환한다."""
     return Decimal(str(value or 0))
 
 
 def _build_interview_summary(row) -> LlmUsageSessionSummary:
+    """면접 질문 생성 파이프라인 집계 행을 응답 스키마로 바꾼다."""
     return LlmUsageSessionSummary(
         session_id=row[0],
         candidate_id=row[1],
@@ -43,6 +54,7 @@ def _build_interview_summary(row) -> LlmUsageSessionSummary:
 
 
 def _build_job_posting_summary(row) -> LlmUsageSessionSummary:
+    """채용공고 분석 파이프라인 집계 행을 응답 스키마로 바꾼다."""
     return LlmUsageSessionSummary(
         session_id=None,
         candidate_id=None,
@@ -64,6 +76,8 @@ def _build_job_posting_summary(row) -> LlmUsageSessionSummary:
 
 
 class LlmUsageService:
+    """LLM 사용량 대시보드용 집계 서비스다."""
+
     def __init__(self, db: AsyncSession):
         self.repository = LlmCallLogRepository(db)
 
@@ -72,6 +86,11 @@ class LlmUsageService:
         limit: int,
         pipeline_type: str | None = "INTERVIEW_QUESTION",
     ) -> LlmUsageSummaryResponse:
+        """파이프라인 유형별 사용량 요약을 한 번에 구성한다.
+
+        조회 기준은 pipeline_type 하나로 통일한다.
+        이렇게 해야 메트릭, 세션, 최근 호출이 같은 범위를 보게 된다.
+        """
         metrics_row = await self.repository.get_usage_metrics_row(pipeline_type)
         by_node_rows = await self.repository.get_usage_by_node_rows(pipeline_type)
         by_session_rows = await self.repository.get_usage_by_session_rows(

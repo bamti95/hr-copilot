@@ -1,3 +1,10 @@
+"""채용공고 분석용 근거 검색 서비스.
+
+위험 이슈별로 검색 질의를 만들고, metadata 검색과 vector 검색을 먼저 수행한다.
+근거가 부족할 때만 BM25/full-text를 보조 경로로 실행한다.
+최종 후보는 휴리스틱 재정렬과 모델 재정렬을 거쳐 리포트용 근거로 반환한다.
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -56,18 +63,26 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
+# BM25는 기본 경로가 아니라 fallback 경로로 다루는 것이 기본 전략이다.
 BM25_ENABLED = _env_flag("JOB_POSTING_BM25_ENABLED", True)
 BM25_MODE = os.getenv("JOB_POSTING_BM25_MODE", "fallback_only").strip().lower()
+# BM25가 길게 물리면 전체 분석 시간이 급격히 늘어나므로 초 단위 상한을 둔다.
 BM25_TIMEOUT_SECONDS = _env_float("JOB_POSTING_BM25_TIMEOUT_SECONDS", 3.0)
 BM25_TOP_K = _env_int("JOB_POSTING_BM25_TOP_K", 5)
 VECTOR_TOP_K = _env_int("JOB_POSTING_VECTOR_TOP_K", 12)
 FINAL_EVIDENCE_LIMIT = _env_int("JOB_POSTING_FINAL_EVIDENCE_LIMIT", 5)
 RERANKER_ENABLED = _env_flag("JOB_POSTING_RERANKER_ENABLED", True)
+# 리랭커는 비용이 큰 편이라 상위 후보만 태운다.
 RERANK_CANDIDATE_LIMIT = _env_int("JOB_POSTING_RERANK_CANDIDATE_LIMIT", 5)
 
 
 @dataclass(slots=True)
 class RetrievedEvidence:
+    """검색 후보 1건을 리포트에 싣기 위한 중간 객체.
+
+    text/vector/keyword/hybrid/rerank 점수를 함께 들고 다닌다.
+    어떤 단계에서 점수가 올라갔는지 추적하기 쉽게 설계했다.
+    """
     chunk: JobPostingKnowledgeChunk
     text_score: float = 0.0
     vector_score: float = 0.0
@@ -77,6 +92,7 @@ class RetrievedEvidence:
     matched_terms: list[str] | None = None
 
     def to_payload(self) -> dict[str, Any]:
+        """리포트와 로그 저장에 쓰기 쉬운 형태로 직렬화한다."""
         source = getattr(self.chunk, "knowledge_source", None)
         content = self.chunk.content or ""
         metadata = self.chunk.metadata_json or {}
@@ -106,6 +122,12 @@ class RetrievedEvidence:
 
 
 class JobPostingRetrievalService:
+    """이슈별 근거 검색을 총괄한다.
+
+    검색 순서는 metadata -> vector -> BM25 fallback이다.
+    마지막 실행의 세부 시간과 후보 수는 `last_trace`에 남긴다.
+    """
+
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.chunk_repo = JobPostingKnowledgeChunkRepository(db)
@@ -117,6 +139,11 @@ class JobPostingRetrievalService:
         issue: dict[str, Any],
         limit: int = 12,
     ) -> list[RetrievedEvidence]:
+        """단일 이슈에 대한 근거 후보를 수집하고 재정렬한다.
+
+        빠른 경로에서 충분한 후보를 확보하면 BM25는 건너뛴다.
+        반환값은 최종 점수 기준으로 정렬된 근거 목록이다.
+        """
         trace: dict[str, Any] = {
             "bm25_enabled": BM25_ENABLED,
             "bm25_mode": BM25_MODE,
@@ -141,6 +168,7 @@ class JobPostingRetrievalService:
             query_terms = extract_query_terms(query)
             query_embedding = embed_text(query)
 
+            # issue_code, risk_category 같은 구조화된 값은 DB 비용이 낮아 먼저 조회한다.
             started_at = time.perf_counter()
             metadata_rows = await self.chunk_repo.search_by_metadata_exact(
                 issue_type=issue.get("issue_type"),
@@ -151,6 +179,7 @@ class JobPostingRetrievalService:
             trace["metadata_count"] += len(metadata_rows)
             text_rows.extend(metadata_rows)
 
+            # vector 검색은 의미 유사도를 빠르게 확보하는 기본 경로다.
             started_at = time.perf_counter()
             try:
                 vector_rows.extend(
@@ -179,6 +208,7 @@ class JobPostingRetrievalService:
         )
         trace["merge_elapsed_ms"] += int((time.perf_counter() - merge_started_at) * 1000)
 
+        # 빠른 경로에서 후보가 약하면 그때만 BM25 fallback을 실행한다.
         if should_run_bm25(merged, limit=limit):
             for query in queries[:1]:
                 query_terms = extract_query_terms(query)
@@ -217,6 +247,11 @@ class JobPostingRetrievalService:
         query_terms: list[str],
         limit: int,
     ) -> tuple[list[tuple[JobPostingKnowledgeChunk, float]], dict[str, Any]]:
+        """BM25/full-text fallback을 제한 시간 안에서 실행한다.
+
+        timeout이 나면 전체 분석을 실패시키지 않고 빈 결과로 넘긴다.
+        목적은 근거 보강이지, 느린 검색 때문에 전체 파이프라인을 멈추는 것이 아니다.
+        """
         if not BM25_ENABLED:
             return [], {"elapsed_ms": 0, "timeout": False}
 
@@ -266,6 +301,7 @@ class JobPostingRetrievalService:
         query_terms: list[str],
         limit: int,
     ) -> list[tuple[JobPostingKnowledgeChunk, float]]:
+        """DB vector 연산을 쓸 수 없을 때 파이썬에서 코사인 유사도를 계산한다."""
         pool = await self.chunk_repo.find_search_pool(query_terms=query_terms, limit=500)
         if not pool:
             pool = await self.chunk_repo.find_search_pool(query_terms=[], limit=1000)
@@ -278,6 +314,7 @@ class JobPostingRetrievalService:
 
 
 def build_issue_query(issue: dict[str, Any]) -> str:
+    """이슈의 핵심 필드를 한 문장 질의로 합친다."""
     parts = [
         issue.get("issue_type") or "",
         issue.get("flagged_text") or "",
@@ -288,6 +325,11 @@ def build_issue_query(issue: dict[str, Any]) -> str:
 
 
 def build_query_candidates(issue: dict[str, Any]) -> list[str]:
+    """기본 질의를 바탕으로 검색 변형 질의를 만든다.
+
+    한 질의로 놓칠 수 있는 법령형 표현과 기준형 표현을 보강하려는 목적이다.
+    동일 문장은 중복 제거한다.
+    """
     base_query = build_issue_query(issue)
     candidates = [base_query]
     flagged_text = issue.get("flagged_text") or ""
@@ -308,6 +350,7 @@ def build_query_candidates(issue: dict[str, Any]) -> list[str]:
 
 
 def issue_type_to_korean(issue_type: str | None) -> str:
+    """영문 issue code를 사람이 읽기 쉬운 한글 이름으로 바꾼다."""
     labels = {
         "GENDER_DISCRIMINATION": "성별 차별",
         "AGE_DISCRIMINATION": "연령 차별",
@@ -323,6 +366,7 @@ def issue_type_to_korean(issue_type: str | None) -> str:
 def dedupe_rows(
     rows: list[tuple[JobPostingKnowledgeChunk, float]],
 ) -> list[tuple[JobPostingKnowledgeChunk, float]]:
+    """같은 chunk가 여러 검색 경로에서 잡혀도 최고 점수만 남긴다."""
     by_chunk_id: dict[int, tuple[JobPostingKnowledgeChunk, float]] = {}
     for chunk, score in rows:
         current = by_chunk_id.get(chunk.id)
@@ -338,6 +382,11 @@ def merge_retrieval_rows(
     text_rows: list[tuple[JobPostingKnowledgeChunk, float]],
     vector_rows: list[tuple[JobPostingKnowledgeChunk, float]],
 ) -> list[RetrievedEvidence]:
+    """검색 경로별 결과를 하나의 hybrid 점수로 합친다.
+
+    텍스트 점수, 벡터 점수, 키워드 점수에 문서 종류와 최신성 보너스를 더한다.
+    issue_code가 정확히 맞는 근거는 추가 가점을 받아 상위로 올라간다.
+    """
     by_id: dict[int, RetrievedEvidence] = {}
 
     for rank, (chunk, score) in enumerate(text_rows, start=1):
@@ -359,6 +408,7 @@ def merge_retrieval_rows(
         text_weight, vector_weight = retrieval_weights(evidence.chunk)
         source = getattr(evidence.chunk, "knowledge_source", None)
         source_priority = document_priority(getattr(source, "source_type", "") or "")
+        # 검색 의도와 issue_code가 정확히 맞는 근거는 설명력이 높아 별도 가점을 준다.
         issue_match_bonus = 0.15 if evidence.chunk.issue_code == issue.get("issue_type") else 0.0
         freshness_bonus = source_freshness_bonus(evidence.chunk)
         evidence.hybrid_score = (
@@ -375,6 +425,11 @@ def merge_retrieval_rows(
 
 
 def should_run_bm25(evidences: list[RetrievedEvidence], *, limit: int) -> bool:
+    """BM25 fallback이 필요한지 판단한다.
+
+    후보 수가 부족하거나, 상위 점수가 낮거나, issue 직접 매칭과 vector 신호가 약하면 실행한다.
+    빠른 경로가 충분히 강한 경우에는 BM25를 생략해 시간을 아낀다.
+    """
     if not BM25_ENABLED:
         return False
     if BM25_MODE in {"off", "disabled", "false"}:
@@ -393,10 +448,15 @@ def should_run_bm25(evidences: list[RetrievedEvidence], *, limit: int) -> bool:
 
 
 def normalize_rank_score(score: float, rank: int) -> float:
+    """원본 점수와 순위를 함께 반영해 점수를 안정화한다.
+
+    점수가 비어 있어도 하위 순위 기본값은 남기므로 병합 과정에서 완전히 0이 되지 않는다.
+    """
     return max(float(score or 0.0), 1.0 / (60 + rank))
 
 
 def source_freshness_bonus(chunk: JobPostingKnowledgeChunk) -> float:
+    """최신 자료일수록 작은 가점을 준다."""
     metadata = chunk.metadata_json or {}
     if metadata.get("is_latest") is True:
         return 0.05
@@ -406,6 +466,11 @@ def source_freshness_bonus(chunk: JobPostingKnowledgeChunk) -> float:
 
 
 def retrieval_weights(chunk: JobPostingKnowledgeChunk) -> tuple[float, float]:
+    """문서 종류에 따라 text/vector 가중치를 다르게 준다.
+
+    법령 원문은 정확한 문구 일치가 중요해 text 가중치를 높인다.
+    가이드와 사례는 의미 유사도가 중요해 vector 비중을 조금 더 높인다.
+    """
     source = getattr(chunk, "knowledge_source", None)
     source_type = getattr(source, "source_type", None)
     if source_type == JobPostingKnowledgeSourceType.LAW_TEXT.value:
@@ -424,6 +489,7 @@ def rerank_evidence(
     issue: dict[str, Any],
     evidences: list[RetrievedEvidence],
 ) -> list[RetrievedEvidence]:
+    """법령, 사례, 가이드 우선순위를 반영해 1차 재정렬한다."""
     issue_type = issue.get("issue_type")
     for evidence in evidences:
         chunk = evidence.chunk
@@ -443,6 +509,11 @@ def rerank_evidence(
 
 
 def apply_slot_policy(evidences: list[RetrievedEvidence]) -> list[RetrievedEvidence]:
+    """근거 구성이 한쪽으로 쏠리지 않게 슬롯 기반으로 재배치한다.
+
+    법령 2개, 가이드 2개, 사례 1개를 우선 확보하려고 시도한다.
+    그 뒤 남은 후보를 원래 점수 순서대로 붙인다.
+    """
     law = [item for item in evidences if item.chunk.law_name or item.chunk.article_no]
     guide = [
         item
@@ -473,6 +544,11 @@ def apply_slot_policy(evidences: list[RetrievedEvidence]) -> list[RetrievedEvide
 
 
 def apply_model_rerank(*, query: str, evidences: list[RetrievedEvidence]) -> None:
+    """상위 후보에만 모델 리랭커를 적용한다.
+
+    휴리스틱 점수 70%, 모델 점수 30% 비율로 합친다.
+    모델 점수만 맹신하지 않고 기존 우선순위를 유지하려는 판단이다.
+    """
     if not RERANKER_ENABLED or RERANK_CANDIDATE_LIMIT <= 0:
         return
     candidates = evidences[:RERANK_CANDIDATE_LIMIT]
@@ -495,6 +571,7 @@ def apply_model_rerank(*, query: str, evidences: list[RetrievedEvidence]) -> Non
 
 
 def cosine_similarity(left: list[float], right: list[float]) -> float:
+    """두 벡터의 코사인 유사도를 0~1 범위로 반환한다."""
     if not left or not right:
         return 0.0
     size = min(len(left), len(right))

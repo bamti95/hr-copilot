@@ -1,3 +1,9 @@
+"""채용공고 실험 실행 결과 조회 리포지토리.
+
+실험 run과 케이스 결과를 관리 화면과 실험 비교 기능에서 읽을 때 사용한다.
+실험 요약과 케이스 상세를 분리해 조회하는 것이 핵심 역할이다.
+"""
+
 from __future__ import annotations
 
 from sqlalchemy import desc, func, select
@@ -9,10 +15,13 @@ from repositories.base_repository import BaseRepository
 
 
 class JobPostingExperimentRunRepository(BaseRepository[JobPostingExperimentRun]):
+    """실험 run 상위 엔터티 조회를 담당한다."""
+
     def __init__(self, db: AsyncSession):
         super().__init__(db, JobPostingExperimentRun)
 
     async def find_by_id_not_deleted(self, run_id: int) -> JobPostingExperimentRun | None:
+        """삭제되지 않은 실험 run 1건을 조회한다."""
         stmt = select(JobPostingExperimentRun).where(
             JobPostingExperimentRun.id == run_id,
             JobPostingExperimentRun.deleted_at.is_(None),
@@ -21,6 +30,7 @@ class JobPostingExperimentRunRepository(BaseRepository[JobPostingExperimentRun])
         return result.scalar_one_or_none()
 
     async def count_list(self) -> int:
+        """실험 run 총개수를 센다."""
         stmt = select(func.count()).select_from(JobPostingExperimentRun).where(
             JobPostingExperimentRun.deleted_at.is_(None)
         )
@@ -28,6 +38,7 @@ class JobPostingExperimentRunRepository(BaseRepository[JobPostingExperimentRun])
         return int(result.scalar_one() or 0)
 
     async def find_list(self, *, page: int, size: int) -> list[JobPostingExperimentRun]:
+        """실험 run 목록을 최신순으로 페이지 조회한다."""
         stmt = (
             select(JobPostingExperimentRun)
             .where(JobPostingExperimentRun.deleted_at.is_(None))
@@ -40,6 +51,8 @@ class JobPostingExperimentRunRepository(BaseRepository[JobPostingExperimentRun])
 
 
 class JobPostingExperimentCaseResultRepository(BaseRepository[JobPostingExperimentCaseResult]):
+    """실험 케이스 결과 상세 조회를 담당한다."""
+
     def __init__(self, db: AsyncSession):
         super().__init__(db, JobPostingExperimentCaseResult)
 
@@ -49,6 +62,7 @@ class JobPostingExperimentCaseResultRepository(BaseRepository[JobPostingExperime
         *,
         limit: int | None = None,
     ) -> list[JobPostingExperimentCaseResult]:
+        """실험 run 1건에 속한 케이스 결과를 순서대로 조회한다."""
         stmt = (
             select(JobPostingExperimentCaseResult)
             .where(

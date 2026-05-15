@@ -1,3 +1,5 @@
+"""지원자와 문서 관리 API 라우터다."""
+
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Query, UploadFile, status

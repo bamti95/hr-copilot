@@ -1,3 +1,5 @@
+"""파일 저장, 다운로드, 텍스트 추출 보조 함수를 제공한다."""
+
 from common.document_extraction import extract_text_from_file
 from common.document_types import ExtractedTextResult, SavedFileResult
 from common.file_storage import (
@@ -38,3 +40,4 @@ __all__ = [
     "strip_extension",
     "validate_upload_file",
 ]
+

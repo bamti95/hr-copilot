@@ -1,3 +1,5 @@
+"""LLM 사용량 대시보드 API 라우터다."""
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,3 +23,4 @@ async def get_llm_usage_summary(
 ) -> LlmUsageSummaryResponse:
     service = LlmUsageService(db)
     return await service.get_summary(limit, pipeline_type=pipeline_type)
+
