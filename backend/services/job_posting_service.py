@@ -1246,6 +1246,7 @@ async def run_rule_rag_analysis(
                 issue=issue,
                 limit=12,
             )
+            retrieval_trace = retrieval_service.last_trace
             evidence_payloads = [evidence.to_payload() for evidence in evidences]
             logger.info(
                 "Job posting evidence retrieval completed. posting_id=%s report_id=%s issue_type=%s flagged_text=%s evidence_count=%s top_evidence=%s",
@@ -1267,20 +1268,45 @@ async def run_rule_rag_analysis(
                     for evidence in evidence_payloads[:3]
                 ],
             )
-            await record_timed_node(
-                trace,
+            await trace.record(
                 node_name="bm25_retrieve",
+                request_json={
+                    "issue_type": issue["issue_type"],
+                    "query_terms": issue["query_terms"],
+                    "mode": retrieval_trace.get("bm25_mode"),
+                    "timeout_seconds": retrieval_trace.get("bm25_timeout_seconds"),
+                },
+                output_json={
+                    "used": retrieval_trace.get("bm25_used"),
+                    "timeout": retrieval_trace.get("bm25_timeout"),
+                    "candidate_count": retrieval_trace.get("bm25_count"),
+                },
+                elapsed_ms=int(retrieval_trace.get("bm25_elapsed_ms") or 0),
+            )
+            await trace.record(
+                node_name="metadata_exact_retrieve",
                 request_json={
                     "issue_type": issue["issue_type"],
                     "query_terms": issue["query_terms"],
                 },
                 output_json={
+                    "candidate_count": retrieval_trace.get("metadata_count"),
+                },
+                elapsed_ms=int(retrieval_trace.get("metadata_elapsed_ms") or 0),
+            )
+            await trace.record(
+                node_name="hybrid_lite_retrieve",
+                request_json={
+                    "issue_type": issue["issue_type"],
+                    "retrieval_mode": "metadata_vector_bm25_fallback",
+                },
+                output_json={
                     "candidate_count": len(evidence_payloads),
                     "top_candidates": evidence_payloads[:5],
+                    "trace": retrieval_trace,
                 },
-                elapsed_started_at=node_started_at,
+                elapsed_ms=int((time.perf_counter() - node_started_at) * 1000),
             )
-            vector_trace_started_at = time.perf_counter()
             await trace.record(
                 node_name="vector_retrieve",
                 request_json={
@@ -1288,14 +1314,13 @@ async def run_rule_rag_analysis(
                     "embedding_model": current_embedding_model_name(),
                 },
                 output_json={
-                    "candidate_count": len(evidence_payloads),
+                    "candidate_count": retrieval_trace.get("vector_count"),
                     "top_vector_scores": [
                         item.get("vector_score") for item in evidence_payloads[:5]
                     ],
                 },
-                elapsed_ms=int((time.perf_counter() - vector_trace_started_at) * 1000),
+                elapsed_ms=int(retrieval_trace.get("vector_elapsed_ms") or 0),
             )
-            merge_trace_started_at = time.perf_counter()
             await trace.record(
                 node_name="merge_hybrid_results",
                 request_json={
@@ -1308,7 +1333,7 @@ async def run_rule_rag_analysis(
                         item.get("hybrid_score") for item in evidence_payloads[:5]
                     ],
                 },
-                elapsed_ms=int((time.perf_counter() - merge_trace_started_at) * 1000),
+                elapsed_ms=int(retrieval_trace.get("merge_elapsed_ms") or 0),
             )
             issue["sources"] = evidence_payloads[:5]
             evidence_items.extend(evidence_payloads[:5])

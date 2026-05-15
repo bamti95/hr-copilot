@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import asyncio
+import logging
 import math
+import os
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -20,6 +24,46 @@ from services.job_posting_embedding_service import (
     current_reranker_model_name,
     rerank_pairs,
 )
+
+
+logger = logging.getLogger(__name__)
+
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "t", "yes", "y", "on"}
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
+BM25_ENABLED = _env_flag("JOB_POSTING_BM25_ENABLED", True)
+BM25_MODE = os.getenv("JOB_POSTING_BM25_MODE", "fallback_only").strip().lower()
+BM25_TIMEOUT_SECONDS = _env_float("JOB_POSTING_BM25_TIMEOUT_SECONDS", 3.0)
+BM25_TOP_K = _env_int("JOB_POSTING_BM25_TOP_K", 5)
+VECTOR_TOP_K = _env_int("JOB_POSTING_VECTOR_TOP_K", 12)
+FINAL_EVIDENCE_LIMIT = _env_int("JOB_POSTING_FINAL_EVIDENCE_LIMIT", 5)
+RERANKER_ENABLED = _env_flag("JOB_POSTING_RERANKER_ENABLED", True)
+RERANK_CANDIDATE_LIMIT = _env_int("JOB_POSTING_RERANK_CANDIDATE_LIMIT", 5)
 
 
 @dataclass(slots=True)
@@ -65,6 +109,7 @@ class JobPostingRetrievalService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.chunk_repo = JobPostingKnowledgeChunkRepository(db)
+        self.last_trace: dict[str, Any] = {}
 
     async def retrieve_for_issue(
         self,
@@ -72,26 +117,46 @@ class JobPostingRetrievalService:
         issue: dict[str, Any],
         limit: int = 12,
     ) -> list[RetrievedEvidence]:
+        trace: dict[str, Any] = {
+            "bm25_enabled": BM25_ENABLED,
+            "bm25_mode": BM25_MODE,
+            "bm25_timeout_seconds": BM25_TIMEOUT_SECONDS,
+            "bm25_used": False,
+            "bm25_timeout": False,
+            "metadata_elapsed_ms": 0,
+            "vector_elapsed_ms": 0,
+            "bm25_elapsed_ms": 0,
+            "merge_elapsed_ms": 0,
+            "rerank_elapsed_ms": 0,
+            "metadata_count": 0,
+            "vector_count": 0,
+            "bm25_count": 0,
+        }
         queries = build_query_candidates(issue)
         base_query = queries[0]
-        query_terms = extract_query_terms(base_query)
         text_rows: list[tuple[JobPostingKnowledgeChunk, float]] = []
         vector_rows: list[tuple[JobPostingKnowledgeChunk, float]] = []
+
         for query in queries:
             query_terms = extract_query_terms(query)
             query_embedding = embed_text(query)
-            text_rows.extend(
-                await self.chunk_repo.search_by_full_text(
-                    query=query,
-                    query_terms=query_terms,
-                    limit=limit * 2,
-                )
+
+            started_at = time.perf_counter()
+            metadata_rows = await self.chunk_repo.search_by_metadata_exact(
+                issue_type=issue.get("issue_type"),
+                query_terms=query_terms,
+                limit=min(limit, FINAL_EVIDENCE_LIMIT),
             )
+            trace["metadata_elapsed_ms"] += int((time.perf_counter() - started_at) * 1000)
+            trace["metadata_count"] += len(metadata_rows)
+            text_rows.extend(metadata_rows)
+
+            started_at = time.perf_counter()
             try:
                 vector_rows.extend(
                     await self.chunk_repo.search_by_vector(
                         query_embedding=query_embedding,
-                        limit=limit * 2,
+                        limit=max(limit, VECTOR_TOP_K),
                     )
                 )
             except Exception:
@@ -99,19 +164,100 @@ class JobPostingRetrievalService:
                     await self._python_vector_fallback(
                         query_embedding=query_embedding,
                         query_terms=query_terms,
-                        limit=limit * 2,
+                        limit=max(limit, VECTOR_TOP_K),
                     )
                 )
+            trace["vector_elapsed_ms"] += int((time.perf_counter() - started_at) * 1000)
+            trace["vector_count"] = len(vector_rows)
 
+        merge_started_at = time.perf_counter()
         merged = merge_retrieval_rows(
             issue=issue,
             query_terms=extract_query_terms(" ".join(queries)),
             text_rows=dedupe_rows(text_rows),
             vector_rows=dedupe_rows(vector_rows),
         )
+        trace["merge_elapsed_ms"] += int((time.perf_counter() - merge_started_at) * 1000)
+
+        if should_run_bm25(merged, limit=limit):
+            for query in queries[:1]:
+                query_terms = extract_query_terms(query)
+                bm25_rows, bm25_trace = await self._bm25_retrieve_with_timeout(
+                    query=query,
+                    query_terms=query_terms,
+                    limit=min(limit, BM25_TOP_K),
+                )
+                trace["bm25_used"] = True
+                trace["bm25_timeout"] = trace["bm25_timeout"] or bm25_trace["timeout"]
+                trace["bm25_elapsed_ms"] += bm25_trace["elapsed_ms"]
+                trace["bm25_count"] += len(bm25_rows)
+                text_rows.extend(bm25_rows)
+
+            merge_started_at = time.perf_counter()
+            merged = merge_retrieval_rows(
+                issue=issue,
+                query_terms=extract_query_terms(" ".join(queries)),
+                text_rows=dedupe_rows(text_rows),
+                vector_rows=dedupe_rows(vector_rows),
+            )
+            trace["merge_elapsed_ms"] += int((time.perf_counter() - merge_started_at) * 1000)
+
+        rerank_started_at = time.perf_counter()
         reranked = rerank_evidence(issue=issue, evidences=merged)
         apply_model_rerank(query=base_query, evidences=reranked)
+        trace["rerank_elapsed_ms"] = int((time.perf_counter() - rerank_started_at) * 1000)
+        trace["final_count"] = len(reranked[:limit])
+        self.last_trace = trace
         return reranked[:limit]
+
+    async def _bm25_retrieve_with_timeout(
+        self,
+        *,
+        query: str,
+        query_terms: list[str],
+        limit: int,
+    ) -> tuple[list[tuple[JobPostingKnowledgeChunk, float]], dict[str, Any]]:
+        if not BM25_ENABLED:
+            return [], {"elapsed_ms": 0, "timeout": False}
+
+        started_at = time.perf_counter()
+        try:
+            rows = await asyncio.wait_for(
+                self.chunk_repo.search_by_full_text(
+                    query=query,
+                    query_terms=query_terms,
+                    limit=limit,
+                ),
+                timeout=BM25_TIMEOUT_SECONDS,
+            )
+            if len(rows) < limit:
+                rows.extend(
+                    await self.chunk_repo.search_by_keyword_fallback(
+                        query_terms=query_terms,
+                        limit=limit - len(rows),
+                    )
+                )
+            return rows, {
+                "elapsed_ms": int((time.perf_counter() - started_at) * 1000),
+                "timeout": False,
+            }
+        except TimeoutError:
+            logger.warning(
+                "Job posting BM25 retrieval timed out. timeout_seconds=%s query=%s",
+                BM25_TIMEOUT_SECONDS,
+                query[:120],
+            )
+            return [], {
+                "elapsed_ms": int((time.perf_counter() - started_at) * 1000),
+                "timeout": True,
+            }
+        except Exception as exc:
+            logger.warning("Job posting BM25 retrieval failed; fallback skipped: %s", exc)
+            return [], {
+                "elapsed_ms": int((time.perf_counter() - started_at) * 1000),
+                "timeout": False,
+                "error": str(exc),
+            }
 
     async def _python_vector_fallback(
         self,
@@ -228,6 +374,24 @@ def merge_retrieval_rows(
     return merged
 
 
+def should_run_bm25(evidences: list[RetrievedEvidence], *, limit: int) -> bool:
+    if not BM25_ENABLED:
+        return False
+    if BM25_MODE in {"off", "disabled", "false"}:
+        return False
+    if BM25_MODE in {"always", "full"}:
+        return True
+
+    required_count = min(limit, FINAL_EVIDENCE_LIMIT)
+    if len(evidences) < required_count:
+        return True
+
+    top_score = max((item.hybrid_score for item in evidences), default=0.0)
+    has_issue_match = any(item.chunk.issue_code and item.rerank_score >= 0 for item in evidences)
+    has_vector_signal = any(item.vector_score >= 0.01 for item in evidences)
+    return top_score < 0.25 or not (has_issue_match or has_vector_signal)
+
+
 def normalize_rank_score(score: float, rank: int) -> float:
     return max(float(score or 0.0), 1.0 / (60 + rank))
 
@@ -309,13 +473,19 @@ def apply_slot_policy(evidences: list[RetrievedEvidence]) -> list[RetrievedEvide
 
 
 def apply_model_rerank(*, query: str, evidences: list[RetrievedEvidence]) -> None:
-    scores = rerank_pairs(query, [item.chunk.content or "" for item in evidences])
+    if not RERANKER_ENABLED or RERANK_CANDIDATE_LIMIT <= 0:
+        return
+    candidates = evidences[:RERANK_CANDIDATE_LIMIT]
+    if len(candidates) <= 1:
+        return
+
+    scores = rerank_pairs(query, [item.chunk.content or "" for item in candidates])
     if not scores:
         return
     max_score = max(scores) or 1.0
     min_score = min(scores)
     span = max(max_score - min_score, 1e-9)
-    for evidence, score in zip(evidences, scores, strict=False):
+    for evidence, score in zip(candidates, scores, strict=False):
         normalized = (score - min_score) / span
         evidence.rerank_score = (evidence.rerank_score * 0.7) + (normalized * 0.3)
         if evidence.matched_terms is None:

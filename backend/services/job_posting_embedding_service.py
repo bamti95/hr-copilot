@@ -10,7 +10,18 @@ from typing import Sequence
 
 logger = logging.getLogger(__name__)
 
-EMBEDDING_DIM = 1536
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+EMBEDDING_DIM = _env_int("JOB_POSTING_EMBEDDING_DIM", 1536)
 BGE_M3_MODEL = os.getenv("JOB_POSTING_EMBEDDING_MODEL", "BAAI/bge-m3")
 BGE_RERANKER_MODEL = os.getenv(
     "JOB_POSTING_RERANKER_MODEL",
@@ -26,6 +37,17 @@ def _env_flag(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "t", "yes", "y", "on"}
 
 
+def _env_disabled(name: str, *, enabled_name: str | None = None) -> bool:
+    if _env_flag(name):
+        return True
+    if enabled_name is None:
+        return False
+    raw = os.getenv(enabled_name)
+    if raw is None:
+        return False
+    return raw.strip().lower() in {"0", "false", "f", "no", "n", "off"}
+
+
 def current_embedding_model_name() -> str:
     if _env_flag("JOB_POSTING_DISABLE_EMBEDDING_MODEL"):
         return FALLBACK_EMBEDDING_MODEL
@@ -33,7 +55,7 @@ def current_embedding_model_name() -> str:
 
 
 def current_reranker_model_name() -> str:
-    if _env_flag("JOB_POSTING_DISABLE_RERANKER"):
+    if _env_disabled("JOB_POSTING_DISABLE_RERANKER", enabled_name="JOB_POSTING_RERANKER_ENABLED"):
         return "heuristic-slot-rerank"
     return BGE_RERANKER_MODEL if _get_cross_encoder() is not None else "heuristic-slot-rerank"
 
@@ -62,7 +84,7 @@ def rerank_pairs(query: str, documents: Sequence[str]) -> list[float]:
     if not documents:
         return []
 
-    if _env_flag("JOB_POSTING_DISABLE_RERANKER"):
+    if _env_disabled("JOB_POSTING_DISABLE_RERANKER", enabled_name="JOB_POSTING_RERANKER_ENABLED"):
         return []
 
     model = _get_cross_encoder()
@@ -96,7 +118,7 @@ def _get_sentence_transformer():
 
 @lru_cache(maxsize=1)
 def _get_cross_encoder():
-    if _env_flag("JOB_POSTING_DISABLE_RERANKER"):
+    if _env_disabled("JOB_POSTING_DISABLE_RERANKER", enabled_name="JOB_POSTING_RERANKER_ENABLED"):
         logger.info("BGE reranker disabled; using heuristic slot rerank.")
         return None
     try:
