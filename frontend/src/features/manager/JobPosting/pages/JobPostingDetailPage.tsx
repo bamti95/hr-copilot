@@ -24,10 +24,10 @@ import {
   rememberIgnoredJobId,
 } from "../utils/ignoredJobs";
 import { useJobPolling } from "../hooks/useJobPolling";
+import { JOB_POSTING_ANALYSIS_POLLING_TIMEOUT_MS } from "../constants/analysisPolling";
 
 const ACTIVE_ANALYSIS_JOB_KEY = "hrCopilot.activeJobPostingAnalysisJob";
 const IGNORED_ANALYSIS_JOB_IDS_KEY = "hrCopilot.ignoredJobPostingAnalysisJobIds";
-const ANALYSIS_POLLING_TIMEOUT_MS = 5 * 60 * 1000;
 
 function readStoredAnalysisJob(postingId: number): JobPostingAiJob | null {
   try {
@@ -90,7 +90,7 @@ export function JobPostingDetailPage() {
     clearJob: clearAnalysisJob,
   } = useJobPolling({
     fetcher: fetchAnalysisJob,
-    maxPollingMs: ANALYSIS_POLLING_TIMEOUT_MS,
+    maxPollingMs: JOB_POSTING_ANALYSIS_POLLING_TIMEOUT_MS,
     onCompleted: handleAnalysisCompleted,
     onFailed: (failedJob) => {
       setIsAnalyzing(false);
