@@ -1754,44 +1754,104 @@ def rank_evidence(issue: dict[str, Any], chunks: list[Any]) -> list[dict[str, An
 
 
 def calculate_risk_level(issues: list[dict[str, Any]]) -> str:
-    if not issues:
-        return "CLEAN"
-    legal_count = sum(1 for issue in issues if issue["category"] == "LEGAL")
-    if any(issue["issue_type"] == "FALSE_JOB_AD" for issue in issues) or legal_count >= 3:
-        return "CRITICAL"
-    if legal_count >= 2 or (legal_count >= 1 and len(issues) >= 3):
-        return "HIGH"
-    if legal_count >= 1 or len(issues) >= 2:
-        return "MEDIUM"
-    return "LOW"
+    return calculate_risk_level_from_issues(issues)
 
 
 def calculate_risk_level_with_evidence(issues: list[dict[str, Any]]) -> str:
+    return calculate_risk_level_from_issues(issues)
+
+
+def calculate_risk_level_from_issues(issues: list[dict[str, Any]]) -> str:
     if not issues:
         return "CLEAN"
-    legal_with_law = 0
-    legal_without_law = 0
-    for issue in issues:
-        if issue.get("category") != "LEGAL":
-            continue
-        sources = issue.get("sources") or []
-        has_law = any(source.get("law_name") or source.get("article_no") for source in sources)
-        if has_law:
-            legal_with_law += 1
-        else:
-            legal_without_law += 1
 
-    if any(issue.get("issue_type") == "FALSE_JOB_AD" for issue in issues) and legal_with_law:
+    severe_direct_issue_types = {
+        "FALSE_JOB_AD",
+        "UNFAVORABLE_CONDITION_CHANGE",
+        "GENDER_DISCRIMINATION",
+        "AGE_DISCRIMINATION",
+        "PHYSICAL_CONDITION",
+        "IRRELEVANT_PERSONAL_INFO",
+    }
+    medium_issue_types = {
+        "WORKING_CONDITION_AMBIGUITY",
+        "OVERTIME_RISK",
+        "JOB_DESCRIPTION_VAGUE",
+        "SALARY_MISSING",
+        "CULTURE_RED_FLAG",
+    }
+    low_issue_types = {
+        "BENEFIT_VAGUE",
+        "REPEATED_POSTING",
+    }
+
+    normalized = [
+        {
+            "issue_type": issue.get("issue_type"),
+            "severity": issue.get("severity") or "LOW",
+        }
+        for issue in issues
+        if issue.get("issue_type")
+    ]
+    issue_types = [item["issue_type"] for item in normalized if item["issue_type"]]
+
+    false_job_ad_present = "FALSE_JOB_AD" in issue_types
+    critical_partner_issue_types = {
+        "UNFAVORABLE_CONDITION_CHANGE",
+        "WORKING_CONDITION_AMBIGUITY",
+        "IRRELEVANT_PERSONAL_INFO",
+        "SALARY_MISSING",
+    }
+    if false_job_ad_present and any(
+        issue_type in critical_partner_issue_types for issue_type in issue_types
+    ):
         return "CRITICAL"
-    if legal_with_law >= 3:
-        return "CRITICAL"
-    if legal_with_law >= 1 and len(issues) >= 3:
+
+    if any(issue_type in severe_direct_issue_types for issue_type in issue_types):
         return "HIGH"
-    if legal_with_law >= 1 or legal_without_law >= 1:
+
+    medium_high_count = sum(
+        1
+        for item in normalized
+        if item["issue_type"] in medium_issue_types
+        and item["severity"] in {"HIGH", "CRITICAL"}
+    )
+    if medium_high_count >= 2:
+        return "HIGH"
+    if any(item["issue_type"] in medium_issue_types for item in normalized):
         return "MEDIUM"
-    if len(issues) >= 2:
+
+    low_count = sum(1 for issue_type in issue_types if issue_type in low_issue_types)
+    if low_count >= 2:
+        return "MEDIUM"
+    if low_count >= 1:
         return "LOW"
     return "LOW"
+
+
+def calculate_risk_level_from_issue_types(issue_types: list[str]) -> str:
+    default_severity = {
+        "FALSE_JOB_AD": "HIGH",
+        "UNFAVORABLE_CONDITION_CHANGE": "HIGH",
+        "GENDER_DISCRIMINATION": "HIGH",
+        "AGE_DISCRIMINATION": "HIGH",
+        "PHYSICAL_CONDITION": "HIGH",
+        "IRRELEVANT_PERSONAL_INFO": "HIGH",
+        "WORKING_CONDITION_AMBIGUITY": "HIGH",
+        "OVERTIME_RISK": "MEDIUM",
+        "JOB_DESCRIPTION_VAGUE": "MEDIUM",
+        "SALARY_MISSING": "MEDIUM",
+        "CULTURE_RED_FLAG": "MEDIUM",
+        "BENEFIT_VAGUE": "LOW",
+        "REPEATED_POSTING": "LOW",
+    }
+    return calculate_risk_level_from_issues(
+        [
+            {"issue_type": issue_type, "severity": default_severity.get(issue_type, "LOW")}
+            for issue_type in issue_types
+            if issue_type
+        ]
+    )
 
 
 def calculate_confidence(
