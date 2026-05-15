@@ -73,7 +73,7 @@ build_state → analyzer → questioner → selector_lite → predictor
 - **RAG 실험실**: 배치 평가 (`/manager/job-posting-experiments`)
 - **비동기 작업**: `AiJob` — `JOB_POSTING_COMPLIANCE_ANALYSIS`, `JOB_POSTING_KNOWLEDGE_INDEXING`, `JOB_POSTING_EXPERIMENT_RUN`
 
-상세 아키텍처는 [§5 채용공고 RAG 시스템](#5-채용공고-rag-시스템) 참고.
+상세 아키텍처는 [5 채용공고 RAG 시스템](#5-채용공고-rag-시스템) 참고.
 
 ### 3.5 워크플로우 대시보드 및 LLM 로그 관리
 
