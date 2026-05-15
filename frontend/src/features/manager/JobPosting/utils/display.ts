@@ -54,3 +54,17 @@ export function formatScore(value: number | null | undefined) {
   const normalized = value <= 1 ? value * 100 : value;
   return `${Math.round(normalized)}점`;
 }
+
+export function formatPercent(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) return "-";
+  const normalized = value <= 1 ? value * 100 : value;
+  return `${normalized.toFixed(1)}%`;
+}
+
+export function formatDurationMs(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) return "-";
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(2)}s`;
+  }
+  return `${Math.round(value)}ms`;
+}

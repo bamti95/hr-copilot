@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field
 
 from models.job_posting import JobPosting
 from models.job_posting_analysis_report import JobPostingAnalysisReport
+from models.job_posting_experiment_case_result import JobPostingExperimentCaseResult
+from models.job_posting_experiment_run import JobPostingExperimentRun
 from models.job_posting_knowledge_chunk import JobPostingKnowledgeChunk
 from models.job_posting_knowledge_source import JobPostingKnowledgeSource
 
@@ -342,3 +344,123 @@ class KnowledgeSearchResponse(BaseModel):
     embedding_model: str
     result_count: int
     results: list[KnowledgeSearchResult]
+
+
+class JobPostingExperimentRunCreateRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255)
+    description: str | None = None
+    dataset_name: str = Field(default="job_posting_risk_50", min_length=1, max_length=100)
+    dataset_version: str | None = Field(default=None, max_length=50)
+    experiment_type: str = Field(default="RAG_EVAL", max_length=50)
+    config_snapshot: dict[str, Any] | None = None
+
+
+class JobPostingExperimentCaseResultResponse(BaseModel):
+    id: int
+    case_id: str
+    case_index: int
+    job_group: str | None = None
+    status: str
+    expected_label: str | None = None
+    predicted_label: str | None = None
+    expected_risk_types: list[Any] | None = None
+    predicted_risk_types: list[Any] | None = None
+    retrieval_hit_at_5: bool | None = None
+    source_omitted: bool | None = None
+    latency_ms: float | None = None
+    error_message: str | None = None
+    evaluation_payload: dict[str, Any] | None = None
+    report_payload: dict[str, Any] | None = None
+
+    @classmethod
+    def from_entity(
+        cls,
+        entity: JobPostingExperimentCaseResult,
+    ) -> "JobPostingExperimentCaseResultResponse":
+        return cls(
+            id=entity.id,
+            case_id=entity.case_id,
+            case_index=entity.case_index,
+            job_group=entity.job_group,
+            status=entity.status,
+            expected_label=entity.expected_label,
+            predicted_label=entity.predicted_label,
+            expected_risk_types=entity.expected_risk_types,
+            predicted_risk_types=entity.predicted_risk_types,
+            retrieval_hit_at_5=entity.retrieval_hit_at_5,
+            source_omitted=entity.source_omitted,
+            latency_ms=entity.latency_ms,
+            error_message=entity.error_message,
+            evaluation_payload=entity.evaluation_payload,
+            report_payload=entity.report_payload,
+        )
+
+
+class JobPostingExperimentRunResponse(BaseModel):
+    id: int
+    title: str
+    description: str | None = None
+    dataset_name: str
+    dataset_version: str | None = None
+    experiment_type: str
+    status: str
+    total_cases: int
+    completed_cases: int
+    failed_cases: int
+    retrieval_recall_at_5: float | None = None
+    macro_f1: float | None = None
+    high_risk_recall: float | None = None
+    source_omission_rate: float | None = None
+    avg_latency_ms: float | None = None
+    config_snapshot: dict[str, Any] | None = None
+    summary_metrics: dict[str, Any] | None = None
+    result_summary: dict[str, Any] | None = None
+    ai_job_id: int | None = None
+    requested_by: int | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_entity(
+        cls,
+        entity: JobPostingExperimentRun,
+    ) -> "JobPostingExperimentRunResponse":
+        return cls(
+            id=entity.id,
+            title=entity.title,
+            description=entity.description,
+            dataset_name=entity.dataset_name,
+            dataset_version=entity.dataset_version,
+            experiment_type=entity.experiment_type,
+            status=entity.status,
+            total_cases=entity.total_cases,
+            completed_cases=entity.completed_cases,
+            failed_cases=entity.failed_cases,
+            retrieval_recall_at_5=entity.retrieval_recall_at_5,
+            macro_f1=entity.macro_f1,
+            high_risk_recall=entity.high_risk_recall,
+            source_omission_rate=entity.source_omission_rate,
+            avg_latency_ms=entity.avg_latency_ms,
+            config_snapshot=entity.config_snapshot,
+            summary_metrics=entity.summary_metrics,
+            result_summary=entity.result_summary,
+            ai_job_id=entity.ai_job_id,
+            requested_by=entity.requested_by,
+            started_at=entity.started_at,
+            completed_at=entity.completed_at,
+            created_at=entity.created_at,
+            updated_at=entity.updated_at,
+        )
+
+
+class JobPostingExperimentRunListResponse(BaseModel):
+    items: list[JobPostingExperimentRunResponse]
+    total_count: int
+    total_pages: int
+
+
+class JobPostingExperimentRunDetailResponse(BaseModel):
+    run: JobPostingExperimentRunResponse
+    case_results: list[JobPostingExperimentCaseResultResponse]

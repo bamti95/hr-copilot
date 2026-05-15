@@ -50,6 +50,13 @@ export function JobPostingListPage() {
         actions={
           <>
             <Link
+              to="/manager/job-posting-experiments"
+              className="inline-flex h-11 items-center gap-2 rounded-2xl border border-[var(--line)] bg-white/70 px-4 text-sm font-semibold text-[var(--text)]"
+            >
+              <FileSearch className="h-4 w-4" />
+              실험실
+            </Link>
+            <Link
               to="/manager/job-postings/knowledge-sources"
               className="inline-flex h-11 items-center gap-2 rounded-2xl border border-[var(--line)] bg-white/70 px-4 text-sm font-semibold text-[var(--text)]"
             >

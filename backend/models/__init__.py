@@ -28,6 +28,11 @@ from models.job_posting_knowledge_chunk import (
     JobPostingKnowledgeChunkType,
     JobPostingRiskSeverity,
 )
+from models.job_posting_experiment_case_result import JobPostingExperimentCaseResult
+from models.job_posting_experiment_run import (
+    JobPostingExperimentRun,
+    JobPostingExperimentStatus,
+)
 
 __all__ = [
     "AiJob",
@@ -56,4 +61,7 @@ __all__ = [
     "JobPostingKnowledgeChunk",
     "JobPostingKnowledgeChunkType",
     "JobPostingRiskSeverity",
+    "JobPostingExperimentCaseResult",
+    "JobPostingExperimentRun",
+    "JobPostingExperimentStatus",
 ]

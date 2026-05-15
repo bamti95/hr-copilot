@@ -5,12 +5,15 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from core.config import get_settings
 from models import (
+    AiJob,
     Candidate,
     Document,
     InterviewQuestion,
     InterviewSession,
     JobPosting,
     JobPostingAnalysisReport,
+    JobPostingExperimentCaseResult,
+    JobPostingExperimentRun,
     JobPostingKnowledgeChunk,
     JobPostingKnowledgeSource,
     LlmCallLog,

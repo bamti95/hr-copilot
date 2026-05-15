@@ -211,3 +211,68 @@ export interface KnowledgeSearchResponse {
   resultCount: number;
   results: KnowledgeSearchResult[];
 }
+
+export interface JobPostingExperimentRunCreateRequest {
+  title: string;
+  description?: string | null;
+  datasetName?: string;
+  datasetVersion?: string | null;
+  experimentType?: string;
+  configSnapshot?: Record<string, unknown> | null;
+}
+
+export interface JobPostingExperimentCaseResult {
+  id: number;
+  caseId: string;
+  caseIndex: number;
+  jobGroup: string | null;
+  status: string;
+  expectedLabel: string | null;
+  predictedLabel: string | null;
+  expectedRiskTypes: string[] | null;
+  predictedRiskTypes: string[] | null;
+  retrievalHitAt5: boolean | null;
+  sourceOmitted: boolean | null;
+  latencyMs: number | null;
+  errorMessage: string | null;
+  evaluationPayload: Record<string, unknown> | null;
+  reportPayload: Record<string, unknown> | null;
+}
+
+export interface JobPostingExperimentRun {
+  id: number;
+  title: string;
+  description: string | null;
+  datasetName: string;
+  datasetVersion: string | null;
+  experimentType: string;
+  status: string;
+  totalCases: number;
+  completedCases: number;
+  failedCases: number;
+  retrievalRecallAt5: number | null;
+  macroF1: number | null;
+  highRiskRecall: number | null;
+  sourceOmissionRate: number | null;
+  avgLatencyMs: number | null;
+  configSnapshot: Record<string, unknown> | null;
+  summaryMetrics: Record<string, unknown> | null;
+  resultSummary: Record<string, unknown> | null;
+  aiJobId: number | null;
+  requestedBy: number | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JobPostingExperimentRunListResponse {
+  items: JobPostingExperimentRun[];
+  totalCount: number;
+  totalPages: number;
+}
+
+export interface JobPostingExperimentRunDetailResponse {
+  run: JobPostingExperimentRun;
+  caseResults: JobPostingExperimentCaseResult[];
+}

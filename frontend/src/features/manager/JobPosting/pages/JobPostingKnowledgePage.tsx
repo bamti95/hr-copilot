@@ -235,9 +235,10 @@ export function JobPostingKnowledgePage() {
       setChunks([]);
       return;
     }
+    const sourceId = selectedSourceId;
     async function loadChunks() {
       try {
-        setChunks(await fetchKnowledgeChunks(selectedSourceId));
+        setChunks(await fetchKnowledgeChunks(sourceId));
       } catch {
         setChunks([]);
       }

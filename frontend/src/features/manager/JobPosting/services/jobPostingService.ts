@@ -4,6 +4,11 @@ import type {
   JobPostingAiJob,
   JobPostingAnalysisReport,
   JobPostingAnalyzeResponse,
+  JobPostingExperimentCaseResult,
+  JobPostingExperimentRun,
+  JobPostingExperimentRunCreateRequest,
+  JobPostingExperimentRunDetailResponse,
+  JobPostingExperimentRunListResponse,
   JobPostingCreateRequest,
   JobPostingIssue,
   JobPostingListResponse,
@@ -183,6 +188,62 @@ interface KnowledgeSearchApiResponse {
   embedding_model: string;
   result_count: number;
   results: KnowledgeSearchResultApiResponse[];
+}
+
+interface JobPostingExperimentRunApiResponse {
+  id: number;
+  title: string;
+  description: string | null;
+  dataset_name: string;
+  dataset_version: string | null;
+  experiment_type: string;
+  status: string;
+  total_cases: number;
+  completed_cases: number;
+  failed_cases: number;
+  retrieval_recall_at_5: number | null;
+  macro_f1: number | null;
+  high_risk_recall: number | null;
+  source_omission_rate: number | null;
+  avg_latency_ms: number | null;
+  config_snapshot: JsonRecord | null;
+  summary_metrics: JsonRecord | null;
+  result_summary: JsonRecord | null;
+  ai_job_id: number | null;
+  requested_by: number | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface JobPostingExperimentRunListApiResponse {
+  items: JobPostingExperimentRunApiResponse[];
+  total_count: number;
+  total_pages: number;
+}
+
+interface JobPostingExperimentCaseResultApiResponse {
+  id: number;
+  case_id: string;
+  case_index: number;
+  job_group: string | null;
+  status: string;
+  expected_label: string | null;
+  predicted_label: string | null;
+  expected_risk_types: string[] | null;
+  predicted_risk_types: string[] | null;
+  retrieval_hit_at_5: boolean | null;
+  source_omitted: boolean | null;
+  latency_ms: number | null;
+  error_message: string | null;
+  evaluation_payload: JsonRecord | null;
+  report_payload: JsonRecord | null;
+}
+
+interface JobPostingExperimentRunDetailApiResponse {
+  run: JobPostingExperimentRunApiResponse;
+  case_results: JobPostingExperimentCaseResultApiResponse[];
 }
 
 function unwrap<T>(payload: T | ApiEnvelope<T>): T {
@@ -404,6 +465,59 @@ function mapAiJob(response: JobPostingAiJobApiResponse): JobPostingAiJob {
     requestPayload: response.request_payload,
     resultPayload: response.result_payload,
     message: response.message,
+  };
+}
+
+function mapExperimentRun(
+  response: JobPostingExperimentRunApiResponse,
+): JobPostingExperimentRun {
+  return {
+    id: response.id,
+    title: response.title,
+    description: response.description,
+    datasetName: response.dataset_name,
+    datasetVersion: response.dataset_version,
+    experimentType: response.experiment_type,
+    status: response.status,
+    totalCases: response.total_cases,
+    completedCases: response.completed_cases,
+    failedCases: response.failed_cases,
+    retrievalRecallAt5: response.retrieval_recall_at_5,
+    macroF1: response.macro_f1,
+    highRiskRecall: response.high_risk_recall,
+    sourceOmissionRate: response.source_omission_rate,
+    avgLatencyMs: response.avg_latency_ms,
+    configSnapshot: response.config_snapshot,
+    summaryMetrics: response.summary_metrics,
+    resultSummary: response.result_summary,
+    aiJobId: response.ai_job_id,
+    requestedBy: response.requested_by,
+    startedAt: response.started_at,
+    completedAt: response.completed_at,
+    createdAt: response.created_at,
+    updatedAt: response.updated_at,
+  };
+}
+
+function mapExperimentCaseResult(
+  response: JobPostingExperimentCaseResultApiResponse,
+): JobPostingExperimentCaseResult {
+  return {
+    id: response.id,
+    caseId: response.case_id,
+    caseIndex: response.case_index,
+    jobGroup: response.job_group,
+    status: response.status,
+    expectedLabel: response.expected_label,
+    predictedLabel: response.predicted_label,
+    expectedRiskTypes: response.expected_risk_types,
+    predictedRiskTypes: response.predicted_risk_types,
+    retrievalHitAt5: response.retrieval_hit_at_5,
+    sourceOmitted: response.source_omitted,
+    latencyMs: response.latency_ms,
+    errorMessage: response.error_message,
+    evaluationPayload: response.evaluation_payload,
+    reportPayload: response.report_payload,
   };
 }
 
@@ -770,4 +884,92 @@ export async function searchKnowledgeSources(params: {
     resultCount: data.result_count,
     results: data.results.map(mapKnowledgeSearchResult),
   };
+}
+
+export async function createJobPostingExperimentRun(
+  request: JobPostingExperimentRunCreateRequest,
+): Promise<JobPostingExperimentRun> {
+  const response = await api.post<
+    JobPostingExperimentRunApiResponse | ApiEnvelope<JobPostingExperimentRunApiResponse>
+  >("/job-postings/experiments", {
+    title: request.title,
+    description: request.description ?? null,
+    dataset_name: request.datasetName ?? "job_posting_risk_50",
+    dataset_version: request.datasetVersion ?? null,
+    experiment_type: request.experimentType ?? "RAG_EVAL",
+    config_snapshot: request.configSnapshot ?? null,
+  });
+  return mapExperimentRun(unwrap(response.data));
+}
+
+export async function fetchJobPostingExperimentRuns(params: {
+  page: number;
+  size: number;
+}): Promise<JobPostingExperimentRunListResponse> {
+  const response = await api.get<
+    JobPostingExperimentRunListApiResponse | ApiEnvelope<JobPostingExperimentRunListApiResponse>
+  >("/job-postings/experiments", {
+    params: {
+      page: params.page,
+      size: params.size,
+    },
+    skipGlobalLoading: true,
+  });
+  const data = unwrap(response.data);
+  return {
+    items: data.items.map(mapExperimentRun),
+    totalCount: data.total_count,
+    totalPages: data.total_pages,
+  };
+}
+
+export async function fetchJobPostingExperimentRun(
+  runId: number,
+): Promise<JobPostingExperimentRunDetailResponse> {
+  const response = await api.get<
+    JobPostingExperimentRunDetailApiResponse | ApiEnvelope<JobPostingExperimentRunDetailApiResponse>
+  >(`/job-postings/experiments/${runId}`, {
+    params: { case_limit: 200 },
+    skipGlobalLoading: true,
+  });
+  const data = unwrap(response.data);
+  return {
+    run: mapExperimentRun(data.run),
+    caseResults: data.case_results.map(mapExperimentCaseResult),
+  };
+}
+
+export async function submitJobPostingExperimentRunJob(
+  runId: number,
+): Promise<JobPostingAiJob> {
+  const response = await api.post<
+    JobPostingAiJobApiResponse | ApiEnvelope<JobPostingAiJobApiResponse>
+  >(`/job-postings/experiments/${runId}/jobs`, null, {
+    skipGlobalLoading: true,
+  });
+  return mapAiJob(unwrap(response.data));
+}
+
+export async function fetchJobPostingExperimentJob(
+  jobId: number,
+): Promise<JobPostingAiJob> {
+  const response = await api.get<
+    JobPostingAiJobApiResponse | ApiEnvelope<JobPostingAiJobApiResponse>
+  >(`/job-postings/experiment-jobs/${jobId}`, {
+    skipGlobalLoading: true,
+  });
+  return mapAiJob(unwrap(response.data));
+}
+
+export async function fetchActiveJobPostingExperimentJob(
+  runId?: number,
+): Promise<JobPostingAiJob | null> {
+  const response = await api.get<
+    JobPostingAiJobApiResponse | null | ApiEnvelope<JobPostingAiJobApiResponse | null>
+  >("/job-postings/experiment-jobs/active", {
+    params: { run_id: runId || undefined },
+    skipGlobalLoading: true,
+  });
+  const data = unwrap(response.data);
+  return data ? mapAiJob(data) : null;
 }

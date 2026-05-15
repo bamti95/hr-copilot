@@ -14,6 +14,8 @@ const ORDER = [
   "SALES",
 ] as const;
 
+type CandidateJobPosition = (typeof ORDER)[number];
+
 export const CANDIDATE_JOB_POSITION_OPTIONS: Array<{
   value: string;
   label: string;

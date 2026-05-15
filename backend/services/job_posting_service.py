@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import asyncio
+import json
 import logging
 import math
 import re
@@ -33,7 +34,12 @@ from models.job_posting_analysis_report import (
     JobPostingAnalysisStatus,
     JobPostingAnalysisType,
 )
+from models.job_posting_experiment_case_result import JobPostingExperimentCaseResult
 from repositories.job_posting_knowledge_repository import JobPostingKnowledgeChunkRepository
+from repositories.job_posting_experiment_repository import (
+    JobPostingExperimentCaseResultRepository,
+    JobPostingExperimentRunRepository,
+)
 from repositories.job_posting_repository import (
     JobPostingAnalysisReportRepository,
     JobPostingRepository,
@@ -53,10 +59,19 @@ from schemas.job_posting import (
     JobPostingAiJobResponse,
     JobPostingAnalyzeResponse,
     JobPostingAnalyzeTextRequest,
+    JobPostingExperimentRunCreateRequest,
+    JobPostingExperimentCaseResultResponse,
+    JobPostingExperimentRunDetailResponse,
+    JobPostingExperimentRunListResponse,
+    JobPostingExperimentRunResponse,
     JobPostingCreateRequest,
     JobPostingListResponse,
     JobPostingResponse,
     JobPostingAnalysisReportResponse,
+)
+from models.job_posting_experiment_run import (
+    JobPostingExperimentRun,
+    JobPostingExperimentStatus,
 )
 
 
@@ -201,6 +216,174 @@ class JobPostingService:
             result_payload=job.result_payload,
             message=message,
         )
+
+    @staticmethod
+    async def create_experiment_run(
+        *,
+        db: AsyncSession,
+        request: JobPostingExperimentRunCreateRequest,
+        actor_id: int | None,
+    ) -> JobPostingExperimentRunResponse:
+        repo = JobPostingExperimentRunRepository(db)
+        total_cases = 0
+        try:
+            total_cases = len(load_experiment_dataset(request.dataset_name))
+        except Exception:
+            total_cases = 0
+        entity = JobPostingExperimentRun(
+            title=request.title,
+            description=request.description,
+            dataset_name=request.dataset_name,
+            dataset_version=request.dataset_version,
+            experiment_type=request.experiment_type,
+            status=JobPostingExperimentStatus.QUEUED.value,
+            total_cases=total_cases,
+            config_snapshot=request.config_snapshot,
+            requested_by=actor_id,
+            created_by=actor_id,
+        )
+        await repo.add(entity)
+        await db.commit()
+        await repo.refresh(entity)
+        return JobPostingExperimentRunResponse.from_entity(entity)
+
+    @staticmethod
+    async def list_experiment_runs(
+        *,
+        db: AsyncSession,
+        page: int,
+        size: int,
+    ) -> JobPostingExperimentRunListResponse:
+        repo = JobPostingExperimentRunRepository(db)
+        total_count = await repo.count_list()
+        rows = await repo.find_list(page=page, size=size)
+        total_pages = math.ceil(total_count / size) if total_count else 0
+        return JobPostingExperimentRunListResponse(
+            items=[JobPostingExperimentRunResponse.from_entity(row) for row in rows],
+            total_count=total_count,
+            total_pages=total_pages,
+        )
+
+    @staticmethod
+    async def get_experiment_run(
+        *,
+        db: AsyncSession,
+        run_id: int,
+        case_limit: int = 200,
+    ) -> JobPostingExperimentRunDetailResponse:
+        run_repo = JobPostingExperimentRunRepository(db)
+        case_repo = JobPostingExperimentCaseResultRepository(db)
+        entity = await run_repo.find_by_id_not_deleted(run_id)
+        if entity is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Job posting experiment run was not found.",
+            )
+        case_rows = await case_repo.find_by_run_id(run_id, limit=case_limit)
+        return JobPostingExperimentRunDetailResponse(
+            run=JobPostingExperimentRunResponse.from_entity(entity),
+            case_results=[
+                JobPostingExperimentCaseResultResponse.from_entity(row)
+                for row in case_rows
+            ],
+        )
+
+    @staticmethod
+    async def submit_experiment_run_job(
+        *,
+        db: AsyncSession,
+        run_id: int,
+        actor_id: int | None,
+    ) -> JobPostingAiJobResponse:
+        run_repo = JobPostingExperimentRunRepository(db)
+        run = await run_repo.find_by_id_not_deleted(run_id)
+        if run is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Job posting experiment run was not found.",
+            )
+        if run.ai_job_id is not None or run.completed_cases > 0 or run.failed_cases > 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Experiment run was already started. Create a new run for another attempt.",
+            )
+        job = AiJob(
+            job_type=AiJobType.JOB_POSTING_EXPERIMENT_RUN.value,
+            status=AiJobStatus.QUEUED.value,
+            target_id=run.id,
+            progress=2,
+            current_step="experiment_job_created",
+            request_payload={
+                "mode": "DATASET",
+                "experiment_run_id": run.id,
+                "dataset_name": run.dataset_name,
+            },
+            requested_by=actor_id,
+            created_by=actor_id,
+        )
+        db.add(job)
+        await db.flush()
+        run.ai_job_id = job.id
+        run.status = JobPostingExperimentStatus.QUEUED.value
+        await db.commit()
+        await db.refresh(job)
+        await run_repo.refresh(run)
+        return JobPostingService._job_response(
+            job,
+            "채용공고 실험 배치 작업이 시작되었습니다.",
+        )
+
+    @staticmethod
+    async def get_experiment_job(
+        *,
+        db: AsyncSession,
+        job_id: int,
+    ) -> JobPostingAiJobResponse:
+        result = await db.execute(
+            select(AiJob).where(
+                AiJob.id == job_id,
+                AiJob.job_type == AiJobType.JOB_POSTING_EXPERIMENT_RUN.value,
+            )
+        )
+        job = result.scalar_one_or_none()
+        if job is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Job posting experiment job was not found.",
+            )
+        return JobPostingService._job_response(job, "채용공고 실험 작업 상태입니다.")
+
+    @staticmethod
+    async def get_active_experiment_job(
+        *,
+        db: AsyncSession,
+        actor_id: int | None,
+        run_id: int | None = None,
+    ) -> JobPostingAiJobResponse | None:
+        conditions = [
+            AiJob.job_type == AiJobType.JOB_POSTING_EXPERIMENT_RUN.value,
+            AiJob.status.in_(
+                [
+                    AiJobStatus.QUEUED.value,
+                    AiJobStatus.RUNNING.value,
+                    AiJobStatus.RETRYING.value,
+                ]
+            ),
+        ]
+        if actor_id is not None:
+            conditions.append(AiJob.requested_by == actor_id)
+        if run_id is not None:
+            conditions.append(AiJob.target_id == run_id)
+        result = await db.execute(
+            select(AiJob)
+            .where(*conditions)
+            .order_by(desc(AiJob.created_at), desc(AiJob.id))
+            .limit(1)
+        )
+        job = result.scalar_one_or_none()
+        if job is None:
+            return None
+        return JobPostingService._job_response(job, "채용공고 실험 작업 상태입니다.")
 
     @staticmethod
     async def create_posting(
@@ -675,6 +858,168 @@ class JobPostingService:
                     failed_job.error_message = str(exc)
                     failed_job.completed_at = datetime.now(timezone.utc)
                     await db.commit()
+
+    @staticmethod
+    async def run_experiment_job(job_id: int) -> None:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(AiJob).where(AiJob.id == job_id))
+            job = result.scalar_one_or_none()
+            if job is None:
+                logger.warning("Job posting experiment job not found: %s", job_id)
+                return
+
+            payload = job.request_payload or {}
+            run_id = int(payload.get("experiment_run_id") or 0)
+            run_repo = JobPostingExperimentRunRepository(db)
+            case_repo = JobPostingExperimentCaseResultRepository(db)
+            run = await run_repo.find_by_id_not_deleted(run_id)
+            if run is None:
+                job.status = AiJobStatus.FAILED.value
+                job.error_message = "Experiment run was not found."
+                job.completed_at = datetime.now(timezone.utc)
+                await db.commit()
+                return
+
+            try:
+                job.status = AiJobStatus.RUNNING.value
+                job.progress = 8
+                job.current_step = "experiment_started"
+                job.started_at = job.started_at or datetime.now(timezone.utc)
+                run.status = JobPostingExperimentStatus.RUNNING.value
+                run.started_at = run.started_at or datetime.now(timezone.utc)
+                await db.commit()
+
+                dataset_cases = load_experiment_dataset(run.dataset_name)
+                run.total_cases = len(dataset_cases)
+                await db.commit()
+
+                case_results: list[JobPostingExperimentCaseResult] = []
+                for index, case in enumerate(dataset_cases, start=1):
+                    job.current_step = f"running_case_{index}_of_{len(dataset_cases)}"
+                    job.progress = min(
+                        95,
+                        10 + int((index - 1) / max(len(dataset_cases), 1) * 80),
+                    )
+                    await db.commit()
+
+                    case_row = JobPostingExperimentCaseResult(
+                        experiment_run_id=run.id,
+                        case_id=case["case_id"],
+                        case_index=index,
+                        job_group=case.get("job_group"),
+                        status="RUNNING",
+                        expected_label=case.get("expected_label"),
+                        expected_risk_types=case.get("risk_types") or [],
+                        created_by=job.requested_by,
+                    )
+                    await case_repo.add(case_row)
+                    await db.commit()
+                    await case_repo.refresh(case_row)
+
+                    started_at = time.perf_counter()
+                    try:
+                        request = build_experiment_case_request(case)
+                        response = await JobPostingService.analyze_text(
+                            db=db,
+                            request=request,
+                            actor_id=job.requested_by,
+                        )
+                        latency_ms = (time.perf_counter() - started_at) * 1000
+                        evaluation = evaluate_experiment_case(
+                            case=case,
+                            report=response.report,
+                            latency_ms=latency_ms,
+                        )
+                        case_row.status = "SUCCESS"
+                        case_row.predicted_label = evaluation["predicted_label"]
+                        case_row.predicted_risk_types = evaluation["predicted_risk_types"]
+                        case_row.retrieval_hit_at_5 = evaluation["retrieval_hit_at_5"]
+                        case_row.source_omitted = evaluation["source_omitted"]
+                        case_row.latency_ms = evaluation["latency_ms"]
+                        case_row.evaluation_payload = evaluation
+                        case_row.report_payload = {
+                            "job_posting_id": response.job_posting.id,
+                            "report_id": response.report.id,
+                            "risk_level": response.report.risk_level,
+                            "detected_issue_types": response.report.detected_issue_types,
+                            "retrieval_summary": response.report.retrieval_summary,
+                        }
+                    except Exception as exc:
+                        latency_ms = (time.perf_counter() - started_at) * 1000
+                        logger.exception(
+                            "Experiment case failed. run_id=%s case_id=%s",
+                            run.id,
+                            case["case_id"],
+                        )
+                        case_row.status = "FAILED"
+                        case_row.error_message = str(exc)
+                        case_row.latency_ms = round(latency_ms, 2)
+                        case_row.evaluation_payload = {
+                            "case_id": case["case_id"],
+                            "latency_ms": round(latency_ms, 2),
+                            "failure_reason": str(exc),
+                        }
+
+                    await db.commit()
+                    await case_repo.refresh(case_row)
+                    case_results.append(case_row)
+                    run.completed_cases = len(
+                        [item for item in case_results if item.status == "SUCCESS"]
+                    )
+                    run.failed_cases = len(
+                        [item for item in case_results if item.status == "FAILED"]
+                    )
+                    await db.commit()
+
+                summary = summarize_experiment_results(case_results)
+                run.retrieval_recall_at_5 = summary["retrieval_recall_at_5"]
+                run.macro_f1 = summary["macro_f1"]
+                run.high_risk_recall = summary["high_risk_recall"]
+                run.source_omission_rate = summary["source_omission_rate"]
+                run.avg_latency_ms = summary["avg_latency_ms"]
+                run.summary_metrics = summary
+                run.result_summary = {
+                    "total_cases": run.total_cases,
+                    "completed_cases": run.completed_cases,
+                    "failed_cases": run.failed_cases,
+                    "label_accuracy": summary["label_accuracy"],
+                }
+                run.status = (
+                    JobPostingExperimentStatus.SUCCESS.value
+                    if run.completed_cases > 0
+                    else JobPostingExperimentStatus.FAILED.value
+                )
+                run.completed_at = datetime.now(timezone.utc)
+
+                job.status = (
+                    AiJobStatus.SUCCESS.value
+                    if run.failed_cases == 0
+                    else AiJobStatus.PARTIAL_SUCCESS.value
+                )
+                job.progress = 100
+                job.current_step = "experiment_completed"
+                job.completed_at = datetime.now(timezone.utc)
+                job.result_payload = {
+                    "experiment_run_id": run.id,
+                    "summary_metrics": summary,
+                }
+                await db.commit()
+            except Exception as exc:
+                logger.exception("Job posting experiment job failed. run_id=%s", run.id)
+                await db.rollback()
+                result = await db.execute(select(AiJob).where(AiJob.id == job_id))
+                failed_job = result.scalar_one_or_none()
+                failed_run = await run_repo.find_by_id_not_deleted(run.id)
+                if failed_run is not None:
+                    failed_run.status = JobPostingExperimentStatus.FAILED.value
+                    failed_run.completed_at = datetime.now(timezone.utc)
+                if failed_job is not None:
+                    failed_job.status = AiJobStatus.FAILED.value
+                    failed_job.progress = 100
+                    failed_job.current_step = "experiment_failed"
+                    failed_job.error_message = str(exc)
+                    failed_job.completed_at = datetime.now(timezone.utc)
+                await db.commit()
 
 
 async def upsert_posting(
@@ -1484,3 +1829,208 @@ async def save_job_posting_upload(upload_file: UploadFile) -> dict[str, Any]:
         "file_ext": extension,
         "file_size": file_size,
     }
+
+
+def load_experiment_dataset(dataset_name: str) -> list[dict[str, Any]]:
+    dataset_root = Path(__file__).resolve().parent.parent / "sample_data" / "source_data" / dataset_name
+    if not dataset_root.exists():
+        raise ValueError(f"Experiment dataset was not found: {dataset_name}")
+
+    cases: list[dict[str, Any]] = []
+    for meta_path in sorted(dataset_root.rglob("meta.json")):
+        source_path = meta_path.with_name("source.json")
+        if not source_path.exists():
+            continue
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        source = json.loads(source_path.read_text(encoding="utf-8"))
+        cases.append(
+            {
+                "case_id": meta.get("case_id") or source.get("case_id") or meta_path.parent.name,
+                "job_group": source.get("job_group") or meta_path.parent.parent.name,
+                "expected_label": meta.get("expected_label") or "VIOLATION",
+                "expected_risk_level": meta.get("risk_level") or "UNKNOWN",
+                "risk_types": meta.get("risk_types") or [],
+                "expected_findings": meta.get("expected_findings") or [],
+                "source": source,
+                "meta": meta,
+            }
+        )
+    return cases
+
+
+def build_experiment_case_request(case: dict[str, Any]) -> JobPostingAnalyzeTextRequest:
+    source = case["source"]
+    return JobPostingAnalyzeTextRequest(
+        company_name=source.get("company_name"),
+        job_title=source.get("job_title") or source.get("posting_title") or case["case_id"],
+        target_job=source.get("job_group"),
+        career_level=source.get("career_level"),
+        location=source.get("location"),
+        employment_type=source.get("employment_type"),
+        salary_text=source.get("salary"),
+        posting_text=source.get("posting_body") or "",
+        input_source=JobPostingInputSource.SYNTHETIC.value,
+        raw_payload={
+            "experiment_case_id": case["case_id"],
+            "dataset_name": "job_posting_risk_50",
+            "source_json": source,
+        },
+        normalized_payload={
+            "experiment_case_id": case["case_id"],
+            "expected_label": case.get("expected_label"),
+            "expected_risk_types": case.get("risk_types") or [],
+        },
+        analysis_type=JobPostingAnalysisType.FULL.value,
+    )
+
+
+def evaluate_experiment_case(
+    *,
+    case: dict[str, Any],
+    report: JobPostingAnalysisReportResponse,
+    latency_ms: float,
+) -> dict[str, Any]:
+    expected_risk_types = list(case.get("risk_types") or [])
+    predicted_risk_types = sorted(set(report.detected_issue_types or []))
+    predicted_label = "CLEAN" if not predicted_risk_types else "VIOLATION"
+    issue_summary = list(report.issue_summary or [])
+    matched_evidence = list(report.matched_evidence or [])
+    matched_top5 = matched_evidence[:5]
+
+    per_expected_hits: dict[str, bool] = {}
+    for risk_type in expected_risk_types:
+        matching_issue = next(
+            (item for item in issue_summary if item.get("issue_type") == risk_type),
+            None,
+        )
+        sources = list((matching_issue or {}).get("sources") or [])
+        per_expected_hits[risk_type] = len(sources[:5]) > 0
+
+    retrieval_hit_at_5 = (
+        all(per_expected_hits.values()) if expected_risk_types else len(matched_top5) > 0 or predicted_label == "CLEAN"
+    )
+
+    source_omitted = False
+    predicted_issue_count = len(issue_summary)
+    issue_without_sources = 0
+    for issue in issue_summary:
+        if not list(issue.get("sources") or []):
+            issue_without_sources += 1
+    if predicted_issue_count > 0 and issue_without_sources > 0:
+        source_omitted = True
+
+    return {
+        "case_id": case["case_id"],
+        "expected_label": case.get("expected_label"),
+        "predicted_label": predicted_label,
+        "expected_risk_types": expected_risk_types,
+        "predicted_risk_types": predicted_risk_types,
+        "risk_level": report.risk_level,
+        "expected_risk_level": case.get("expected_risk_level"),
+        "retrieval_hit_at_5": retrieval_hit_at_5,
+        "per_expected_hits": per_expected_hits,
+        "source_omitted": source_omitted,
+        "issue_without_sources": issue_without_sources,
+        "predicted_issue_count": predicted_issue_count,
+        "matched_evidence_count": len(matched_evidence),
+        "latency_ms": round(latency_ms, 2),
+        "report_id": report.id,
+    }
+
+
+def summarize_experiment_results(
+    case_results: list[JobPostingExperimentCaseResult],
+) -> dict[str, float | int]:
+    successful = [item for item in case_results if item.status == "SUCCESS"]
+    if not successful:
+        return {
+            "total_cases": len(case_results),
+            "successful_cases": 0,
+            "failed_cases": len(case_results),
+            "label_accuracy": 0.0,
+            "retrieval_recall_at_5": 0.0,
+            "macro_f1": 0.0,
+            "high_risk_recall": 0.0,
+            "source_omission_rate": 0.0,
+            "avg_latency_ms": 0.0,
+        }
+
+    label_pairs = [
+        (
+            (item.expected_label or "VIOLATION"),
+            (item.predicted_label or "VIOLATION"),
+        )
+        for item in successful
+    ]
+    labels = ["CLEAN", "VIOLATION"]
+    f1_scores = [
+        binary_f1_for_label(label_pairs=label_pairs, positive_label=label)
+        for label in labels
+    ]
+
+    retrieval_hits = [
+        1.0 for item in successful if item.retrieval_hit_at_5 is True
+    ]
+    high_risk_rows = [
+        item
+        for item in successful
+        if (item.evaluation_payload or {}).get("expected_risk_level") in {"HIGH", "CRITICAL"}
+    ]
+    high_risk_hit_count = sum(
+        1
+        for item in high_risk_rows
+        if (item.evaluation_payload or {}).get("risk_level") in {"HIGH", "CRITICAL"}
+    )
+
+    predicted_issue_total = sum(
+        int((item.evaluation_payload or {}).get("predicted_issue_count") or 0)
+        for item in successful
+    )
+    omitted_issue_total = sum(
+        int((item.evaluation_payload or {}).get("issue_without_sources") or 0)
+        for item in successful
+    )
+
+    return {
+        "total_cases": len(case_results),
+        "successful_cases": len(successful),
+        "failed_cases": len(case_results) - len(successful),
+        "label_accuracy": round(
+            sum(1 for expected, predicted in label_pairs if expected == predicted)
+            / max(len(label_pairs), 1),
+            4,
+        ),
+        "retrieval_recall_at_5": round(
+            len(retrieval_hits) / max(len(successful), 1),
+            4,
+        ),
+        "macro_f1": round(sum(f1_scores) / len(f1_scores), 4),
+        "high_risk_recall": round(
+            high_risk_hit_count / max(len(high_risk_rows), 1),
+            4,
+        ),
+        "source_omission_rate": round(
+            omitted_issue_total / max(predicted_issue_total, 1),
+            4,
+        ),
+        "avg_latency_ms": round(
+            sum(float(item.latency_ms or 0.0) for item in successful)
+            / max(len(successful), 1),
+            2,
+        ),
+    }
+
+
+def binary_f1_for_label(
+    *,
+    label_pairs: list[tuple[str, str]],
+    positive_label: str,
+) -> float:
+    tp = sum(1 for expected, predicted in label_pairs if expected == positive_label and predicted == positive_label)
+    fp = sum(1 for expected, predicted in label_pairs if expected != positive_label and predicted == positive_label)
+    fn = sum(1 for expected, predicted in label_pairs if expected == positive_label and predicted != positive_label)
+    precision = tp / max(tp + fp, 1)
+    recall = tp / max(tp + fn, 1)
+    if precision + recall == 0:
+        return 0.0
+    return (2 * precision * recall) / (precision + recall)

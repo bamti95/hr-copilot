@@ -33,6 +33,7 @@ class AiJobType(StrEnum):
     
     # 채용공고 리스크 분석에 사용할 법령/가이드북/지도점검 사례 문서를 RAG 검색 가능하게 색인하는 작업
     JOB_POSTING_KNOWLEDGE_INDEXING = "JOB_POSTING_KNOWLEDGE_INDEXING"
+    JOB_POSTING_EXPERIMENT_RUN = "JOB_POSTING_EXPERIMENT_RUN"
 
 
 class AiJobStatus(StrEnum):

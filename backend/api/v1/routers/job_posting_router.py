@@ -12,6 +12,10 @@ from schemas.job_posting import (
     JobPostingAiJobResponse,
     JobPostingAnalyzeResponse,
     JobPostingAnalyzeTextRequest,
+    JobPostingExperimentRunCreateRequest,
+    JobPostingExperimentRunDetailResponse,
+    JobPostingExperimentRunListResponse,
+    JobPostingExperimentRunResponse,
     JobPostingAnalysisReportResponse,
     JobPostingCreateRequest,
     JobPostingListResponse,
@@ -29,6 +33,114 @@ from services.job_posting_service import JobPostingService
 
 
 router = APIRouter(prefix="/job-postings", tags=["채용공고 컴플라이언스 점검"])
+
+
+@router.post(
+    "/experiments",
+    response_model=JobPostingExperimentRunResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="채용공고 RAG 실험 run 등록",
+)
+async def create_job_posting_experiment_run(
+    request_body: JobPostingExperimentRunCreateRequest,
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> JobPostingExperimentRunResponse:
+    return await JobPostingService.create_experiment_run(
+        db=db,
+        request=request_body,
+        actor_id=current_manager.id,
+    )
+
+
+@router.get(
+    "/experiments",
+    response_model=JobPostingExperimentRunListResponse,
+    summary="채용공고 RAG 실험 run 목록 조회",
+)
+async def list_job_posting_experiment_runs(
+    page: int = Query(0, ge=0),
+    size: int = Query(10, ge=1, le=100),
+    _: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> JobPostingExperimentRunListResponse:
+    return await JobPostingService.list_experiment_runs(
+        db=db,
+        page=page,
+        size=size,
+    )
+
+
+@router.get(
+    "/experiments/{run_id}",
+    response_model=JobPostingExperimentRunDetailResponse,
+    summary="채용공고 RAG 실험 run 상세 조회",
+)
+async def get_job_posting_experiment_run(
+    run_id: int,
+    case_limit: int = Query(200, ge=1, le=500),
+    _: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> JobPostingExperimentRunDetailResponse:
+    return await JobPostingService.get_experiment_run(
+        db=db,
+        run_id=run_id,
+        case_limit=case_limit,
+    )
+
+
+@router.post(
+    "/experiments/{run_id}/jobs",
+    response_model=JobPostingAiJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="채용공고 RAG 실험 run 실행",
+)
+async def submit_job_posting_experiment_run_job(
+    run_id: int,
+    background_tasks: BackgroundTasks,
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> JobPostingAiJobResponse:
+    response = await JobPostingService.submit_experiment_run_job(
+        db=db,
+        run_id=run_id,
+        actor_id=current_manager.id,
+    )
+    background_tasks.add_task(JobPostingService.run_experiment_job, response.job_id)
+    return response
+
+
+@router.get(
+    "/experiment-jobs/active",
+    response_model=JobPostingAiJobResponse | None,
+    summary="채용공고 RAG 실험 활성 작업 조회",
+)
+async def get_active_job_posting_experiment_job(
+    run_id: int | None = Query(None),
+    current_manager: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> JobPostingAiJobResponse | None:
+    return await JobPostingService.get_active_experiment_job(
+        db=db,
+        actor_id=current_manager.id,
+        run_id=run_id,
+    )
+
+
+@router.get(
+    "/experiment-jobs/{job_id}",
+    response_model=JobPostingAiJobResponse,
+    summary="채용공고 RAG 실험 작업 상태 조회",
+)
+async def get_job_posting_experiment_job(
+    job_id: int,
+    _: Manager = Depends(get_current_active_manager),
+    db: AsyncSession = Depends(get_db),
+) -> JobPostingAiJobResponse:
+    return await JobPostingService.get_experiment_job(
+        db=db,
+        job_id=job_id,
+    )
 
 
 @router.post(

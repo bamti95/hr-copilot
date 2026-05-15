@@ -17,6 +17,8 @@ import InterviewSessionPage from "../../features/manager/InterviewSession";
 import InterviewSessionDetailPage from "../../features/manager/InterviewSession/pages/InterviewSessionDetailPage";
 import JobPostingPage, {
   JobPostingDetailPage,
+  JobPostingExperimentDetailPage,
+  JobPostingExperimentListPage,
   JobPostingKnowledgePage,
   JobPostingNewPage,
   JobPostingReportPage,
@@ -64,6 +66,11 @@ const router = createBrowserRouter([
           },
           { path: "interview-questions", element: <InterviewQuestionPage /> },
           { path: "job-postings", element: <JobPostingPage /> },
+          { path: "job-posting-experiments", element: <JobPostingExperimentListPage /> },
+          {
+            path: "job-posting-experiments/:runId",
+            element: <JobPostingExperimentDetailPage />,
+          },
           { path: "job-postings/new", element: <JobPostingNewPage /> },
           {
             path: "job-postings/knowledge-sources",

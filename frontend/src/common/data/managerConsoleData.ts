@@ -2,12 +2,13 @@ import type { DocumentResponse } from "../../features/manager/Document/types";
 import type { InterviewQuestionResponse } from "../../features/manager/InterviewQuestion/types";
 
 export const managerNavItems = [
-  { label: "대시보드", path: "/manager/dashboard", icon: "◈" },
-  { label: "관리자 관리", path: "/manager/managers", icon: "◎" },
-  { label: "지원자 관리", path: "/manager/candidates", icon: "◌" },
-  { label: "채용공고 분석", path: "/manager/job-postings", icon: "▣" },
-  { label: "프롬프트 프로필 관리", path: "/manager/prompt-profiles", icon: "◇" },
-  { label: "면접 세션 관리", path: "/manager/interview-sessions", icon: "△" },
+  { label: "대시보드", path: "/manager/dashboard", icon: "D" },
+  { label: "관리자 관리", path: "/manager/managers", icon: "M" },
+  { label: "지원자 관리", path: "/manager/candidates", icon: "C" },
+  { label: "채용공고 분석", path: "/manager/job-postings", icon: "J" },
+  { label: "RAG 실험 기록", path: "/manager/job-posting-experiments", icon: "E" },
+  { label: "프롬프트 프로필", path: "/manager/prompt-profiles", icon: "P" },
+  { label: "면접 세션 관리", path: "/manager/interview-sessions", icon: "I" },
 ];
 
 export const documentList: DocumentResponse[] = [
