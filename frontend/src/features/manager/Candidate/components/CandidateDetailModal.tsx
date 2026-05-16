@@ -413,6 +413,47 @@ export function CandidateDetailModal({
                 ZIP 또는 다중 파일을 업로드해 지원자 후보를 미리 추출합니다. 현재 단계는 확정 저장 전 검수용입니다.
               </p>
 
+              <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <p className="text-sm font-bold text-emerald-900">
+                    ZIP 권장 구조
+                  </p>
+                  <p className="mt-2 text-xs leading-5 text-emerald-800">
+                    지원자명_전화번호 폴더 안에 이력서, 자기소개서, 포트폴리오를 넣어주세요.
+                  </p>
+                  <code className="mt-2 block whitespace-pre-line rounded-xl bg-white/80 px-3 py-2 text-xs leading-5 text-emerald-950">
+                    {`홍길동_01012345678/
+  이력서.pdf
+  자기소개서.pdf
+  포트폴리오.pdf`}
+                  </code>
+                </div>
+
+                <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
+                  <p className="text-sm font-bold text-sky-900">
+                    다중 파일명 규칙
+                  </p>
+                  <p className="mt-2 text-xs leading-5 text-sky-800">
+                    폴더 없이 올릴 때는 파일명 앞부분의 지원자 식별자를 모두 같게 맞춰주세요.
+                  </p>
+                  <code className="mt-2 block whitespace-pre-line rounded-xl bg-white/80 px-3 py-2 text-xs leading-5 text-sky-950">
+                    {`홍길동_01012345678_이력서.pdf
+홍길동_01012345678_자기소개서.pdf`}
+                  </code>
+                </div>
+
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                  <p className="text-sm font-bold text-amber-900">
+                    검토 필요로 분류되는 경우
+                  </p>
+                  <ul className="mt-2 space-y-1.5 pl-4 text-xs leading-5 text-amber-800">
+                    <li>파일명이 이력서.pdf처럼 지원자 구분 없이 올라온 경우</li>
+                    <li>같은 그룹 안 문서들의 이메일 또는 전화번호가 서로 다른 경우</li>
+                    <li>문서 텍스트 추출이 실패해 지원자 정보를 확인할 수 없는 경우</li>
+                  </ul>
+                </div>
+              </div>
+
               <div className="mt-4 grid gap-4 lg:grid-cols-[180px_minmax(0,1fr)_220px_180px]">
                 <label className="block text-sm font-medium text-slate-700">
                   업로드 방식
