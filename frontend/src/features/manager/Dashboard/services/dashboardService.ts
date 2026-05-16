@@ -40,6 +40,32 @@ interface DashboardSummaryApiResponse {
     top_cost_node: DashboardLlmCostNodeApiResponse | null;
     top_nodes: DashboardLlmCostNodeApiResponse[];
   };
+  job_posting: {
+    total_postings: number;
+    analyzed_count: number;
+    pending_analysis_count: number;
+    failed_analysis_count: number;
+    review_required_count: number;
+    knowledge_sources_count: number;
+    indexed_knowledge_sources_count: number;
+    today_cost: string | number;
+    month_cost: string | number;
+    estimated_next_analysis_cost: string | number;
+    projected_today_cost: string | number;
+    recent_reports: Array<{
+      report_id: number;
+      job_posting_id: number;
+      job_title: string;
+      company_name: string | null;
+      status: string;
+      risk_level: string | null;
+      issue_count: number;
+      violation_count: number;
+      warning_count: number;
+      updated_at: string | null;
+      target_path: string;
+    }>;
+  };
   priority_candidates: Array<{
     candidate_id: number;
     session_id: number | null;
@@ -156,6 +182,34 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
         ? mapLlmCostNode(data.llm_cost.top_cost_node)
         : null,
       topNodes: data.llm_cost.top_nodes.map(mapLlmCostNode),
+    },
+    jobPosting: {
+      totalPostings: data.job_posting.total_postings,
+      analyzedCount: data.job_posting.analyzed_count,
+      pendingAnalysisCount: data.job_posting.pending_analysis_count,
+      failedAnalysisCount: data.job_posting.failed_analysis_count,
+      reviewRequiredCount: data.job_posting.review_required_count,
+      knowledgeSourcesCount: data.job_posting.knowledge_sources_count,
+      indexedKnowledgeSourcesCount: data.job_posting.indexed_knowledge_sources_count,
+      todayCost: toNumber(data.job_posting.today_cost),
+      monthCost: toNumber(data.job_posting.month_cost),
+      estimatedNextAnalysisCost: toNumber(
+        data.job_posting.estimated_next_analysis_cost,
+      ),
+      projectedTodayCost: toNumber(data.job_posting.projected_today_cost),
+      recentReports: data.job_posting.recent_reports.map((item) => ({
+        reportId: item.report_id,
+        jobPostingId: item.job_posting_id,
+        jobTitle: item.job_title,
+        companyName: item.company_name,
+        status: item.status,
+        riskLevel: item.risk_level,
+        issueCount: item.issue_count,
+        violationCount: item.violation_count,
+        warningCount: item.warning_count,
+        updatedAt: item.updated_at,
+        targetPath: item.target_path,
+      })),
     },
     priorityCandidates: data.priority_candidates.map((item) => ({
       candidateId: item.candidate_id,

@@ -37,6 +37,35 @@ export interface DashboardLlmCostSummary {
   topNodes: DashboardLlmCostNode[];
 }
 
+export interface DashboardJobPostingReportItem {
+  reportId: number;
+  jobPostingId: number;
+  jobTitle: string;
+  companyName: string | null;
+  status: string;
+  riskLevel: string | null;
+  issueCount: number;
+  violationCount: number;
+  warningCount: number;
+  updatedAt: string | null;
+  targetPath: string;
+}
+
+export interface DashboardJobPostingSummary {
+  totalPostings: number;
+  analyzedCount: number;
+  pendingAnalysisCount: number;
+  failedAnalysisCount: number;
+  reviewRequiredCount: number;
+  knowledgeSourcesCount: number;
+  indexedKnowledgeSourcesCount: number;
+  todayCost: number;
+  monthCost: number;
+  estimatedNextAnalysisCost: number;
+  projectedTodayCost: number;
+  recentReports: DashboardJobPostingReportItem[];
+}
+
 export type DashboardPriority = "HIGH" | "MEDIUM" | "LOW";
 
 export interface DashboardPriorityCandidate {
@@ -76,6 +105,7 @@ export interface DashboardSummary {
   todos: DashboardTodoItem[];
   pipeline: DashboardPipelineItem[];
   llmCost: DashboardLlmCostSummary;
+  jobPosting: DashboardJobPostingSummary;
   priorityCandidates: DashboardPriorityCandidate[];
   recentSessions: DashboardRecentSession[];
   recentActivities: DashboardRecentActivity[];
@@ -99,6 +129,20 @@ export const emptyDashboardSummary: DashboardSummary = {
     avgElapsedMs: 0,
     topCostNode: null,
     topNodes: [],
+  },
+  jobPosting: {
+    totalPostings: 0,
+    analyzedCount: 0,
+    pendingAnalysisCount: 0,
+    failedAnalysisCount: 0,
+    reviewRequiredCount: 0,
+    knowledgeSourcesCount: 0,
+    indexedKnowledgeSourcesCount: 0,
+    todayCost: 0,
+    monthCost: 0,
+    estimatedNextAnalysisCost: 0,
+    projectedTodayCost: 0,
+    recentReports: [],
   },
   priorityCandidates: [],
   recentSessions: [],
@@ -141,8 +185,33 @@ export function statusLabel(status: string): string {
     COMPLETED: "완료",
     PARTIAL_COMPLETED: "일부 완료",
     FAILED: "실패",
+    SUCCESS: "완료",
+    RUNNING: "분석 중",
+    PENDING: "대기",
+    CANCELLED: "취소",
   };
   return labels[status] ?? status;
+}
+
+export function riskLabel(riskLevel: string | null): string {
+  const labels: Record<string, string> = {
+    CRITICAL: "매우 높음",
+    HIGH: "높음",
+    MEDIUM: "중간",
+    LOW: "낮음",
+    SAFE: "안전",
+  };
+  return labels[riskLevel ?? ""] ?? riskLevel ?? "-";
+}
+
+export function riskClasses(riskLevel: string | null): string {
+  if (riskLevel === "CRITICAL" || riskLevel === "HIGH") {
+    return "border-rose-200 bg-rose-50 text-rose-700";
+  }
+  if (riskLevel === "MEDIUM") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+  return "border-emerald-200 bg-emerald-50 text-emerald-700";
 }
 
 export function statusClasses(status: string): string {
