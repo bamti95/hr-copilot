@@ -17,6 +17,8 @@ from repositories.manager_dashboard_repository import (
 )
 from schemas.manager_dashboard import (
     DashboardKpis,
+    DashboardJobPostingReportItem,
+    DashboardJobPostingSummary,
     DashboardLlmCostNode,
     DashboardLlmCostSummary,
     DashboardPipelineItem,
@@ -196,6 +198,7 @@ class ManagerDashboardService:
                     ),
                 ],
                 llm_cost=await self._build_llm_cost_summary(),
+                job_posting=await self._build_job_posting_summary(),
                 priority_candidates=await self._build_priority_candidates(),
                 recent_sessions=await self._build_recent_sessions(),
                 recent_activities=await self._build_recent_activities(),
@@ -241,6 +244,57 @@ class ManagerDashboardService:
             avg_elapsed_ms=_float_value(metrics_row[5]),
             top_cost_node=top_nodes[0] if top_nodes else None,
             top_nodes=top_nodes,
+        )
+
+    async def _build_job_posting_summary(self) -> DashboardJobPostingSummary:
+        """채용공고 RAG 분석 현황과 관련 비용을 구성한다."""
+        now = datetime.now(timezone.utc)
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        month_start = now.replace(
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+        pending_count = await self.repository.count_job_posting_pending_analysis()
+        cost_row = await self.repository.get_job_posting_llm_cost_metrics_row(
+            today_start=today_start,
+            month_start=month_start,
+        )
+        today_cost = _decimal_value(cost_row[0])
+        estimated_next_cost = _decimal_value(cost_row[2])
+
+        return DashboardJobPostingSummary(
+            total_postings=await self.repository.count_job_postings(),
+            analyzed_count=await self.repository.count_job_posting_analyzed(),
+            pending_analysis_count=pending_count,
+            failed_analysis_count=await self.repository.count_job_posting_failed_analysis(),
+            review_required_count=await self.repository.count_job_posting_review_required(),
+            knowledge_sources_count=await self.repository.count_job_posting_knowledge_sources(),
+            indexed_knowledge_sources_count=(
+                await self.repository.count_job_posting_indexed_knowledge_sources()
+            ),
+            today_cost=today_cost,
+            month_cost=_decimal_value(cost_row[1]),
+            estimated_next_analysis_cost=estimated_next_cost,
+            projected_today_cost=today_cost + (estimated_next_cost * pending_count),
+            recent_reports=[
+                DashboardJobPostingReportItem(
+                    report_id=row[0],
+                    job_posting_id=row[1],
+                    job_title=row[2],
+                    company_name=row[3],
+                    status=row[4],
+                    risk_level=row[5],
+                    issue_count=_int_value(row[6]),
+                    violation_count=_int_value(row[7]),
+                    warning_count=_int_value(row[8]),
+                    updated_at=row[9],
+                    target_path=f"/manager/job-postings/{row[1]}/report",
+                )
+                for row in await self.repository.get_recent_job_posting_report_rows()
+            ],
         )
 
     async def _build_priority_candidates(self) -> list[DashboardPriorityCandidate]:

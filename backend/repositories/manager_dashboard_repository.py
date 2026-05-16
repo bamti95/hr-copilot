@@ -10,10 +10,14 @@ from datetime import datetime
 from sqlalchemy import and_, case, desc, distinct, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from models.ai_job import AiJob, AiJobStatus, AiJobType
 from models.candidate import Candidate
 from models.document import Document
 from models.interview_question import InterviewQuestion
 from models.interview_session import InterviewSession
+from models.job_posting import JobPosting
+from models.job_posting_analysis_report import JobPostingAnalysisReport
+from models.job_posting_knowledge_source import JobPostingKnowledgeSource
 from models.llm_call_log import LlmCallLog
 
 # 문서 추출이 아직 끝나지 않은 상태 코드 묶음이다.
@@ -24,6 +28,12 @@ FAILED_QUESTION_STATUSES = {"FAILED"}
 PARTIAL_QUESTION_STATUSES = {"PARTIAL_COMPLETED"}
 COMPLETED_QUESTION_STATUSES = {"COMPLETED"}
 REVIEW_PROBLEM_STATUSES = {"needs_revision", "rejected"}
+ACTIVE_JOB_STATUSES = {
+    AiJobStatus.QUEUED.value,
+    AiJobStatus.RUNNING.value,
+    AiJobStatus.RETRYING.value,
+}
+JOB_POSTING_REVIEW_RISK_LEVELS = {"HIGH", "MEDIUM", "CRITICAL"}
 
 
 class ManagerDashboardRepository:
@@ -436,6 +446,136 @@ class ManagerDashboardRepository:
             )
             .group_by(LlmCallLog.node_name)
             .order_by(desc(func.coalesce(func.sum(LlmCallLog.estimated_cost), 0)))
+            .limit(limit)
+        )
+        return result.all()
+
+    async def count_job_postings(self) -> int:
+        """등록된 채용공고 수를 센다."""
+        return await self._scalar_int(
+            select(func.count(JobPosting.id)).where(JobPosting.deleted_at.is_(None))
+        )
+
+    async def count_job_posting_analyzed(self) -> int:
+        """성공 리포트가 하나 이상 있는 채용공고 수를 센다."""
+        return await self._scalar_int(
+            select(func.count(distinct(JobPostingAnalysisReport.job_posting_id))).where(
+                JobPostingAnalysisReport.deleted_at.is_(None),
+                JobPostingAnalysisReport.analysis_status == "SUCCESS",
+            )
+        )
+
+    async def count_job_posting_pending_analysis(self) -> int:
+        """대기 또는 실행 중인 채용공고 분석 작업 수를 센다."""
+        return await self._scalar_int(
+            select(func.count(AiJob.id)).where(
+                AiJob.deleted_at.is_(None),
+                AiJob.job_type == AiJobType.JOB_POSTING_COMPLIANCE_ANALYSIS.value,
+                AiJob.status.in_(ACTIVE_JOB_STATUSES),
+            )
+        )
+
+    async def count_job_posting_failed_analysis(self) -> int:
+        """실패한 채용공고 분석 리포트 수를 센다."""
+        return await self._scalar_int(
+            select(func.count(JobPostingAnalysisReport.id)).where(
+                JobPostingAnalysisReport.deleted_at.is_(None),
+                JobPostingAnalysisReport.analysis_status == "FAILED",
+            )
+        )
+
+    async def count_job_posting_review_required(self) -> int:
+        """리스크 또는 이슈가 있어 매니저 확인이 필요한 공고 수를 센다."""
+        return await self._scalar_int(
+            select(func.count(distinct(JobPostingAnalysisReport.job_posting_id))).where(
+                JobPostingAnalysisReport.deleted_at.is_(None),
+                JobPostingAnalysisReport.analysis_status == "SUCCESS",
+                or_(
+                    JobPostingAnalysisReport.issue_count > 0,
+                    JobPostingAnalysisReport.violation_count > 0,
+                    JobPostingAnalysisReport.warning_count > 0,
+                    JobPostingAnalysisReport.risk_level.in_(
+                        JOB_POSTING_REVIEW_RISK_LEVELS
+                    ),
+                ),
+            )
+        )
+
+    async def count_job_posting_knowledge_sources(self) -> int:
+        """RAG 기반지식 원천 문서 수를 센다."""
+        return await self._scalar_int(
+            select(func.count(JobPostingKnowledgeSource.id)).where(
+                JobPostingKnowledgeSource.deleted_at.is_(None)
+            )
+        )
+
+    async def count_job_posting_indexed_knowledge_sources(self) -> int:
+        """색인이 완료된 RAG 기반지식 문서 수를 센다."""
+        return await self._scalar_int(
+            select(func.count(JobPostingKnowledgeSource.id)).where(
+                JobPostingKnowledgeSource.deleted_at.is_(None),
+                JobPostingKnowledgeSource.index_status == "SUCCESS",
+            )
+        )
+
+    async def get_job_posting_llm_cost_metrics_row(
+        self,
+        *,
+        today_start: datetime,
+        month_start: datetime,
+    ):
+        """채용공고 분석 파이프라인의 오늘/월 비용과 평균 분석 비용을 계산한다."""
+        today_cost = func.sum(
+            case(
+                (LlmCallLog.created_at >= today_start, LlmCallLog.estimated_cost),
+                else_=0,
+            )
+        )
+        result = await self.db.execute(
+            select(
+                func.coalesce(today_cost, 0),
+                func.coalesce(func.sum(LlmCallLog.estimated_cost), 0),
+                func.coalesce(
+                    func.sum(LlmCallLog.estimated_cost)
+                    / func.nullif(
+                        func.count(distinct(LlmCallLog.job_posting_analysis_report_id)),
+                        0,
+                    ),
+                    0,
+                ),
+            ).where(
+                LlmCallLog.deleted_at.is_(None),
+                LlmCallLog.model_name != "local",
+                LlmCallLog.pipeline_type == "JOB_POSTING_COMPLIANCE",
+                LlmCallLog.created_at >= month_start,
+            )
+        )
+        return result.one()
+
+    async def get_recent_job_posting_report_rows(self, limit: int = 6):
+        """최근 채용공고 분석 리포트 목록을 반환한다."""
+        result = await self.db.execute(
+            select(
+                JobPostingAnalysisReport.id,
+                JobPostingAnalysisReport.job_posting_id,
+                JobPosting.job_title,
+                JobPosting.company_name,
+                JobPostingAnalysisReport.analysis_status,
+                JobPostingAnalysisReport.risk_level,
+                JobPostingAnalysisReport.issue_count,
+                JobPostingAnalysisReport.violation_count,
+                JobPostingAnalysisReport.warning_count,
+                JobPostingAnalysisReport.updated_at,
+            )
+            .join(JobPosting, JobPosting.id == JobPostingAnalysisReport.job_posting_id)
+            .where(
+                JobPostingAnalysisReport.deleted_at.is_(None),
+                JobPosting.deleted_at.is_(None),
+            )
+            .order_by(
+                desc(JobPostingAnalysisReport.updated_at),
+                desc(JobPostingAnalysisReport.id),
+            )
             .limit(limit)
         )
         return result.all()

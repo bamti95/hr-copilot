@@ -77,11 +77,41 @@ class DashboardLlmCostSummary(BaseModel):
     top_nodes: list[DashboardLlmCostNode] = []
 
 
+class DashboardJobPostingReportItem(BaseModel):
+    report_id: int
+    job_posting_id: int
+    job_title: str
+    company_name: str | None = None
+    status: str
+    risk_level: str | None = None
+    issue_count: int
+    violation_count: int
+    warning_count: int
+    updated_at: datetime | None = None
+    target_path: str
+
+
+class DashboardJobPostingSummary(BaseModel):
+    total_postings: int = 0
+    analyzed_count: int = 0
+    pending_analysis_count: int = 0
+    failed_analysis_count: int = 0
+    review_required_count: int = 0
+    knowledge_sources_count: int = 0
+    indexed_knowledge_sources_count: int = 0
+    today_cost: Decimal = Decimal("0")
+    month_cost: Decimal = Decimal("0")
+    estimated_next_analysis_cost: Decimal = Decimal("0")
+    projected_today_cost: Decimal = Decimal("0")
+    recent_reports: list[DashboardJobPostingReportItem] = []
+
+
 class ManagerDashboardSummaryData(BaseModel):
     kpis: DashboardKpis
     todos: list[DashboardTodoItem]
     pipeline: list[DashboardPipelineItem]
     llm_cost: DashboardLlmCostSummary
+    job_posting: DashboardJobPostingSummary
     priority_candidates: list[DashboardPriorityCandidate]
     recent_sessions: list[DashboardRecentSession]
     recent_activities: list[DashboardRecentActivity]
