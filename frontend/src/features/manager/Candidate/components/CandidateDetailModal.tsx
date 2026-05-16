@@ -20,6 +20,8 @@ import type {
   CandidateFormState,
   CandidateJobPosition,
   CandidatePendingDocument,
+  CandidateRegistrationMode,
+  CandidateSampleFolder,
   DocumentBulkImportPreviewRequest,
   DocumentBulkImportPreviewJobResponse,
   DocumentBulkUploadMode,
@@ -36,8 +38,12 @@ type ValidationErrors = Partial<Record<keyof CandidateFormState, string>>;
 
 interface CandidateDetailModalProps {
   mode: "create" | "detail";
-  registrationMode: "single" | "bulk";
-  onRegistrationModeChange: (mode: "single" | "bulk") => void;
+  registrationMode: CandidateRegistrationMode;
+  onRegistrationModeChange: (mode: CandidateRegistrationMode) => void;
+  sampleFolders: CandidateSampleFolder[];
+  selectedSampleFolderName: string;
+  isLoadingSampleFolders: boolean;
+  isSampleBulkImporting: boolean;
   documentBulkPreview: DocumentBulkImportPreviewJobResponse | null;
   isDocumentBulkPreviewing: boolean;
   isDocumentBulkImporting: boolean;
@@ -72,6 +78,9 @@ interface CandidateDetailModalProps {
     file: File | null,
   ) => void;
   onOpenDocument: (document: CandidateDocumentResponse) => void;
+  onSampleFolderChange: (value: string) => void;
+  onSampleRefresh: () => void;
+  onSampleImport: () => void;
   onDocumentBulkPreview: (request: DocumentBulkImportPreviewRequest) => void;
   onDocumentBulkConfirmImport: (selectedRowIds: string[]) => void;
 }
@@ -241,6 +250,10 @@ export function CandidateDetailModal({
   mode,
   registrationMode,
   onRegistrationModeChange,
+  sampleFolders,
+  selectedSampleFolderName,
+  isLoadingSampleFolders,
+  isSampleBulkImporting,
   documentBulkPreview,
   isDocumentBulkPreviewing,
   isDocumentBulkImporting,
@@ -266,6 +279,9 @@ export function CandidateDetailModal({
   onExistingDocumentDelete,
   onExistingDocumentReplace,
   onOpenDocument,
+  onSampleFolderChange,
+  onSampleRefresh,
+  onSampleImport,
   onDocumentBulkPreview,
   onDocumentBulkConfirmImport,
 }: CandidateDetailModalProps) {
@@ -279,7 +295,8 @@ export function CandidateDetailModal({
   const [selectedBulkRowIds, setSelectedBulkRowIds] = useState<string[]>([]);
 
   const isCreateMode = mode === "create";
-  const isBulkCreateMode = isCreateMode && registrationMode === "bulk";
+  const isBulkCreateMode = isCreateMode && registrationMode === "documentBulk";
+  const isSampleBulkCreateMode = isCreateMode && registrationMode === "sampleBulk";
   const isDocumentBulkJobRunning =
     documentBulkPreview?.status === "QUEUED" ||
     documentBulkPreview?.status === "RUNNING" ||
@@ -362,29 +379,27 @@ export function CandidateDetailModal({
         </div>
 
         {isCreateMode ? (
-          <div className="mt-5 inline-flex rounded-2xl border border-slate-200 bg-white p-1">
-            <button
-              type="button"
-              className={`h-10 rounded-xl px-4 text-sm font-semibold transition ${
-                registrationMode === "single"
-                  ? "bg-emerald-500 text-white"
-                  : "text-slate-600 hover:bg-slate-50"
-              }`}
-              onClick={() => onRegistrationModeChange("single")}
-            >
-              단일 등록
-            </button>
-            <button
-              type="button"
-              className={`h-10 rounded-xl px-4 text-sm font-semibold transition ${
-                registrationMode === "bulk"
-                  ? "bg-emerald-500 text-white"
-                  : "text-slate-600 hover:bg-slate-50"
-              }`}
-              onClick={() => onRegistrationModeChange("bulk")}
-            >
-              문서 일괄등록
-            </button>
+          <div className="mt-5 grid gap-2 rounded-2xl border border-slate-200 bg-white p-1 sm:inline-grid sm:grid-cols-3">
+            {[
+              { key: "single", label: "단일 등록" },
+              { key: "documentBulk", label: "문서 일괄등록" },
+              { key: "sampleBulk", label: "샘플 일괄등록" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                className={`h-10 rounded-xl px-4 text-sm font-semibold transition ${
+                  registrationMode === tab.key
+                    ? "bg-emerald-500 text-white"
+                    : "text-slate-600 hover:bg-slate-50"
+                }`}
+                onClick={() =>
+                  onRegistrationModeChange(tab.key as CandidateRegistrationMode)
+                }
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         ) : null}
 
@@ -900,6 +915,76 @@ export function CandidateDetailModal({
 
 
           </div>
+        ) : isSampleBulkCreateMode ? (
+          <div className="mt-6 space-y-5">
+            <section className="rounded-[28px] border border-white/70 bg-[var(--panel-strong)] p-5">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-[var(--text)]">
+                    샘플 데이터 일괄등록
+                  </h3>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    개발·검증용 샘플 폴더를 선택해 지원자와 문서를 한 번에 등록합니다.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--text)] transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={onSampleRefresh}
+                  disabled={isLoadingSampleFolders || isSampleBulkImporting}
+                >
+                  새로고침
+                </button>
+              </div>
+
+              <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px] lg:items-end">
+                <label className="block text-sm font-medium text-slate-700">
+                  샘플 폴더
+                  <select
+                    className={fieldClassName}
+                    value={selectedSampleFolderName}
+                    onChange={(event) => onSampleFolderChange(event.target.value)}
+                    disabled={
+                      isLoadingSampleFolders ||
+                      isSampleBulkImporting ||
+                      sampleFolders.length === 0
+                    }
+                  >
+                    <option value="">
+                      {isLoadingSampleFolders
+                        ? "폴더를 불러오는 중입니다"
+                        : sampleFolders.length > 0
+                          ? "폴더를 선택하세요"
+                          : "사용 가능한 샘플 폴더가 없습니다"}
+                    </option>
+                    {sampleFolders.map((folder) => (
+                      <option key={folder.folderName} value={folder.folderName}>
+                        {folder.folderName} ({folder.candidateCount}명)
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <button
+                  type="button"
+                  className="h-11 rounded-2xl bg-linear-to-r from-emerald-500 to-teal-500 px-4 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(16,185,129,0.22)] disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={onSampleImport}
+                  disabled={
+                    isLoadingSampleFolders ||
+                    isSampleBulkImporting ||
+                    !selectedSampleFolderName
+                  }
+                >
+                  {isSampleBulkImporting ? "등록 중..." : "샘플 등록 실행"}
+                </button>
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                실제 운영 등록은 문서 일괄등록 탭을 사용해 주세요. 이 탭은 샘플 데이터
+                적재와 시연 환경 준비를 위한 기능입니다.
+              </div>
+            </section>
+          </div>
         ) : isDetailLoading ? (
           <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-[var(--muted)]">
             지원자 상세 정보를 불러오는 중입니다.
@@ -1303,7 +1388,7 @@ export function CandidateDetailModal({
           </>
         )}
 
-        {!isBulkCreateMode ? (
+        {!isBulkCreateMode && !isSampleBulkCreateMode ? (
         <div className="mt-6 flex flex-wrap justify-between gap-3 border-t border-[var(--line)] pt-5">
           <div>
             {!isCreateMode && detail ? (

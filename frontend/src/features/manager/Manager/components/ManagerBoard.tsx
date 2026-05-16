@@ -2,6 +2,7 @@ import { Pagination } from "../../../../common/components/Pagination";
 import { formatDateTime } from "../../common/formatDateTime"
 import { StatusPill } from "../../../../common/components/StatusPill";
 import type { ManagerListResponse, ManagerResponse } from "../types";
+import { getRoleLabel } from "./managerLabels";
 
 interface ManagerBoardProps {
   data: ManagerListResponse;
@@ -143,7 +144,7 @@ export function ManagerBoard({
                   <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">{row.id}</td>
                   <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">{row.loginId}</td>
                   <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">{row.name}</td>
-                  <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">{row.roleType ?? "-"}</td>
+                  <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">{getRoleLabel(row.roleType)}</td>
                   <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">{row.email}</td>
                   <td className="border-b border-[var(--line)] px-3 py-3 whitespace-nowrap">
                     <StatusPill status={row.status} />

@@ -12,7 +12,6 @@ import {
 import { emptyPromptProfileForm } from "../PromptProfile/utils/promptProfileFormDefaults";
 import { CandidateAnalysisSessionCreateModal } from "./components/CandidateAnalysisSessionCreateModal";
 import { CandidateBoard } from "./components/CandidateBoard";
-import { CandidateBulkImportModal } from "./components/CandidateBulkImportModal";
 import { CandidateDocumentBulkImportModal } from "./components/CandidateDocumentBulkImportModal";
 import { useCandidateData } from "./hooks/useCandidateData";
 
@@ -28,11 +27,6 @@ export default function CandidatePage() {
     isLoading,
     errorMessage,
     successMessage,
-    sampleFolders,
-    selectedSampleFolderName,
-    isBulkImportModalOpen,
-    isLoadingSampleFolders,
-    isBulkImporting,
     isDocumentBulkImportModalOpen,
     isDocumentBulkPreviewing,
     isDocumentBulkImporting,
@@ -44,20 +38,15 @@ export default function CandidatePage() {
     setStatusFilter,
     setPage,
     setPageSize,
-    setSelectedSampleFolderName,
     handleSearchSubmit,
     handleJobFilterChange,
     handleOpenCreate,
-    handleOpenBulkImport,
-    handleCloseBulkImport,
     handleOpenDocumentBulkImport,
     handleCloseDocumentBulkImport,
     handleOpenDetail,
     handleDelete,
     toggleSelect,
     selectAllOnPage,
-    loadSampleFolders,
-    handleBulkImport,
     handleDocumentBulkPreview,
     handleConfirmDocumentBulkImport,
     openAnalysisSessionCreateModal,
@@ -189,7 +178,6 @@ export default function CandidatePage() {
           setPageSize(size);
         }}
         onCreate={handleOpenCreate}
-        onOpenBulkImport={() => void handleOpenBulkImport()}
         onOpenDocumentBulkImport={handleOpenDocumentBulkImport}
         documentBulkPreview={documentBulkPreview}
         isDocumentBulkJobActive={isDocumentBulkJobActive}
@@ -198,18 +186,6 @@ export default function CandidatePage() {
         onToggleSelect={toggleSelect}
         onSelectAllOnPage={selectAllOnPage}
         onOpenAnalysisSessionCreateModal={openAnalysisSessionCreateModal}
-      />
-
-      <CandidateBulkImportModal
-        open={isBulkImportModalOpen}
-        folders={sampleFolders}
-        selectedFolderName={selectedSampleFolderName}
-        isLoadingFolders={isLoadingSampleFolders}
-        isSubmitting={isBulkImporting}
-        onClose={handleCloseBulkImport}
-        onFolderChange={setSelectedSampleFolderName}
-        onRefresh={() => void loadSampleFolders()}
-        onSubmit={() => void handleBulkImport()}
       />
 
       <CandidateDocumentBulkImportModal

@@ -3,12 +3,16 @@ import { PageIntro } from "../../../../common/components/PageIntro";
 import { CandidateDetailModal } from "../components/CandidateDetailModal";
 import { useCandidateDetail } from "../hooks/useCandidateDetail";
 import {
+  bulkImportCandidates,
   confirmDocumentBulkImport,
+  fetchCandidateSampleFolders,
   fetchDocumentBulkPreviewJob,
   fetchDocumentBulkPreviewJobs,
   previewDocumentBulkImport,
 } from "../services/candidateService";
 import type {
+  CandidateRegistrationMode,
+  CandidateSampleFolder,
   DocumentBulkImportPreviewRequest,
   DocumentBulkImportPreviewJobResponse,
 } from "../types";
@@ -46,9 +50,13 @@ export default function CandidateDetailPage({
   mode,
   candidateId,
 }: CandidateDetailPageProps) {
-  const [registrationMode, setRegistrationMode] = useState<"single" | "bulk">(
+  const [registrationMode, setRegistrationMode] = useState<CandidateRegistrationMode>(
     "single",
   );
+  const [sampleFolders, setSampleFolders] = useState<CandidateSampleFolder[]>([]);
+  const [selectedSampleFolderName, setSelectedSampleFolderName] = useState("");
+  const [isLoadingSampleFolders, setIsLoadingSampleFolders] = useState(false);
+  const [isSampleBulkImporting, setIsSampleBulkImporting] = useState(false);
   const [documentBulkPreview, setDocumentBulkPreview] =
     useState<DocumentBulkImportPreviewJobResponse | null>(null);
   const [documentBulkJobId, setDocumentBulkJobId] = useState<number | null>(null);
@@ -99,7 +107,7 @@ export default function CandidateDetailPage({
         }
         const latestJob = response.jobs[0] ?? null;
         if (latestJob) {
-          setRegistrationMode("bulk");
+          setRegistrationMode("documentBulk");
           setDocumentBulkPreview(latestJob);
           setDocumentBulkJobId(latestJob.jobId);
         }
@@ -198,6 +206,66 @@ export default function CandidateDetailPage({
     }
   };
 
+  const loadSampleFolders = async () => {
+    try {
+      setIsLoadingSampleFolders(true);
+      setDocumentBulkErrorMessage("");
+      const folders = await fetchCandidateSampleFolders();
+      setSampleFolders(folders);
+      setSelectedSampleFolderName((current) => {
+        if (current && folders.some((folder) => folder.folderName === current)) {
+          return current;
+        }
+        return folders[0]?.folderName ?? "";
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "샘플 폴더 목록을 불러오지 못했습니다.";
+      setDocumentBulkErrorMessage(message);
+    } finally {
+      setIsLoadingSampleFolders(false);
+    }
+  };
+
+  const handleRegistrationModeChange = (nextMode: CandidateRegistrationMode) => {
+    setRegistrationMode(nextMode);
+    setDocumentBulkErrorMessage("");
+    if (nextMode === "sampleBulk" && sampleFolders.length === 0) {
+      void loadSampleFolders();
+    }
+  };
+
+  const handleSampleBulkImport = async () => {
+    if (!selectedSampleFolderName) {
+      setDocumentBulkErrorMessage("등록할 샘플 폴더를 먼저 선택해 주세요.");
+      return;
+    }
+
+    try {
+      setIsSampleBulkImporting(true);
+      setDocumentBulkErrorMessage("");
+      const response = await bulkImportCandidates({
+        folderName: selectedSampleFolderName,
+      });
+      if (response.errors.length > 0) {
+        setDocumentBulkErrorMessage(
+          response.errors
+            .slice(0, 3)
+            .map((error) => `${error.candidateKey}: ${error.reason}`)
+            .join(" / "),
+        );
+        return;
+      }
+      handleBack();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "샘플 일괄등록에 실패했습니다.";
+      setDocumentBulkErrorMessage(message);
+    } finally {
+      setIsSampleBulkImporting(false);
+    }
+  };
+
   const handleConfirmDocumentBulkImport = async (selectedRowIds: string[]) => {
     if (!documentBulkPreview) {
       return;
@@ -253,10 +321,11 @@ export default function CandidateDetailPage({
       <CandidateDetailModal
         mode={mode}
         registrationMode={registrationMode}
-        onRegistrationModeChange={(nextMode) => {
-          setRegistrationMode(nextMode);
-          setDocumentBulkErrorMessage("");
-        }}
+        onRegistrationModeChange={handleRegistrationModeChange}
+        sampleFolders={sampleFolders}
+        selectedSampleFolderName={selectedSampleFolderName}
+        isLoadingSampleFolders={isLoadingSampleFolders}
+        isSampleBulkImporting={isSampleBulkImporting}
         documentBulkPreview={documentBulkPreview}
         isDocumentBulkPreviewing={isDocumentBulkPreviewing}
         isDocumentBulkImporting={isDocumentBulkImporting}
@@ -286,6 +355,9 @@ export default function CandidateDetailPage({
           void handleReplaceExistingDocument(document.id, document.documentType, file)
         }
         onOpenDocument={(document) => handleOpenDocument(document.id)}
+        onSampleFolderChange={setSelectedSampleFolderName}
+        onSampleRefresh={() => void loadSampleFolders()}
+        onSampleImport={() => void handleSampleBulkImport()}
         onDocumentBulkPreview={(request) => void handleDocumentBulkPreview(request)}
         onDocumentBulkConfirmImport={(selectedRowIds) =>
           void handleConfirmDocumentBulkImport(selectedRowIds)

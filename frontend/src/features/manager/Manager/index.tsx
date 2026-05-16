@@ -5,6 +5,7 @@ import { useAuthStore } from "../../../store/useAuthStore";
 import { getErrorMessage } from "../../../utils/getErrorMessage";
 import { ManagerBoard } from "./components/ManagerBoard";
 import { EditForm } from "./components/EditForm";
+import { getRoleLabel, getStatusLabel } from "./components/managerLabels";
 import {
   createManager,
   deleteManager,
@@ -274,7 +275,7 @@ export default function ManagerPage() {
 
     const targetStatus = nextStatus(row.status);
     const confirmed = window.confirm(
-      `${row.name} 관리자의 상태를 ${targetStatus}로 변경하시겠습니까?`,
+      `${row.name} 관리자의 상태를 ${getStatusLabel(targetStatus)}로 변경하시겠습니까?`,
     );
 
     if (!confirmed) {
@@ -336,7 +337,7 @@ export default function ManagerPage() {
       <PageIntro
         eyebrow="manager"
         title="관리자 관리"
-        description="목록 중심으로 관리자 계정을 조회하고, 최고 관리자 권한(roleType: SYSTEM-MANAGER)인 경우에만 신규 등록, 정보 수정, 상태 변경, 논리삭제를 수행할 수 있습니다."
+        description={`목록 중심으로 관리자 계정을 조회하고, ${getRoleLabel("SYSTEM-MANAGER")} 권한인 경우에만 신규 등록, 정보 수정, 상태 변경, 논리삭제를 수행할 수 있습니다.`}
       />
 
       {errorMessage ? (
@@ -347,7 +348,7 @@ export default function ManagerPage() {
 
       {!canManage ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-          현재 계정은 조회만 가능합니다. `SYSTEM-MANAGER` 권한이 있어야 등록, 수정, 상태 변경, 삭제를 수행할 수 있습니다.
+          현재 계정은 조회만 가능합니다. {getRoleLabel("SYSTEM-MANAGER")} 권한이 있어야 등록, 수정, 상태 변경, 삭제를 수행할 수 있습니다.
         </div>
       ) : null}
 

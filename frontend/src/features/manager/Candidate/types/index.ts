@@ -163,6 +163,8 @@ export interface CandidateFormState {
   applyStatus: CandidateApplyStatus;
 }
 
+export type CandidateRegistrationMode = "single" | "documentBulk" | "sampleBulk";
+
 export interface CandidatePendingDocument {
   id: string;
   file: File;

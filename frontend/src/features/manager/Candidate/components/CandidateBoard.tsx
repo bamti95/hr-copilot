@@ -28,7 +28,6 @@ interface CandidateBoardProps {
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   onCreate: () => void;
-  onOpenBulkImport: () => void;
   onOpenDocumentBulkImport: () => void;
   documentBulkPreview: DocumentBulkImportPreviewJobResponse | null;
   isDocumentBulkJobActive: boolean;
@@ -67,7 +66,6 @@ export function CandidateBoard({
   onPageChange,
   onPageSizeChange,
   onCreate,
-  onOpenBulkImport,
   onOpenDocumentBulkImport,
   documentBulkPreview,
   isDocumentBulkJobActive,
@@ -144,7 +142,7 @@ export function CandidateBoard({
         </button>
       ) : null}
 
-      <div className="mb-4 grid gap-3 rounded-3xl border border-white/70 bg-(--panel-strong) p-4 xl:grid-cols-[minmax(0,1fr)_160px_160px_150px_100px_auto_auto_auto_auto] xl:items-end">
+      <div className="mb-4 grid gap-3 rounded-3xl border border-white/70 bg-(--panel-strong) p-4 xl:grid-cols-[minmax(0,1fr)_160px_160px_150px_100px_auto_auto] xl:items-end">
         <label className="text-sm font-medium text-(--text)">
           검색어
           <input
@@ -224,22 +222,6 @@ export function CandidateBoard({
           onClick={onCreate}
         >
           신규 등록
-        </button>
-
-        <button
-          type="button"
-          className={`${buttonClassName} border-emerald-300 bg-emerald-50 px-4 text-emerald-800 hover:bg-emerald-100`}
-          onClick={onOpenBulkImport}
-        >
-          단체 지원자 등록
-        </button>
-
-        <button
-          type="button"
-          className={`${buttonClassName} border-teal-300 bg-teal-50 px-4 text-teal-900 hover:bg-teal-100`}
-          onClick={onOpenDocumentBulkImport}
-        >
-          문서 일괄등록
         </button>
 
         <button

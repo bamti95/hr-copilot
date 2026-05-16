@@ -228,6 +228,10 @@ class StagedDocument:
     file_size: int | None
     document_type: str
     inferred_candidate_name: str | None
+    grouping_source: str
+    grouping_confidence: float
+    content_email: str | None = None
+    content_phone: str | None = None
 
 
 def _normalize_default_job_position(value: str | None) -> str | None:
@@ -269,6 +273,55 @@ def _clean_group_key(value: str) -> str:
     return cleaned or "ungrouped"
 
 
+def _normalize_group_identity(value: str | None) -> str:
+    return re.sub(r"[^0-9a-zA-Z가-힣]+", "", value or "").lower()
+
+
+def _normalize_email(value: str | None) -> str | None:
+    normalized = (value or "").strip().lower()
+    return normalized or None
+
+
+def _normalize_phone(value: str | None) -> str | None:
+    digits = re.sub(r"\D", "", value or "")
+    if digits.startswith("82") and len(digits) >= 11:
+        digits = f"0{digits[2:]}"
+    return digits or None
+
+
+def _contact_group_key(*, email: str | None, phone: str | None) -> str | None:
+    phone_digits = _normalize_phone(phone)
+    if phone_digits:
+        return f"phone:{phone_digits}"
+    normalized_email = _normalize_email(email)
+    if normalized_email:
+        return f"email:{normalized_email}"
+    return None
+
+
+def _is_weak_filename_group_key(group_key: str) -> bool:
+    identity = _normalize_group_identity(group_key)
+    if not identity or identity == "ungrouped":
+        return True
+    if len(identity) < 2:
+        return True
+    generic_names = {
+        "resume",
+        "cv",
+        "coverletter",
+        "portfolio",
+        "careerdescription",
+        "이력서",
+        "자기소개서",
+        "자소서",
+        "포트폴리오",
+        "경력기술서",
+        "지원서",
+        "입사지원서",
+    }
+    return identity in generic_names
+
+
 def _strip_document_tokens(stem: str) -> str:
     result = stem
     tokens = [
@@ -298,19 +351,24 @@ def _strip_document_tokens(stem: str) -> str:
     return _clean_group_key(result)
 
 
-def _infer_group_from_zip_path(path: PurePosixPath) -> tuple[str, str | None]:
+def _infer_group_from_zip_path(path: PurePosixPath) -> tuple[str, str | None, str, float]:
     parts = [part for part in path.parts if part]
     if len(parts) >= 2:
-        return _clean_group_key(parts[0]), _clean_group_key(parts[0])
+        group_key = _clean_group_key(parts[0])
+        return group_key, group_key, "ZIP_FOLDER", 1.0
     stem = strip_extension(parts[0] if parts else path.name)
     group_key = _strip_document_tokens(stem)
-    return group_key, group_key
+    if _is_weak_filename_group_key(group_key):
+        return group_key, group_key, "WEAK_FILENAME", 0.35
+    return group_key, group_key, "FILENAME_PREFIX", 0.75
 
 
-def _infer_group_from_filename(filename: str) -> tuple[str, str | None]:
+def _infer_group_from_filename(filename: str) -> tuple[str, str | None, str, float]:
     stem = strip_extension(Path(filename).name)
     group_key = _strip_document_tokens(stem)
-    return group_key, group_key
+    if _is_weak_filename_group_key(group_key):
+        return group_key, group_key, "WEAK_FILENAME", 0.35
+    return group_key, group_key, "FILENAME_PREFIX", 0.75
 
 
 def _infer_document_type(filename: str) -> str:
@@ -408,6 +466,45 @@ def _build_text_preview(text: str | None, limit: int = 240) -> str | None:
     if len(normalized) <= limit:
         return normalized
     return f"{normalized[:limit].rstrip()}..."
+
+
+def _extract_contact_from_document_text(document: StagedDocument) -> tuple[str | None, str | None]:
+    """그룹 보정에 쓸 연락처만 문서 본문에서 가볍게 추출한다."""
+    if (document.file_ext or "").lower() not in SUPPORTED_EXTRACTION_EXTENSIONS:
+        return None, None
+    try:
+        extraction = extract_text_from_file(document.file_path, document.file_ext)
+    except Exception:
+        logger.exception(
+            "Failed to extract contact for document bulk grouping file=%s",
+            document.original_file_name,
+        )
+        return None, None
+    text = extraction.extracted_text or ""
+    return _extract_email(text), _extract_phone(text)
+
+
+async def _refine_grouping_by_content(
+    staged_documents: list[StagedDocument],
+) -> list[StagedDocument]:
+    """파일명만으로 애매한 문서는 본문 연락처 기반으로 그룹을 보정한다."""
+    refined: list[StagedDocument] = []
+    for document in staged_documents:
+        if document.grouping_source != "WEAK_FILENAME":
+            refined.append(document)
+            continue
+
+        email, phone = await asyncio.to_thread(_extract_contact_from_document_text, document)
+        document.content_email = _normalize_email(email)
+        document.content_phone = _normalize_phone(phone)
+        contact_key = _contact_group_key(email=email, phone=phone)
+        if contact_key:
+            document.group_key = contact_key
+            document.grouping_source = "CONTENT_CONTACT"
+            document.grouping_confidence = 0.85
+            document.inferred_candidate_name = document.inferred_candidate_name or contact_key
+        refined.append(document)
+    return refined
 
 
 def _normalize_for_screening(value: str | None) -> str:
@@ -1402,7 +1499,9 @@ class DocumentBulkImportService:
                         continue
                     member_path = _safe_zip_member_path(info.filename)
                     extension = _validate_extension(member_path.name)
-                    group_key, inferred_name = _infer_group_from_zip_path(member_path)
+                    group_key, inferred_name, grouping_source, grouping_confidence = (
+                        _infer_group_from_zip_path(member_path)
+                    )
                     document_type = _infer_document_type(member_path.name)
                     stored_file_name = build_stored_filename(member_path.name)
                     target_path = preview_dir / "files" / group_key / document_type.lower() / stored_file_name
@@ -1420,6 +1519,8 @@ class DocumentBulkImportService:
                             file_size=target_path.stat().st_size,
                             document_type=document_type,
                             inferred_candidate_name=inferred_name,
+                            grouping_source=grouping_source,
+                            grouping_confidence=grouping_confidence,
                         )
                     )
         except zipfile.BadZipFile as exc:
@@ -1443,7 +1544,9 @@ class DocumentBulkImportService:
                 raise ValueError("source file metadata is incomplete.")
 
             extension = _validate_extension(original_name)
-            group_key, inferred_name = _infer_group_from_filename(original_name)
+            group_key, inferred_name, grouping_source, grouping_confidence = (
+                _infer_group_from_filename(original_name)
+            )
             document_type = _infer_document_type(original_name)
             stored_file_name = build_stored_filename(original_name)
             source_path = resolve_absolute_path(file_path)
@@ -1461,6 +1564,8 @@ class DocumentBulkImportService:
                     file_size=target_path.stat().st_size,
                     document_type=document_type,
                     inferred_candidate_name=inferred_name,
+                    grouping_source=grouping_source,
+                    grouping_confidence=grouping_confidence,
                 )
             )
 
@@ -1501,7 +1606,9 @@ class DocumentBulkImportService:
                         continue
                     member_path = _safe_zip_member_path(info.filename)
                     extension = _validate_extension(member_path.name)
-                    group_key, inferred_name = _infer_group_from_zip_path(member_path)
+                    group_key, inferred_name, grouping_source, grouping_confidence = (
+                        _infer_group_from_zip_path(member_path)
+                    )
                     document_type = _infer_document_type(member_path.name)
                     stored_file_name = build_stored_filename(member_path.name)
                     target_path = preview_dir / "files" / group_key / document_type.lower() / stored_file_name
@@ -1519,6 +1626,8 @@ class DocumentBulkImportService:
                             file_size=target_path.stat().st_size,
                             document_type=document_type,
                             inferred_candidate_name=inferred_name,
+                            grouping_source=grouping_source,
+                            grouping_confidence=grouping_confidence,
                         )
                     )
         except zipfile.BadZipFile as exc:
@@ -1569,7 +1678,9 @@ class DocumentBulkImportService:
                     detail="Uploaded file name is missing.",
                 )
             extension = _validate_extension(original_name)
-            group_key, inferred_name = _infer_group_from_filename(original_name)
+            group_key, inferred_name, grouping_source, grouping_confidence = (
+                _infer_group_from_filename(original_name)
+            )
             document_type = _infer_document_type(original_name)
             stored_file_name = build_stored_filename(original_name)
             target_path = preview_dir / "files" / group_key / document_type.lower() / stored_file_name
@@ -1585,6 +1696,8 @@ class DocumentBulkImportService:
                     file_size=file_size,
                     document_type=document_type,
                     inferred_candidate_name=inferred_name,
+                    grouping_source=grouping_source,
+                    grouping_confidence=grouping_confidence,
                 )
             )
 
@@ -1646,8 +1759,9 @@ class DocumentBulkImportService:
                 detail="No supported document files were found.",
             )
 
+        refined_documents = await _refine_grouping_by_content(staged_documents)
         grouped: dict[str, list[StagedDocument]] = {}
-        for document in staged_documents:
+        for document in refined_documents:
             grouped.setdefault(document.group_key, []).append(document)
 
         repo = CandidateRepository(db)
@@ -1661,7 +1775,7 @@ class DocumentBulkImportService:
                 ready_count=0,
                 needs_review_count=0,
                 invalid_count=0,
-                document_count=len(staged_documents),
+                document_count=len(refined_documents),
             )
             job.progress = 20
             job.current_step = "preview_grouping_completed"
@@ -1695,7 +1809,7 @@ class DocumentBulkImportService:
                     ready_count=sum(1 for item in rows if item.status == "READY"),
                     needs_review_count=sum(1 for item in rows if item.status == "NEEDS_REVIEW"),
                     invalid_count=sum(1 for item in rows if item.status == "INVALID"),
-                    document_count=len(staged_documents),
+                    document_count=len(refined_documents),
                 )
                 job.progress = min(98, 20 + int(75 * index / max(total_groups, 1)))
                 job.result_payload = DocumentBulkImportPreviewResponse(
@@ -1712,7 +1826,7 @@ class DocumentBulkImportService:
             ready_count=sum(1 for row in rows if row.status == "READY"),
             needs_review_count=sum(1 for row in rows if row.status == "NEEDS_REVIEW"),
             invalid_count=sum(1 for row in rows if row.status == "INVALID"),
-            document_count=len(staged_documents),
+            document_count=len(refined_documents),
         )
         response = DocumentBulkImportPreviewResponse(
             job_id=job.id,
@@ -1741,6 +1855,8 @@ class DocumentBulkImportService:
         """문서 그룹 한 건에 대한 미리보기 행을 만든다."""
         extracted_texts: list[str] = []
         preview_documents: list[DocumentBulkImportPreviewDocument] = []
+        document_emails: set[str] = set()
+        document_phones: set[str] = set()
         errors: list[str] = []
         warnings: list[str] = []
 
@@ -1757,6 +1873,12 @@ class DocumentBulkImportService:
                 extracted_text = extraction.extracted_text
                 if extracted_text:
                     extracted_texts.append(extracted_text)
+                    extracted_email = _normalize_email(_extract_email(extracted_text))
+                    extracted_phone = _normalize_phone(_extract_phone(extracted_text))
+                    if extracted_email:
+                        document_emails.add(extracted_email)
+                    if extracted_phone:
+                        document_phones.add(extracted_phone)
             else:
                 error_message = "File extension is uploadable but text extraction is not supported."
                 warnings.append(f"{document.original_file_name}: extraction unsupported")
@@ -1796,6 +1918,22 @@ class DocumentBulkImportService:
 
         if not merged_text.strip():
             errors.append("No text could be extracted from this document group.")
+        weak_group_documents = [
+            document for document in documents if document.grouping_source == "WEAK_FILENAME"
+        ]
+        if weak_group_documents:
+            warnings.append(
+                "파일명 또는 폴더명만으로 지원자 그룹을 확정하기 어려워 검토가 필요합니다."
+            )
+        if len(document_emails) > 1 or len(document_phones) > 1:
+            warnings.append(
+                "같은 그룹 안에서 서로 다른 이메일 또는 전화번호가 감지되었습니다. 서로 다른 지원자의 문서가 섞였을 수 있습니다."
+            )
+        grouping_sources = {document.grouping_source for document in documents}
+        if "CONTENT_CONTACT" in grouping_sources:
+            warnings.append(
+                "파일명 그룹이 불명확해 문서 본문의 이메일 또는 전화번호 기준으로 묶었습니다."
+            )
         for field_name in ("name", "email", "phone"):
             if field_name in profile.missing_fields:
                 warnings.append(f"{field_name} is missing")
@@ -1814,9 +1952,21 @@ class DocumentBulkImportService:
                     duplicate_candidate_id = duplicate.id
                     warnings.append("Duplicate phone candidate exists.")
 
+        has_grouping_conflict = len(document_emails) > 1 or len(document_phones) > 1
+        has_weak_grouping = any(
+            document.grouping_source == "WEAK_FILENAME" for document in documents
+        )
+
         if errors:
             row_status = "INVALID"
-        elif profile.confidence_score >= 0.8 and profile.name and (profile.email or profile.phone) and duplicate_candidate_id is None:
+        elif (
+            profile.confidence_score >= 0.8
+            and profile.name
+            and (profile.email or profile.phone)
+            and duplicate_candidate_id is None
+            and not has_grouping_conflict
+            and not has_weak_grouping
+        ):
             row_status = "READY"
         else:
             row_status = "NEEDS_REVIEW"

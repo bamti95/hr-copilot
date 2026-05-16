@@ -23,7 +23,7 @@ export function ManagerHeader({ onToggleSidebar }: ManagerHeaderProps) {
   };
 
   return (
-    <header className="mb-5 flex flex-col gap-4 rounded-3xl border border-white/55 px-[18px] py-4 backdrop-blur-[18px] md:flex-row md:items-center md:justify-between">
+    <header className="sticky top-3 z-30 mb-5 flex flex-col gap-4 rounded-3xl border border-white/55 bg-[var(--bg)]/80 px-[18px] py-4 shadow-[0_18px_45px_rgba(15,23,42,0.10)] backdrop-blur-[18px] md:top-6 md:flex-row md:items-center md:justify-between">
       <div className="flex items-center gap-3">
         <button
           type="button"

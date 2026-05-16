@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import { StatusPill } from "../../../../common/components/StatusPill";
 import type { ManagerFormState } from "../types";
+import { getRoleLabel, getStatusLabel } from "./managerLabels";
 
 type FormMode = "create" | "edit" | null;
 
@@ -136,7 +137,7 @@ export function EditForm({
             >
               {roleOptions.map((role) => (
                 <option key={role} value={role}>
-                  {role}
+                  {getRoleLabel(role)}
                 </option>
               ))}
             </select>
@@ -154,7 +155,7 @@ export function EditForm({
             >
               {statusOptions.map((status) => (
                 <option key={status} value={status}>
-                  {status}
+                  {getStatusLabel(status)}
                 </option>
               ))}
             </select>
