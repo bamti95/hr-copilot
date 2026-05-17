@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock3, DollarSign, GitBranch, Sigma, Split } from "lucide-react";
+import { CheckCircle2, Clock3, DollarSign, GitBranch, MessageSquareText, Sigma } from "lucide-react";
 import type { ReactNode } from "react";
 import {
   formatCost,
@@ -50,7 +50,6 @@ export function WorkflowSummaryCards({
     metrics.totalCalls > 0
       ? ((metrics.totalCalls - failedCalls) / metrics.totalCalls) * 100
       : 0;
-
   return (
     <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
       <SummaryCard
@@ -84,12 +83,11 @@ export function WorkflowSummaryCards({
         icon={<DollarSign className="h-4 w-4" />}
       />
       <SummaryCard
-        label="평균 질문 수"
-        value="미제공"
-        hint="세션별 최종 질문 집계 API 필요"
-        icon={<Split className="h-4 w-4" />}
+        label="출력 토큰"
+        value={formatNumber(metrics.totalOutputTokens)}
+        hint="모델이 생성한 응답 토큰"
+        icon={<MessageSquareText className="h-4 w-4" />}
       />
     </section>
   );
 }
-
