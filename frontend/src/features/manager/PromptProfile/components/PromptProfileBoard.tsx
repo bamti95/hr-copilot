@@ -1,6 +1,6 @@
 import { Pagination } from "../../../../common/components/Pagination";
 import type { PromptProfileListResponse, PromptProfileResponse } from "../types";
-import { formatDateTime } from "../../common/formatDateTime";
+import { formatDateTime } from "../../Common/formatDateTime";
 
 interface PromptProfileBoardProps {
   data: PromptProfileListResponse;

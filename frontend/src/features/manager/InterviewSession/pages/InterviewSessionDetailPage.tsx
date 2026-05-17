@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageIntro } from "../../../../common/components/PageIntro";
 import { getErrorMessage } from "../../../../utils/getErrorMessage";
-import { getJobPositionLabel } from "../../common/candidateJobPosition";
+import { getJobPositionLabel } from "../../Common/candidateJobPosition";
 import { InterviewSessionAssembledPayloadView } from "../components/InterviewSessionAssembledPayloadView";
 import { InterviewSessionQuestionGenerationView } from "../components/InterviewSessionQuestionGenerationView";
 import { fetchInterviewSessionDetail } from "../services/interviewSessionService";

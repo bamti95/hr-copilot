@@ -1,8 +1,8 @@
 import { useLayoutEffect, useRef } from "react";
 import { Pagination } from "../../../../common/components/Pagination";
 import { StatusPill } from "../../../../common/components/StatusPill";
-import { getJobPositionLabel } from "../../common/candidateJobPosition";
-import { formatDateTime } from "../../common/formatDateTime";
+import { getJobPositionLabel } from "../../Common/candidateJobPosition";
+import { formatDateTime } from "../../Common/formatDateTime";
 
 import type {
   CandidateApplyStatus,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getJobPositionLabel } from "../../common/candidateJobPosition";
+import { getJobPositionLabel } from "../../Common/candidateJobPosition";
 import {
   formatScreeningRecommendation,
   getDefaultScreeningSelectedRowIds,

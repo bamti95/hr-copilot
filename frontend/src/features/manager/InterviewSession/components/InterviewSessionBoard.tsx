@@ -3,7 +3,7 @@ import { Pagination } from "../../../../common/components/Pagination";
 import {
   CANDIDATE_JOB_POSITION_OPTIONS,
   getJobPositionLabel,
-} from "../../common/candidateJobPosition";
+} from "../../Common/candidateJobPosition";
 import type {
   InterviewSessionCandidateOption,
   InterviewSessionFormState,
@@ -11,7 +11,7 @@ import type {
   InterviewSessionPromptProfileOption,
 } from "../types";
 
-import { formatDateTime } from "../../common/formatDateTime"; 
+import { formatDateTime } from "../../Common/formatDateTime"; 
 
 interface InterviewSessionBoardProps {
   data: InterviewSessionListResponse;

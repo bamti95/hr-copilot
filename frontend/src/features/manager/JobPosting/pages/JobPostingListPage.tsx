@@ -1,6 +1,7 @@
 import { FileSearch, FileText, RefreshCw, Search } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Pagination } from "../../../../common/components/Pagination";
 import { PageIntro } from "../../../../common/components/PageIntro";
 import { fetchJobPostings } from "../services/jobPostingService";
 import type { JobPostingResponse } from "../types";
@@ -12,7 +13,9 @@ export default function JobPostingPage() {
 export function JobPostingListPage() {
   const navigate = useNavigate();
   const [items, setItems] = useState<JobPostingResponse[]>([]);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [keywordInput, setKeywordInput] = useState("");
   const [keyword, setKeyword] = useState("");
@@ -23,8 +26,13 @@ export function JobPostingListPage() {
     setIsLoading(true);
     setErrorMessage("");
     try {
-      const data = await fetchJobPostings({ page, size: 10, keyword });
+      const data = await fetchJobPostings({
+        page: page - 1,
+        size: pageSize,
+        keyword,
+      });
       setItems(data.items);
+      setTotalCount(data.totalCount);
       setTotalPages(data.totalPages);
     } catch (error) {
       setErrorMessage(
@@ -35,7 +43,7 @@ export function JobPostingListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [keyword, page]);
+  }, [keyword, page, pageSize]);
 
   useEffect(() => {
     void load();
@@ -75,22 +83,51 @@ export function JobPostingListPage() {
       />
 
       <section className="rounded-[28px] border border-white/70 bg-[var(--panel)] p-5 shadow-[var(--shadow)]">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
           <form
-            className="relative w-full md:max-w-md"
+            className="grid w-full gap-3 md:grid-cols-[minmax(0,1fr)_160px_auto] xl:max-w-3xl"
             onSubmit={(event) => {
               event.preventDefault();
-              setPage(0);
+              setPage(1);
               setKeyword(keywordInput.trim());
             }}
           >
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              value={keywordInput}
-              onChange={(event) => setKeywordInput(event.target.value)}
-              className={`${inputClassName} pl-10`}
-              placeholder="회사명, 공고명, 직무로 검색"
-            />
+            <label className="text-sm font-medium text-[var(--text)]">
+              검색어
+              <div className="relative mt-2">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={keywordInput}
+                  onChange={(event) => setKeywordInput(event.target.value)}
+                  className={`${inputClassName} pl-10`}
+                  placeholder="회사명, 공고명, 직무로 검색"
+                />
+              </div>
+            </label>
+            <label className="text-sm font-medium text-[var(--text)]">
+              페이지 크기
+              <select
+                value={pageSize}
+                onChange={(event) => {
+                  setPage(1);
+                  setPageSize(Number(event.target.value));
+                }}
+                className={`${inputClassName} mt-2`}
+              >
+                {[10, 20, 50, 100].map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="submit"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 md:mt-7"
+            >
+              <Search className="h-4 w-4" />
+              검색
+            </button>
           </form>
           <button
             type="button"
@@ -162,31 +199,19 @@ export function JobPostingListPage() {
           </table>
         </div>
 
-        <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
-          <span>
-            {isLoading ? "불러오는 중..." : `페이지 ${page + 1} / ${Math.max(totalPages, 1)}`}
-          </span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={page <= 0}
-              onClick={() => setPage((current) => Math.max(0, current - 1))}
-              className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 disabled:opacity-40"
-            >
-              이전
-            </button>
-            <button
-              type="button"
-              disabled={totalPages > 0 ? page + 1 >= totalPages : true}
-              onClick={() => setPage((current) => current + 1)}
-              className="rounded-xl border border-[var(--line)] bg-white px-3 py-2 disabled:opacity-40"
-            >
-              다음
-            </button>
-          </div>
-        </div>
+        {isLoading ? (
+          <div className="mt-4 text-sm text-slate-500">불러오는 중...</div>
+        ) : null}
+        <Pagination
+          paging={{
+            page,
+            size: pageSize,
+            totalCount,
+            totalPages,
+          }}
+          onPageChange={setPage}
+        />
       </section>
     </div>
   );
 }
-

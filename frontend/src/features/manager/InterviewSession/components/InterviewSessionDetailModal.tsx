@@ -1,7 +1,7 @@
 import { CheckCircle2, LoaderCircle, RefreshCcw, UserRound, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getErrorMessage } from "../../../../utils/getErrorMessage";
-import { getJobPositionLabel } from "../../common/candidateJobPosition";
+import { getJobPositionLabel } from "../../Common/candidateJobPosition";
 import { InterviewSessionQuestionGenerationView } from "./InterviewSessionQuestionGenerationView";
 import { triggerInterviewQuestionGeneration } from "../services/interviewSessionService";
 import type {

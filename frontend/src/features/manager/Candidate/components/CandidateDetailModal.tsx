@@ -10,7 +10,7 @@ import {
   Upload,
 } from "lucide-react";
 import { StatusPill } from "../../../../common/components/StatusPill";
-import { getJobPositionLabel } from "../../common/candidateJobPosition";
+import { getJobPositionLabel } from "../../Common/candidateJobPosition";
 import { CANDIDATE_APPLY_STATUS_LABEL } from "../types";
 import type {
   CandidateApplyStatus,

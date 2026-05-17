@@ -1,4 +1,4 @@
-import { getJobPositionLabel } from "../../common/candidateJobPosition";
+import { getJobPositionLabel } from "../../Common/candidateJobPosition";
 import type { PromptProfileFormState } from "../types";
 import { DEPARTMENT_REALITY_QUESTIONS, resolveDepartmentRealityLabel } from "./departmentRealityPresets";
 

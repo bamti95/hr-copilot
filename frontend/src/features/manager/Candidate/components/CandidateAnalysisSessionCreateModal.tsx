@@ -3,7 +3,7 @@ import { getErrorMessage } from "../../../../utils/getErrorMessage";
 import {
   getJobPositionLabel,
   isMatchingPromptProfile,
-} from "../../common/candidateJobPosition";
+} from "../../Common/candidateJobPosition";
 import { fetchPromptProfileList } from "../../PromptProfile/services/promptProfileService";
 import type {
   AnalysisSessionGraphPipeline,

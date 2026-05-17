@@ -1,5 +1,5 @@
 import { Pagination } from "../../../../common/components/Pagination";
-import { formatDateTime } from "../../common/formatDateTime"
+import { formatDateTime } from "../../Common/formatDateTime"
 import { StatusPill } from "../../../../common/components/StatusPill";
 import type { ManagerListResponse, ManagerResponse } from "../types";
 import { getRoleLabel } from "./managerLabels";

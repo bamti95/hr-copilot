@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from "react";
 import type { CandidateJobPosition } from "../../Candidate/types";
-import { CANDIDATE_JOB_POSITION_OPTIONS } from "../../common/candidateJobPosition";
+import { CANDIDATE_JOB_POSITION_OPTIONS } from "../../Common/candidateJobPosition";
 import type { PromptProfileFormState } from "../types";
 import { buildAgentSystemPrompt } from "../utils/buildAgentSystemPrompt";
 import { EDUCATION_SUGGESTIONS, getPromptProfileChipSuggestions } from "../utils/chipPresets";

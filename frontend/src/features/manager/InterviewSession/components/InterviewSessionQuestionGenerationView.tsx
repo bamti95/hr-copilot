@@ -17,7 +17,7 @@ import type {
   InterviewQuestionGenerationStatusResponse,
 } from "../types";
 
-import { formatDateTime } from "../../common/formatDateTime";
+import { formatDateTime } from "../../Common/formatDateTime";
 import { InterviewSessionQuestionCard } from "./InterviewSessionQuestionCard";
 
 interface InterviewSessionQuestionGenerationViewProps {

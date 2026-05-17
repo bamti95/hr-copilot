@@ -1,4 +1,4 @@
-import { getJobPositionLabel } from "../../common/candidateJobPosition";
+import { getJobPositionLabel } from "../../Common/candidateJobPosition";
 import type {
   InterviewSessionDetailResponse,
   InterviewSessionPayloadDocument,
