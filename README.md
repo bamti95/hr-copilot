@@ -11,6 +11,7 @@
 - **진행 기간**: 2026.04.10 ~ 2026.05.19
 - **서비스 유형**: 웹 애플리케이션 / REST API / AI Agent
 - **한 줄 소개**: 채용공고(JD)와 지원자 서류를 AI가 분석하여 성과·역량 검증 중심의 면접 가이드를 자동 생성하고, 채용공고 컴플라이언스는 법률 기반지식 RAG로 검증하는 HR 맞춤 AI 에이전트
+- **배포 주소**: 프론트 `https://www.hr-agent.kr` · API `https://api.hr-agent.kr` (또는 팀 배포 서버)
 
 ### 1.2 프로젝트 목적
 
@@ -30,9 +31,9 @@
 
 ### 3.1 지원자 및 문서 관리
 
-- **지원자 일괄 등록**: CSV 기반 지원자 일괄 등록 및 사전 선별 결과 확인
+- **지원자 신규/일괄 등록**: 신규 등록 탭(개별 입력) + CSV 기반 일괄 등록 및 사전 선별 결과 확인
 - **문서 일괄 업로드**: 이력서/포트폴리오(PDF, DOCX) 일괄 업로드 및 자동 텍스트 추출
-- **문서 일괄등록(미리보기)**: `POST /api/v1/candidates/document-bulk/preview`* → `AiJob(DOCUMENT_BULK_IMPORT)` 폴링 후 확정 등록
+- **문서 일괄등록(미리보기)**: `POST /api/v1/candidates/document-bulk/preview` → `AiJob(DOCUMENT_BULK_IMPORT)` 폴링 후 확정 등록
 - **지능형 문서 추출**: PyMuPDF + RapidOCR(이미지 기반 PDF) 복합 처리로 정확도 향상 (BackgroundTasks, 문서별 비동기 추출)
 - **지원자 상태 추적**: 지원 완료 → 분석 중 → 준비 완료까지 실시간 상태 관리
 
@@ -55,30 +56,32 @@ build_state → analyzer → questioner → selector_lite → predictor
 ```
 
 - **파이프라인 변형 API**:
-  - `POST /api/v1/interview-sessions` — `default`
-  - `POST /api/v1/interview-sessions/pipeline/jh` — `jh` (실험용 별도 그래프)
+  - `POST /api/v1/interview-sessions` — `HS` (HS 멀티에이전트, default)
+  - `POST /api/v1/interview-sessions/pipeline/jh` — `jh` (JH 멀티에이전트)
   - `POST /api/v1/interview-sessions/pipeline/jy` — `jy` (JY 멀티에이전트)
-  - `POST /api/v1/interview-sessions/pipeline/hy` — `hy` (내부적으로 default와 동일 실행)
+  - `POST /api/v1/interview-sessions/pipeline/hy` — `hy` (HY 멀티에이전트)
   - `POST /api/v1/interview-sessions/{id}/generate-questions` — body의 `graph_impl` 지정 가능
-- **비동기 실행**: `interview_sessions.question_generation_`* 필드 + FastAPI `BackgroundTasks` (`AiJob` 미사용)
+- **비동기 실행**: `interview_sessions.question_generation_*` 필드 + FastAPI `BackgroundTasks` (`AiJob` 미사용)
 - **면접 가이드 패키지 생성**: 직무 적합도, 질문 의도, 평가 기준, 예상 답변, 꼬리 질문 세트
 - **종합 평가 리포트**: 역량 적합성, 리스크 요소, 보완 필요 역량 종합 의견 제시
-- **LLM 로그**: `llm_call_log` 저장 + LangSmith (`LANGCHAIN_`*) 트레이싱
+- **LLM 로그**: `llm_call_log` 저장 + LangSmith (`LANGCHAIN_*`) 트레이싱
 
 ### 3.4 채용공고 컴플라이언스 & RAG
 
 - **공고 분석**: 텍스트/파일 입력 → Rule 기반 위험 문구 탐지 → 이슈별 hybrid RAG 검색 → 구조화 컴플라이언스 리포트
 - **지식베이스 관리**: 법령·가이드·점검 사례 PDF/DOCX 업로드, `sample_data` 시드, 청킹·임베딩·pgvector 저장
 - **관리자 검색 테스트**: HYBRID / KEYWORD / VECTOR 모드로 chunk 검색 검증
-- **RAG 실험실**: 배치 평가 (`/manager/job-posting-experiments`)
+- **RAG 실험실**: 배치 평가 (`/manager/job-posting-experiments`) + 실험 케이스별 상세 결과 조회
 - **비동기 작업**: `AiJob` — `JOB_POSTING_COMPLIANCE_ANALYSIS`, `JOB_POSTING_KNOWLEDGE_INDEXING`, `JOB_POSTING_EXPERIMENT_RUN`
 
 상세 아키텍처는 [5 채용공고 RAG 시스템](#5-채용공고-rag-시스템) 참고.
 
 ### 3.5 워크플로우 대시보드 및 LLM 로그 관리
 
+- **매니저 대시보드**: 지원자·면접 세션·채용공고 RAG 분석 현황을 한눈에 조회 (`GET /api/v1/manager/dashboard/summary`)
+- **AI 사용량 대시보드**: 모델별 출력 토큰·비용 요약 카드 + LLM 호출 이력 조회 (`GET /api/v1/llm-usage/summary`)
 - **워크플로우 시각화**: `frontend/src/features/workflowDashboard/` — 세션별 LangGraph 노드 실행 흐름 및 상세 로그 조회
-- **LLM 비용 추적**: 모델별 토큰 사용량 실시간 추적 및 자동 비용 계산
+- **파이프라인 분리 로그**: 면접 질문 생성 vs 채용공고 분석 파이프라인 로그 별도 조회
 - **LangSmith 연동**: AI 에이전트 호출 추적 및 트러블슈팅 데이터 확보
 - **채용공고 분석 로그**: `GET /api/v1/llm-logs/job-posting-analysis-reports/{report_id}` 등
 
@@ -87,7 +90,7 @@ build_state → analyzer → questioner → selector_lite → predictor
 플랫폼은 **면접 질문 생성**, **채용공고 컴플라이언스 분석**, **법률 기반지식 인덱싱** 세 트랙으로 동작합니다.
 
 ```text
-[면접] 지원자·서류 등록 → 텍스트 추출 → 세션 생성 → LangGraph(default) → interview_questions 저장
+[면접] 지원자·서류 등록 → 텍스트 추출 → 세션 생성 → LangGraph → interview_questions 저장
 
 [채용공고] 공고 입력/업로드 → AiJob 분석 → detect_issues(rule) → hybrid RAG → analysis_report 저장
 
@@ -99,7 +102,7 @@ graph TD
     subgraph InterviewTrack [면접 질문 생성]
         Input[지원자 정보 및 서류 업로드] --> Parsing[텍스트 추출 PyMuPDF + RapidOCR]
         Parsing --> CandDB[(지원자 및 문서 DB)]
-        Profile[프롬프트 프로필 선택] --> Agent[LangGraph default]
+        Profile[프롬프트 프로필 선택] --> Agent[LangGraph]
         CandDB -->|서류 데이터| Agent
         Agent --> Questions[면접 질문 및 평가 가이드]
     end
@@ -191,6 +194,7 @@ flowchart TB
 
 - **동기**: 텍스트/파일 분석 API
 - **비동기**: `POST .../analyze-text/jobs`, `analyze-file/jobs`, `/{id}/analysis-reports/jobs` → `run_analysis_job()`
+- **작업 취소**: 분석 중 AiJob 취소 + background polling 분리 지원
 - **Trace**: `job_posting_trace_service.py` — `detect_risk_phrases`, `vector_retrieve`, `bm25_retrieve`, `rerank_evidence` 등
 
 ### 5.5 RAG 관련 환경 변수
@@ -217,8 +221,9 @@ flowchart TB
 - BGE-M3 임베딩 + pgvector cosine 검색
 - PostgreSQL FTS 기반 hybrid 검색 (BM25 대체)
 - metadata exact, hybrid merge, BGE rerank, 근거 충분성 heuristic
-- `AiJob` 비동기 분석·인덱싱·실험
-- 관리자 UI: 공고 분석, 리포트, 지식베이스, 검색 테스트, 실험실
+- 리스크 등급 산정 로직 및 2차 규칙 보강 (risk_50 데이터셋 50/50 달성)
+- `AiJob` 비동기 분석·인덱싱·실험 + 작업 취소 및 복구
+- 관리자 UI: 공고 분석, 리포트, 지식베이스, 검색 테스트, 실험실(케이스별 결과)
 
 **로드맵 (미구현)**
 
@@ -230,30 +235,32 @@ flowchart TB
 ### 5.7 프론트엔드 RAG UI
 
 
-| 경로                                        | 기능                   |
-| ----------------------------------------- | -------------------- |
-| `/manager/job-postings`                   | 채용공고 목록              |
-| `/manager/job-postings/new`               | 분석 제출 + AiJob 폴링     |
-| `/manager/job-postings/:postingId`        | 공고 상세·분석 이력          |
-| `/manager/job-postings/:postingId/report` | 리스크·매칭 근거·개선안 리포트    |
-| `/manager/job-postings/knowledge-sources` | 지식베이스 업로드·인덱싱·검색 테스트 |
-| `/manager/job-posting-experiments`        | RAG 배치 실험            |
+| 경로                                                  | 기능                        |
+| --------------------------------------------------- | ------------------------- |
+| `/manager/job-postings`                             | 채용공고 목록 (페이지네이션)          |
+| `/manager/job-postings/new`                         | 분석 제출 + AiJob 폴링          |
+| `/manager/job-postings/:postingId`                  | 공고 상세·분석 이력               |
+| `/manager/job-postings/:postingId/report`           | 리스크·매칭 근거·개선안 리포트         |
+| `/manager/job-postings/knowledge-sources`           | 지식베이스 업로드·인덱싱·검색 테스트      |
+| `/manager/job-posting-experiments`                  | RAG 배치 실험 목록              |
+| `/manager/job-posting-experiments/:runId`           | 실험 케이스별 상세 결과             |
 
 
 ## 6. 기술 스택 (Tech Stack)
 
 
-| 구분             | 기술 스택                                                       | 비고                            |
-| -------------- | ----------------------------------------------------------- | ----------------------------- |
-| **Front-End**  | React 19, TypeScript, Zustand, TanStack Query, TailwindCSS  | 고성능 상태 관리 및 UI 구현             |
-| **Back-End**   | Python 3.12, FastAPI                                        | Async/Await 기반 비동기 처리         |
-| **Database**   | PostgreSQL + pgvector, SQLAlchemy, Alembic                  | RAG 벡터 저장 및 관계형 데이터 관리        |
-| **AI / Agent** | LangGraph, OpenAI API, LangSmith                            | 면접 질문 에이전트 워크플로우 제어 및 추적      |
-| **RAG**        | sentence-transformers, BAAI/bge-m3, BAAI/bge-reranker-v2-m3 | 채용공고 기반지식 임베딩·rerank (로컬)     |
-| **검색**         | PostgreSQL FTS (`ts_rank_cd`)                               | hybrid 검색 시 BM25 대체 full-text |
-| **비동기 작업**     | FastAPI BackgroundTasks + `ai_job` 테이블                      | Celery 없이 장시간 작업 추적           |
-| **문서 처리**      | PyMuPDF, RapidOCR, python-docx                              | PDF/DOCX 텍스트 추출 및 OCR         |
-| **인증**         | JWT (Bearer Token), Bcrypt                                  | 관리자 계정 인증 및 보안                |
+| 구분             | 기술 스택                                                        | 비고                            |
+| -------------- | ------------------------------------------------------------ | ----------------------------- |
+| **Front-End**  | React 19, TypeScript, Zustand, TailwindCSS 4, React Router 6 | 고성능 상태 관리 및 UI 구현             |
+| **Back-End**   | Python 3.12, FastAPI                                         | Async/Await 기반 비동기 처리         |
+| **Database**   | PostgreSQL + pgvector, SQLAlchemy, Alembic                   | RAG 벡터 저장 및 관계형 데이터 관리        |
+| **AI / Agent** | LangGraph, OpenAI API, LangSmith                             | 면접 질문 에이전트 워크플로우 제어 및 추적      |
+| **RAG**        | sentence-transformers, BAAI/bge-m3, BAAI/bge-reranker-v2-m3  | 채용공고 기반지식 임베딩·rerank (로컬)     |
+| **검색**         | PostgreSQL FTS (`ts_rank_cd`)                                | hybrid 검색 시 BM25 대체 full-text |
+| **비동기 작업**     | FastAPI BackgroundTasks + `ai_job` 테이블                       | Celery 없이 장시간 작업 추적           |
+| **문서 처리**      | PyMuPDF, RapidOCR, python-docx                               | PDF/DOCX 텍스트 추출 및 OCR         |
+| **인증**         | JWT (Bearer Token + Refresh Token), Bcrypt                   | 관리자 계정 인증 및 보안                |
+| **배포**         | Vercel (프론트), 팀 서버 (백엔드)                                     | SPA rewrite 설정 포함             |
 
 
 ## 7. 시스템 아키텍처
@@ -266,7 +273,7 @@ graph TD
     end
 
     subgraph API_Layer [API 및 Auth]
-        Auth["JWT Auth Bearer Token"]
+        Auth["JWT Auth Bearer Token + Refresh Token"]
         Router["FastAPI Router REST API"]
     end
 
@@ -275,7 +282,8 @@ graph TD
         Candidate["지원자 및 문서 관리"]
         InterviewGraph["면접 LangGraph default jh jy"]
         JobPostingRAG["채용공고 RAG 및 컴플라이언스"]
-        CostLog["로그 및 비용 관리"]
+        Dashboard["매니저 대시보드 및 AI 사용량"]
+        CostLog["LLM 로그 및 비용 관리"]
     end
 
     subgraph Data_Layer [데이터 계층]
@@ -290,8 +298,8 @@ graph TD
     end
 
     Admin & User --> Auth --> Router
-    Router --> Account & Candidate & InterviewGraph & JobPostingRAG
-    Account & Candidate & InterviewGraph & JobPostingRAG --> DB
+    Router --> Account & Candidate & InterviewGraph & JobPostingRAG & Dashboard
+    Account & Candidate & InterviewGraph & JobPostingRAG & Dashboard --> DB
     Candidate & JobPostingRAG --> FS
     InterviewGraph --> OpenAI
     InterviewGraph --> LangSmith
@@ -304,20 +312,23 @@ graph TD
 ## 8. 주요 데이터 모델
 
 
-| 모델                             | 설명                                                |
-| ------------------------------ | ------------------------------------------------- |
-| `manager`                      | 관리자 계정 및 권한                                       |
-| `candidate`                    | 지원자 정보 및 상태                                       |
-| `document`                     | 업로드 문서 및 추출 텍스트                                   |
-| `prompt_profile`               | 부서/직무별 AI 분석 전략 프로필                               |
-| `interview_session`            | 면접 분석 세션 및 `question_generation_*` 상태             |
-| `interview_question`           | 생성된 면접 질문 세트                                      |
-| `job_posting`                  | 채용공고 정보                                           |
-| `job_posting_analysis_report`  | 컴플라이언스 분석 결과, matched_evidence, retrieval_summary |
-| `job_posting_knowledge_source` | RAG 기반지식 원본 및 인덱스 상태                              |
-| `job_posting_knowledge_chunk`  | RAG 지식 청크 및 pgvector embedding                    |
-| `ai_job`                       | 비동기 작업 (공고 분석, 지식 인덱싱, 실험, 문서 bulk preview 등)     |
-| `llm_call_log`                 | 면접·채용공고 분석 LLM 호출 및 토큰/비용 기록                      |
+| 모델                                    | 설명                                                |
+| ------------------------------------- | ------------------------------------------------- |
+| `manager`                             | 관리자 계정 및 권한                                       |
+| `manager_refresh_token`               | 관리자 Refresh Token 해시 및 만료 관리                      |
+| `candidate`                           | 지원자 정보 및 상태                                       |
+| `document`                            | 업로드 문서 및 추출 텍스트                                   |
+| `prompt_profile`                      | 부서/직무별 AI 분석 전략 프로필                               |
+| `interview_session`                   | 면접 분석 세션 및 `question_generation_*` 상태             |
+| `interview_question`                  | 생성된 면접 질문 세트                                      |
+| `job_posting`                         | 채용공고 정보                                           |
+| `job_posting_analysis_report`         | 컴플라이언스 분석 결과, matched_evidence, retrieval_summary |
+| `job_posting_knowledge_source`        | RAG 기반지식 원본 및 인덱스 상태                              |
+| `job_posting_knowledge_chunk`         | RAG 지식 청크 및 pgvector embedding                    |
+| `job_posting_experiment_run`          | RAG 배치 실험 실행 단위 (데이터셋·설정·요약 지표)                   |
+| `job_posting_experiment_case_result`  | RAG 실험 케이스별 결과 (정답·예측·지연시간·payload)               |
+| `ai_job`                              | 비동기 작업 (공고 분석, 지식 인덱싱, 실험, 문서 bulk preview 등)     |
+| `llm_call_log`                        | 면접·채용공고 분석 LLM 호출 및 토큰/비용 기록                      |
 
 
 ## 9. 프로젝트 구조
@@ -325,7 +336,7 @@ graph TD
 ```
 hr-copilot/
 ├── backend/                          # FastAPI 백엔드
-│   ├── main.py                       # 애플리케이션 진입점
+│   ├── main.py                       # 애플리케이션 진입점 (CORS, lifespan)
 │   ├── ai/
 │   │   ├── interview_graph/          # HS 에이전트 워크플로우
 │   │   ├── interview_graph_JH/       # JH 에이전트 워크플로우
@@ -334,37 +345,48 @@ hr-copilot/
 │   │   ├── graph_usage.py            # LangGraph 노드별 LLM usage 수집 유틸
 │   │   └── llm_client.py             # OpenAI 클라이언트
 │   ├── api/v1/routers/
+│   │   ├── auth/                     # JWT 인증 (로그인, refresh)
+│   │   ├── candidate_router.py       # 지원자·문서 API
 │   │   ├── job_posting_router.py     # 채용공고·RAG·실험 API
 │   │   ├── sessions_router.py        # 면접 세션·질문 생성 API
-│   │   └── ...
+│   │   ├── manager_dashboard_router.py # 매니저 대시보드 요약 API
+│   │   ├── llm_usage_router.py       # AI 사용량 대시보드 API
+│   │   ├── llm_call_log_router.py    # LLM 호출 로그 API
+│   │   └── prompt_profile_router.py  # 프롬프트 프로필 API
 │   ├── services/
-│   │   ├── job_posting_service.py           # 공고 분석·AiJob
-│   │   ├── job_posting_knowledge_service.py   # 지식 인덱싱
-│   │   ├── job_posting_embedding_service.py   # BGE 임베딩·rerank
-│   │   ├── job_posting_retrieval_service.py   # hybrid RAG 검색
-│   │   ├── job_posting_report_service.py      # 리포트·근거 충분성
-│   │   ├── job_posting_trace_service.py       # 분석 trace
-│   │   ├── question_generation_service.py     # 면접 그래프 실행
-│   │   └── document_bulk_import_service.py    # 문서 일괄등록
+│   │   ├── job_posting_service.py                 # 공고 분석·AiJob
+│   │   ├── job_posting_knowledge_service.py        # 지식 인덱싱
+│   │   ├── job_posting_embedding_service.py        # BGE 임베딩·rerank
+│   │   ├── job_posting_retrieval_service.py        # hybrid RAG 검색
+│   │   ├── job_posting_report_service.py           # 리포트·근거 충분성
+│   │   ├── job_posting_trace_service.py            # 분석 trace
+│   │   ├── question_generation_service.py          # 면접 그래프 실행
+│   │   ├── session_generation_payload_assembler.py # 세션 입력 조립
+│   │   ├── document_bulk_import_service.py         # 문서 일괄등록
+│   │   ├── manager_dashboard_service.py            # 대시보드 요약
+│   │   └── llm_usage_service.py                   # AI 사용량 집계
 │   ├── models/
 │   ├── schemas/
 │   ├── repositories/
 │   ├── common/                       # 문서 추출, 파일 처리
 │   ├── core/                         # DB, config, security
+│   ├── scripts/                      # 유틸리티 스크립트 (케이스 검증 등)
 │   └── alembic/
 │
 ├── frontend/                         # React 프론트엔드
+│   ├── vercel.json                   # Vercel SPA rewrite 설정
 │   └── src/
 │       ├── features/
+│       │   ├── auth/                     # 로그인
 │       │   ├── manager/
-│       │   │   ├── Candidate/            # 지원자·일괄등록
+│       │   │   ├── Candidate/            # 지원자·신규등록·일괄등록
 │       │   │   ├── Document/
 │       │   │   ├── InterviewSession/     # 면접 세션
 │       │   │   ├── InterviewQuestion/
 │       │   │   ├── PromptProfile/
 │       │   │   ├── JobPosting/           # 채용공고·RAG·실험실
-│       │   │   ├── LlmUsageDashboard/
-│       │   │   ├── Dashboard/
+│       │   │   ├── LlmUsageDashboard/    # AI 사용량 (출력토큰 요약카드)
+│       │   │   ├── Dashboard/            # 매니저 대시보드
 │       │   │   └── Manager/
 │       │   └── workflowDashboard/        # LangGraph 워크플로우 시각화
 │       └── app/router/
@@ -388,15 +410,18 @@ hr-copilot/
 `backend/.env_example`을 `backend/.env`로 복사 후 설정합니다.
 
 
-| 변수                                                        | 필수  | 설명                    |
-| --------------------------------------------------------- | --- | --------------------- |
-| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | O   | PostgreSQL            |
-| `JWT_SECRET_KEY`                                          | O   | JWT 서명                |
-| `OPENAI_API_KEY`                                          | O   | 면접 LangGraph LLM      |
-| `UPLOAD_PATH`                                             | 권장  | 업로드 파일 루트             |
-| `LANGCHAIN_API_KEY`                                       | 선택  | LangSmith             |
-| `CORS_ORIGINS`                                            | 선택  | 추가 프론트 origin (쉼표 구분) |
-| `JOB_POSTING_*`                                           | 선택  | RAG 임베딩·검색 튜닝 (§5.5)  |
+| 변수                                                        | 필수  | 설명                                        |
+| --------------------------------------------------------- | --- | ----------------------------------------- |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | O   | PostgreSQL                                |
+| `JWT_SECRET_KEY`                                          | O   | JWT 서명                                    |
+| `OPENAI_API_KEY`                                          | O   | 면접 LangGraph LLM                          |
+| `OPENAI_MODEL`                                            | 권장  | 사용할 OpenAI 모델명 (기본값: `gpt-4o-mini`)       |
+| `OPENAI_TIMEOUT_SECONDS`                                  | 선택  | OpenAI 요청 타임아웃 (기본값: `360`)               |
+| `UPLOAD_PATH`                                             | 권장  | 업로드 파일 루트                                 |
+| `LANGCHAIN_API_KEY`                                       | 선택  | LangSmith                                 |
+| `LANGCHAIN_PROJECT`                                       | 선택  | LangSmith 프로젝트명 (기본값: `HR-Copilot`)       |
+| `CORS_ORIGINS`                                            | 선택  | 추가 프론트 origin (쉼표 구분)                     |
+| `JOB_POSTING_*`                                           | 선택  | RAG 임베딩·검색 튜닝 (§5.5)                      |
 
 
 RAG 기능 최초 실행 시 `BAAI/bge-m3` 모델 다운로드에 시간이 걸릴 수 있습니다.
@@ -421,6 +446,14 @@ npm run dev
 기본 URL: 프론트 `http://localhost:5173` · API `http://localhost:8000`
 
 API 상세: [docs/api-docs/](docs/api-docs/)
+
+### 10.5 배포 환경
+
+| 구분       | URL                                    | 비고                        |
+| -------- | -------------------------------------- | ------------------------- |
+| 프론트엔드    | `https://www.hr-agent.kr`              | Vercel (SPA rewrite 설정 포함) |
+| 프론트엔드(미러) | `https://hr-copilot-sage.vercel.app`   | Vercel 자동 배포              |
+| 백엔드 API  | 팀 배포 서버                               | CORS에 위 두 도메인 허용          |
 
 ## 11. 프로젝트 일정
 
