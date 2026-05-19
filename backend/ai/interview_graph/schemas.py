@@ -13,8 +13,19 @@ class DocumentEvidence(GraphBaseModel):
     document_id: int | None = None
     document_type: str | None = None
     title: str | None = None
-    quote: str
-    reason: str
+    quote: str = ""
+    reason: str = ""
+
+    @field_validator("quote", "reason", mode="before")
+    @classmethod
+    def stringify_text(cls, value: Any) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, list):
+            return "\n".join(str(item) for item in value if str(item).strip())
+        if isinstance(value, dict):
+            return " ".join(str(item) for item in value.values() if str(item).strip())
+        return str(value)
 
 
 class DocumentAnalysisOutput(GraphBaseModel):
@@ -24,6 +35,39 @@ class DocumentAnalysisOutput(GraphBaseModel):
     document_evidence: list[DocumentEvidence] = Field(default_factory=list)
     job_fit: str
     questionable_points: list[str] = Field(default_factory=list)
+
+    @field_validator(
+        "strengths",
+        "weaknesses",
+        "risks",
+        "questionable_points",
+        mode="before",
+    )
+    @classmethod
+    def normalize_text_list(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return [str(item) for item in value if str(item).strip()]
+        return [str(value)] if str(value).strip() else []
+
+    @field_validator("document_evidence", mode="before")
+    @classmethod
+    def normalize_document_evidence(cls, value: Any) -> list[dict[str, Any]]:
+        if value is None:
+            return []
+        raw_items = value if isinstance(value, list) else [value]
+        normalized: list[dict[str, Any]] = []
+        for item in raw_items:
+            if isinstance(item, dict):
+                quote = item.get("quote") or item.get("text") or item.get("evidence") or ""
+                reason = item.get("reason") or item.get("basis") or item.get("description") or ""
+                normalized.append({**item, "quote": quote, "reason": reason})
+            else:
+                text = str(item).strip()
+                if text:
+                    normalized.append({"quote": text, "reason": "document evidence"})
+        return normalized
 
 
 QuestionCategory = Literal[
@@ -115,20 +159,14 @@ def normalize_question_category(value: Any) -> str:
 
 
 class QuestionCandidate(GraphBaseModel):
-    id: str
+    id: str = ""
     category: QuestionCategory
     question_text: str
-    generation_basis: str = Field(max_length=QUESTION_GENERATION_BASIS_MAX_CHARS)
-    document_evidence: list[str] = Field(
-        default_factory=list,
-        max_length=QUESTION_DOCUMENT_EVIDENCE_MAX_ITEMS,
-    )
-    evaluation_guide: str = Field(max_length=QUESTION_EVALUATION_GUIDE_MAX_CHARS)
-    risk_tags: list[str] = Field(default_factory=list, max_length=QUESTION_TAG_MAX_ITEMS)
-    competency_tags: list[str] = Field(
-        default_factory=list,
-        max_length=QUESTION_TAG_MAX_ITEMS,
-    )
+    generation_basis: str = ""
+    document_evidence: list[str] = Field(default_factory=list)
+    evaluation_guide: str = ""
+    risk_tags: list[str] = Field(default_factory=list)
+    competency_tags: list[str] = Field(default_factory=list)
 
     @field_validator("category", mode="before")
     @classmethod
