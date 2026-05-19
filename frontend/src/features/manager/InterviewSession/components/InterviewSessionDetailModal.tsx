@@ -1,9 +1,10 @@
 import { CheckCircle2, LoaderCircle, RefreshCcw, UserRound, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getErrorMessage } from "../../../../utils/getErrorMessage";
 import { getJobPositionLabel } from "../../Common/candidateJobPosition";
 import { InterviewSessionQuestionGenerationView } from "./InterviewSessionQuestionGenerationView";
 import { triggerInterviewQuestionGeneration } from "../services/interviewSessionService";
+import { useInterviewQuestionRegenerationStore } from "../store/interviewQuestionRegenerationStore";
 import type {
   InterviewSessionDetailResponse,
   InterviewSessionGraphPipeline,
@@ -62,15 +63,19 @@ export function InterviewSessionDetailModal({
   onDelete,
 }: InterviewSessionDetailModalProps) {
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
-  const [regeneratingQuestionIds, setRegeneratingQuestionIds] = useState<string[]>([]);
   const [questionRefreshKey, setQuestionRefreshKey] = useState(0);
-  const [isQuestionActionPending, setIsQuestionActionPending] = useState(false);
   const [isQuestionGenerationBusy, setIsQuestionGenerationBusy] = useState(false);
   const [questionActionError, setQuestionActionError] = useState("");
   const [graphPipeline, setGraphPipeline] =
     useState<InterviewSessionGraphPipeline>("default");
-  const isQuestionRegenerationLocked =
-    isQuestionActionPending || regeneratingQuestionIds.length > 0;
+  const startRegenerationJob = useInterviewQuestionRegenerationStore(
+    (state) => state.startJob,
+  );
+  const backgroundRegenerationJob = useInterviewQuestionRegenerationStore((state) =>
+    detail ? state.jobs[detail.id] : undefined,
+  );
+  const regeneratingQuestionIds = backgroundRegenerationJob?.targetQuestionIds ?? [];
+  const isQuestionRegenerationLocked = Boolean(backgroundRegenerationJob);
 
   const context = useMemo(() => {
     if (!detail) {
@@ -83,23 +88,43 @@ export function InterviewSessionDetailModal({
     if (!open) {
       setSelectedQuestionIds([]);
       setQuestionActionError("");
-      setIsQuestionActionPending(false);
       setIsQuestionGenerationBusy(false);
-      setRegeneratingQuestionIds([]);
     }
   }, [open]);
 
   useEffect(() => {
     setSelectedQuestionIds([]);
-    setRegeneratingQuestionIds([]);
     setQuestionActionError("");
   }, [detail?.id]);
 
   const handleQuestionRegenerationComplete = useCallback(() => {
-    setRegeneratingQuestionIds([]);
-    setIsQuestionActionPending(false);
     setSelectedQuestionIds([]);
+    setQuestionRefreshKey((current) => current + 1);
   }, []);
+
+  const wasTrackingRegenerationRef = useRef(false);
+
+  useEffect(() => {
+    if (!detail?.id) {
+      wasTrackingRegenerationRef.current = false;
+      return;
+    }
+
+    const sessionId = detail.id;
+    wasTrackingRegenerationRef.current = Boolean(
+      useInterviewQuestionRegenerationStore.getState().jobs[sessionId],
+    );
+
+    const unsubscribe = useInterviewQuestionRegenerationStore.subscribe((state) => {
+      const isTracking = Boolean(state.jobs[sessionId]);
+      if (wasTrackingRegenerationRef.current && !isTracking) {
+        handleQuestionRegenerationComplete();
+      }
+      wasTrackingRegenerationRef.current = isTracking;
+    });
+
+    return unsubscribe;
+  }, [detail?.id, handleQuestionRegenerationComplete]);
 
   if (!open) {
     return null;
@@ -111,19 +136,23 @@ export function InterviewSessionDetailModal({
     }
 
     try {
-      setIsQuestionActionPending(true);
       setQuestionActionError("");
-      setRegeneratingQuestionIds(selectedQuestionIds);
+      const targetQuestionIds = [...selectedQuestionIds];
       await triggerInterviewQuestionGeneration(detail.id, {
         triggerType: "REGENERATE_SELECTED",
-        targetQuestionIds: selectedQuestionIds,
+        targetQuestionIds,
         graphPipeline,
       });
+      startRegenerationJob({
+        sessionId: detail.id,
+        targetQuestionIds,
+        completedAtBaseline: null,
+        requestedAtBaseline: null,
+        baselineCaptured: false,
+        candidateName: detail.candidateName,
+      });
       setSelectedQuestionIds([]);
-      setQuestionRefreshKey((current) => current + 1);
     } catch (error) {
-      setRegeneratingQuestionIds([]);
-      setIsQuestionActionPending(false);
       setQuestionActionError(
         getErrorMessage(error, "선택한 질문 재생성 요청에 실패했습니다."),
       );
@@ -138,11 +167,7 @@ export function InterviewSessionDetailModal({
   return (
     <div
       className="fixed inset-0 z-[95] flex items-center justify-center overflow-hidden bg-slate-950/45 p-2 backdrop-blur-sm sm:p-4"
-      onClick={() => {
-        if (!isQuestionRegenerationLocked) {
-          onClose();
-        }
-      }}
+      onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
@@ -168,7 +193,7 @@ export function InterviewSessionDetailModal({
             className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--line)] bg-white/80 text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
             onClick={onClose}
             aria-label="닫기"
-            disabled={isSaving || isQuestionRegenerationLocked}
+            disabled={isSaving}
           >
             <X className="h-5 w-5" />
           </button>
@@ -236,7 +261,7 @@ export function InterviewSessionDetailModal({
                 type="button"
                 className="inline-flex h-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={() => onDelete(detail.id, detail.candidateName)}
-                disabled={isSaving || isQuestionRegenerationLocked}
+                disabled={isSaving}
               >
                 세션 삭제
               </button>
@@ -282,7 +307,7 @@ export function InterviewSessionDetailModal({
                   type="button"
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-[var(--primary)] to-[var(--primary-strong)] px-5 text-sm font-semibold text-white shadow-[0_18px_36px_color-mix(in_srgb,var(--primary)_24%,transparent)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={handleConfirmQuestions}
-                  disabled={isSaving || isQuestionRegenerationLocked}
+                  disabled={isSaving}
                 >
                   <CheckCircle2 className="h-4 w-4" />
                   질문 확정
@@ -291,7 +316,7 @@ export function InterviewSessionDetailModal({
                   type="button"
                   className="inline-flex h-11 items-center justify-center rounded-2xl border border-[var(--line)] bg-[var(--panel-strong)] px-5 text-sm font-semibold text-[var(--text)] transition hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={onClose}
-                  disabled={isSaving || isQuestionRegenerationLocked}
+                  disabled={isSaving}
                 >
                   닫기
                 </button>
