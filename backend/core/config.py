@@ -53,7 +53,7 @@ class Settings:
     QUESTION_GENERATION_STALE_SECONDS: float = float(
         os.getenv("QUESTION_GENERATION_STALE_SECONDS", 1800)
     )
-    UPLOAD_PATH: str = os.getenv("UPLOAD_PATH")
+    UPLOAD_PATH: str = os.getenv("UPLOAD_PATH", "")
     
     # ==============================
     # LANGSMITH 추가
