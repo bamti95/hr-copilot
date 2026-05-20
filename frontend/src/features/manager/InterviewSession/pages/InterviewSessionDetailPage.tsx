@@ -127,7 +127,10 @@ export default function InterviewSessionDetailPage({
             </div>
           </section>
 
-          <InterviewSessionQuestionGenerationView sessionId={detail.id} />
+          <InterviewSessionQuestionGenerationView
+            sessionId={detail.id}
+            regenerationCandidateName={detail.candidateName}
+          />
 
           <InterviewSessionAssembledPayloadView detail={detail} />
         </>

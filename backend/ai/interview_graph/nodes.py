@@ -506,6 +506,132 @@ def _fallback_follow_up(question_id: str) -> FollowUpQuestion:
 # 여기부터 HR COPILOT AI 노드들 ㅎ
 
 # 초기 상태 구성 노드 - build_state_node
+def _fallback_document_analysis(state: AgentState, error: Exception) -> DocumentAnalysisOutput:
+    has_extracted_text = _has_extracted_text(state)
+    if has_extracted_text:
+        job_fit = (
+            "문서 분석 노드의 structured output 파싱에 실패해 보수적 요약으로 대체했습니다. "
+            "후속 질문은 지원자 문서 원문과 채용 기준을 직접 참고해 생성해야 합니다."
+        )
+        questionable_points = [
+            "문서 근거를 질문별로 다시 확인해야 합니다.",
+            "역할 범위, 성과 수치, 직무 관련성을 면접에서 검증해야 합니다.",
+        ]
+    else:
+        job_fit = "추출된 지원자 문서 텍스트가 부족해 직무 적합성을 판단하기 어렵습니다."
+        questionable_points = [
+            "지원자 문서 텍스트 추출 여부를 확인해야 합니다.",
+            "문서 근거가 부족하므로 확인 질문 중심으로 구성해야 합니다.",
+        ]
+
+    return DocumentAnalysisOutput(
+        strengths=[],
+        weaknesses=["문서 분석 결과를 구조화하지 못해 약점 판단을 보류했습니다."],
+        risks=[f"analyzer_structured_output_failed: {error}"],
+        document_evidence=[],
+        job_fit=job_fit,
+        questionable_points=questionable_points,
+    )
+
+
+def _fallback_question_candidates(
+    state: AgentState,
+    *,
+    target_question_ids: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    target_job = state.get("target_job") or "지원 직무"
+    analysis = state.get("document_analysis", {}) or {}
+    questionable_points = [
+        str(point)
+        for point in analysis.get("questionable_points", [])
+        if str(point).strip()
+    ]
+    risks = [str(risk) for risk in analysis.get("risks", []) if str(risk).strip()]
+    bases = questionable_points + risks
+    if not bases:
+        bases = [
+            "지원자 문서의 핵심 경험과 직무 관련성을 확인해야 합니다.",
+            "문서 근거가 부족한 부분은 면접에서 직접 검증해야 합니다.",
+        ]
+
+    templates = [
+        (
+            "EXPERIENCE",
+            f"{target_job}와 관련해 문서에 기재된 경험 중 본인이 직접 맡았던 역할과 산출물을 설명해 주세요.",
+            "문서 기반 경험의 실제 수행 범위를 확인합니다.",
+            "본인 역할, 사용 기술, 결과를 구체적으로 말하는지 확인",
+            ["역할_검증"],
+            ["경험_검증"],
+        ),
+        (
+            "RISK",
+            "문서에 적힌 성과나 기여도 중 면접에서 가장 검증이 필요하다고 생각하는 부분은 무엇이며, 근거는 무엇인가요?",
+            "성과 수치와 기여 범위의 과장 가능성을 확인합니다.",
+            "성과 근거와 본인 기여 범위를 구분해 설명하는지 확인",
+            ["성과_근거_검증"],
+            ["리스크_검증"],
+        ),
+        (
+            "JOB_SKILL",
+            f"{target_job} 업무를 수행할 때 가장 자신 있는 문제 해결 방식과 실제 적용 사례를 설명해 주세요.",
+            "직무 수행 방식과 문제 해결력을 확인합니다.",
+            "문제 정의, 실행 과정, 결과가 논리적으로 연결되는지 확인",
+            [],
+            ["직무_역량"],
+        ),
+        (
+            "TECH",
+            "최근 프로젝트나 업무에서 사용한 기술 또는 도구를 선택한 이유와 한계를 설명해 주세요.",
+            "기술 선택의 맥락과 실무 이해도를 확인합니다.",
+            "기술 선택 이유와 대안 검토 경험이 있는지 확인",
+            [],
+            ["기술_역량"],
+        ),
+        (
+            "COMMUNICATION",
+            "협업 중 의견이 달랐던 상황에서 어떤 기준으로 조율했고 결과는 어땠는지 설명해 주세요.",
+            "협업 커뮤니케이션과 갈등 조정 방식을 확인합니다.",
+            "이해관계 조율 방식과 커뮤니케이션 태도를 확인",
+            [],
+            ["커뮤니케이션"],
+        ),
+        (
+            "MOTIVATION",
+            f"{target_job}에 지원한 이유와 입사 후 가장 먼저 기여하고 싶은 영역을 설명해 주세요.",
+            "지원 동기와 직무 이해도를 확인합니다.",
+            "지원 동기가 직무 요구와 연결되는지 확인",
+            [],
+            ["지원_동기"],
+        ),
+    ]
+
+    limit = len(target_question_ids) if target_question_ids else 10
+    questions: list[dict[str, Any]] = []
+    for index in range(limit):
+        category, question_text, basis, guide, risk_tags, competency_tags = templates[
+            index % len(templates)
+        ]
+        evidence = bases[index % len(bases)]
+        question_id = (
+            str(target_question_ids[index])
+            if target_question_ids and index < len(target_question_ids)
+            else f"q_{index + 1:03d}"
+        )
+        questions.append(
+            {
+                "id": question_id,
+                "category": normalize_question_category(category),
+                "question_text": question_text,
+                "generation_basis": basis,
+                "document_evidence": [evidence],
+                "evaluation_guide": guide,
+                "risk_tags": risk_tags,
+                "competency_tags": competency_tags,
+            }
+        )
+    return questions
+
+
 async def build_state_node(state: AgentState) -> AgentState:
     '''
     입력 payload → LLM이 이해 가능한 상태로 변환
@@ -532,15 +658,33 @@ async def analyzer_node(state: AgentState) -> AgentState:
     3. 리스크 포인트
     생성
     '''
-    result, llm_usages = await _call_structured_output(
-        node_name="analyzer",
-        system_prompt=prompts.ANALYZER_SYSTEM_PROMPT,
-        user_prompt=prompts.ANALYZER_USER_PROMPT.format(
-            candidate_text=state.get("candidate_context", ""),
-            recruitment_criteria=_json(_build_recruitment_context(state)),
-        ),
-        response_model=DocumentAnalysisOutput,
-    )
+    try:
+        result, llm_usages = await _call_structured_output(
+            node_name="analyzer",
+            system_prompt=prompts.ANALYZER_SYSTEM_PROMPT,
+            user_prompt=prompts.ANALYZER_USER_PROMPT.format(
+                candidate_text=state.get("candidate_context", ""),
+                recruitment_criteria=_json(_build_recruitment_context(state)),
+            ),
+            response_model=DocumentAnalysisOutput,
+        )
+    except Exception as exc:  # noqa: BLE001 - keep graph alive with conservative analysis.
+        logger.warning("Analyzer node failed; using fallback analysis: %s", exc)
+        llm_usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
+        result = _fallback_document_analysis(state, exc)
+        return {
+            **state,
+            "document_analysis": result.model_dump(mode="json"),
+            "llm_usages": llm_usages,
+            "node_warnings": [
+                *state.get("node_warnings", []),
+                {
+                    "node": "analyzer",
+                    "message": "DocumentAnalysisOutput 생성에 실패해 보수적 분석 결과로 대체했습니다.",
+                    "error": str(exc),
+                },
+            ],
+        }
     return {
         **state,
         "document_analysis": result.model_dump(mode="json"),
@@ -567,32 +711,52 @@ async def questioner_node(state: AgentState) -> AgentState:
     if profile_prompt:
         system_prompt = f"{profile_prompt}\n\n{system_prompt}"
 
-    result, llm_usages = await _call_structured_output(
-        node_name="questioner",
-        system_prompt=system_prompt,
-        user_prompt=prompts.QUESTIONER_USER_PROMPT.format(
-            question_count_instruction=question_count_instruction,
-            target_job=state.get("target_job"),
-            difficulty_level=state.get("difficulty_level"),
-            human_action=human_action,
-            additional_instruction=state.get("additional_instruction"),
-            regen_question_ids=target_question_ids,
-            candidate_text=state.get("candidate_context", ""),
-            document_analysis=_json(state.get("document_analysis", {})),
-            existing_questions=_json(
-                {
-                    "items": existing_questions,
-                    "retry_feedback": state.get("retry_feedback"),
-                }
+    try:
+        result, llm_usages = await _call_structured_output(
+            node_name="questioner",
+            system_prompt=system_prompt,
+            user_prompt=prompts.QUESTIONER_USER_PROMPT.format(
+                question_count_instruction=question_count_instruction,
+                target_job=state.get("target_job"),
+                difficulty_level=state.get("difficulty_level"),
+                human_action=human_action,
+                additional_instruction=state.get("additional_instruction"),
+                regen_question_ids=target_question_ids,
+                candidate_text=state.get("candidate_context", ""),
+                document_analysis=_json(state.get("document_analysis", {})),
+                existing_questions=_json(
+                    {
+                        "items": existing_questions,
+                        "retry_feedback": state.get("retry_feedback"),
+                    }
+                ),
             ),
-        ),
-        response_model=QuestionerOutput,
-    )
-
-    new_questions = [
-        question.model_dump(mode="json")
-        for question in result.questions
-    ]
+            response_model=QuestionerOutput,
+        )
+        new_questions = [
+            question.model_dump(mode="json")
+            for question in result.questions
+        ]
+    except Exception as exc:  # noqa: BLE001 - keep graph alive with conservative questions.
+        logger.warning("Questioner node failed; using fallback questions: %s", exc)
+        llm_usages = exc.usages if isinstance(exc, StructuredOutputCallError) else []
+        new_questions = _fallback_question_candidates(
+            state,
+            target_question_ids=target_question_ids
+            if human_action == "regenerate_question"
+            else None,
+        )
+        state = {
+            **state,
+            "node_warnings": [
+                *state.get("node_warnings", []),
+                {
+                    "node": "questioner",
+                    "message": "QuestionerOutput 생성에 실패해 기본 검증 질문으로 대체했습니다.",
+                    "error": str(exc),
+                },
+            ],
+        }
 
     normalized_questions = []
     for index, question in enumerate(new_questions):

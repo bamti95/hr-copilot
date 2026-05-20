@@ -1,4 +1,8 @@
 import { Outlet } from "react-router-dom";
+import {
+  InterviewQuestionRegenerationBanner,
+  InterviewQuestionRegenerationTracker,
+} from "../../features/manager/InterviewSession/components/InterviewQuestionRegenerationTracker";
 import { useSidebar } from "../../hooks/useSidebar";
 import { ManagerHeader } from "./ManagerHeader";
 import { ManagerSidebar } from "./ManagerSidebar";
@@ -12,6 +16,8 @@ export function ManagerLayout() {
       <div className="min-w-0 flex-1 p-3 md:p-6">
         <ManagerHeader onToggleSidebar={toggleSidebar} />
         <main className="flex flex-col gap-3 md:gap-4">
+          <InterviewQuestionRegenerationTracker />
+          <InterviewQuestionRegenerationBanner />
           <Outlet />
         </main>
       </div>

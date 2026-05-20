@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -18,10 +18,12 @@ import type {
 } from "../types";
 
 import { formatDateTime } from "../../Common/formatDateTime";
+import { useInterviewQuestionRegenerationStore } from "../store/interviewQuestionRegenerationStore";
 import { InterviewSessionQuestionCard } from "./InterviewSessionQuestionCard";
 
 interface InterviewSessionQuestionGenerationViewProps {
   sessionId: number;
+  regenerationCandidateName?: string;
   compact?: boolean;
   selectable?: boolean;
   graphPipeline?: InterviewSessionGraphPipeline;
@@ -88,6 +90,7 @@ function getGenerationStatusMessage(status: InterviewQuestionGenerationStatus) {
 
 export function InterviewSessionQuestionGenerationView({
   sessionId,
+  regenerationCandidateName,
   compact = false,
   selectable = false,
   graphPipeline = "default",
@@ -99,6 +102,12 @@ export function InterviewSessionQuestionGenerationView({
   onRegenerationComplete,
   onSelectedQuestionIdsChange,
 }: InterviewSessionQuestionGenerationViewProps) {
+  const startRegenerationJob = useInterviewQuestionRegenerationStore(
+    (state) => state.startJob,
+  );
+  const backgroundRegenerationJob = useInterviewQuestionRegenerationStore(
+    (state) => state.jobs[sessionId],
+  );
   const [data, setData] = useState<InterviewQuestionGenerationStatusResponse | null>(
     null,
   );
@@ -112,15 +121,20 @@ export function InterviewSessionQuestionGenerationView({
     completedAt: string | null;
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const hasNotifiedRegenerationCompleteRef = useRef(false);
 
   const isRunning = data ? RUNNING_STATUSES.has(data.status) : false;
+  const effectiveRegeneratingQuestionIds =
+    backgroundRegenerationJob?.targetQuestionIds.length
+      ? backgroundRegenerationJob.targetQuestionIds
+      : regeneratingQuestionIds;
   const regeneratingQuestionIdSet = useMemo(
-    () => new Set(regeneratingQuestionIds),
-    [regeneratingQuestionIds],
+    () => new Set(effectiveRegeneratingQuestionIds),
+    [effectiveRegeneratingQuestionIds],
   );
-  const hasTargetedRegeneration = regeneratingQuestionIds.length > 0;
+  const hasTargetedRegeneration = effectiveRegeneratingQuestionIds.length > 0;
   const isRegenerationTracking =
-    isRegenerationPending || hasTargetedRegeneration;
+    Boolean(backgroundRegenerationJob) || isRegenerationPending || hasTargetedRegeneration;
   const areQuestionActionsDisabled =
     isRunning || isTriggering || isRegenerationTracking;
   const showFullRegenerateButton =
@@ -216,9 +230,10 @@ export function InterviewSessionQuestionGenerationView({
   }, [isRunning, isRegenerationTracking, loadStatus]);
 
   useEffect(() => {
-    if (!isRegenerationTracking) {
+    if (!isRegenerationTracking || backgroundRegenerationJob) {
       setHasObservedRegenerationRunning(false);
       setRegenerationBaseline(null);
+      hasNotifiedRegenerationCompleteRef.current = false;
       return;
     }
 
@@ -231,20 +246,26 @@ export function InterviewSessionQuestionGenerationView({
           }
         : null),
     );
-  }, [data, isRegenerationTracking]);
+  }, [backgroundRegenerationJob, data, isRegenerationTracking]);
 
   useEffect(() => {
-    if (!isRegenerationTracking) {
+    if (!isRegenerationTracking || backgroundRegenerationJob) {
       return;
     }
 
     if (isRunning) {
       setHasObservedRegenerationRunning(true);
     }
-  }, [isRegenerationTracking, isRunning]);
+  }, [backgroundRegenerationJob, isRegenerationTracking, isRunning]);
 
   useEffect(() => {
-    if (!isRegenerationTracking || !data || isRunning) {
+    if (
+      backgroundRegenerationJob ||
+      !isRegenerationTracking ||
+      !data ||
+      isRunning ||
+      hasNotifiedRegenerationCompleteRef.current
+    ) {
       return;
     }
 
@@ -253,9 +274,11 @@ export function InterviewSessionQuestionGenerationView({
       data.completedAt !== regenerationBaseline.completedAt;
 
     if (hasObservedRegenerationRunning || hasNewCompletedResult) {
+      hasNotifiedRegenerationCompleteRef.current = true;
       onRegenerationComplete?.();
     }
   }, [
+    backgroundRegenerationJob,
     data,
     hasObservedRegenerationRunning,
     isRegenerationTracking,
@@ -271,6 +294,14 @@ export function InterviewSessionQuestionGenerationView({
       await triggerInterviewQuestionGeneration(sessionId, {
         triggerType: "MANUAL",
         graphPipeline,
+      });
+      startRegenerationJob({
+        sessionId,
+        targetQuestionIds: [],
+        completedAtBaseline: data?.completedAt ?? null,
+        requestedAtBaseline: data?.requestedAt ?? null,
+        baselineCaptured: Boolean(data),
+        candidateName: regenerationCandidateName,
       });
       onSelectedQuestionIdsChange?.([]);
       await loadStatus({ quiet: true });
@@ -411,7 +442,7 @@ export function InterviewSessionQuestionGenerationView({
           <div className="min-w-0">
             <p className="font-bold">
               {hasTargetedRegeneration
-                ? `${regeneratingQuestionIds.length}개 질문을 재생성 중입니다.`
+                ? `${effectiveRegeneratingQuestionIds.length}개 질문을 재생성 중입니다.`
                 : "질문 전체를 재생성 중입니다."}
             </p>
             <p className="mt-1 break-words text-xs leading-5 text-sky-700 [overflow-wrap:anywhere]">
