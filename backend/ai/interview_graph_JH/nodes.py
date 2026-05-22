@@ -100,6 +100,26 @@ def _list_from_value(value: Any) -> list[str]:
     return [str(value).strip()] if str(value).strip() else []
 
 
+def _normalize_document_evidence(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            lines = [
+                part.strip(" -•\t")
+                for part in text.replace("\r", "\n").split("\n")
+                if part.strip(" -•\t")
+            ]
+            return lines or [text]
+        return _list_from_value(parsed)
+    return _list_from_value(value)
+
+
 def _average(values: dict[str, int] | None, fallback: float = 3.0) -> float:
     if not values:
         return fallback
@@ -629,7 +649,7 @@ def _candidate_to_question(candidate: QuestionCandidate, question_id: str) -> Qu
         "focus_area": candidate.focus_area.strip() or "technical_depth",
         "category": candidate.category.strip() or "직무역량",
         "generation_basis": candidate.generation_basis.strip(),
-        "document_evidence": candidate.document_evidence.strip(),
+        "document_evidence": _normalize_document_evidence(candidate.document_evidence),
         "question_text": _normalize_question_text(candidate.question_text),
         "evaluation_guide": candidate.evaluation_guide.strip(),
         "status": "pending",

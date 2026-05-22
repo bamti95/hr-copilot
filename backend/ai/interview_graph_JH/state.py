@@ -45,7 +45,7 @@ class QuestionSet(TypedDict, total=False):
     focus_area: str
     category: str
     generation_basis: str
-    document_evidence: str
+    document_evidence: list[str]
 
     question_text: str
     evaluation_guide: str

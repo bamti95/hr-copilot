@@ -178,7 +178,12 @@ def _normalize_document_evidence(value: Any) -> list[str]:
         try:
             parsed = json.loads(text)
         except json.JSONDecodeError:
-            parsed = [text]
+            lines = [
+                part.strip(" -•\t")
+                for part in text.replace("\r", "\n").split("\n")
+                if part.strip(" -•\t")
+            ]
+            parsed = lines or [text]
         else:
             if not isinstance(parsed, list):
                 parsed = [parsed]
