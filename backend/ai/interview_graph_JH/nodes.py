@@ -923,6 +923,17 @@ def _questions_to_evaluate(questions: list[QuestionSet]) -> list[QuestionSet]:
     return targets
 
 
+def _needs_llm_enrichment(question: QuestionSet, field_name: str) -> bool:
+    """Only enrich fresh/retried candidates that are still in-flight.
+
+    Approved historical questions can arrive without enrichment fields populated.
+    Re-sending them to predictor/driller increases latency and token cost without
+    affecting the final selection.
+    """
+
+    return question.get("status") == "pending" and not question.get(field_name)
+
+
 def _hard_issue(issue_types: list[str]) -> bool:
     return bool(set(issue_types) & HARD_REVIEW_ISSUES)
 
@@ -1597,7 +1608,11 @@ async def predictor_node(state: AgentState) -> AgentState:
     errors = list(state.get("errors") or [])
     raw_outputs = dict(state.get("raw_outputs") or {})
     questions = deepcopy(state.get("questions") or [])
-    targets = [question for question in questions if not question.get("predicted_answer")]
+    targets = [
+        question
+        for question in questions
+        if _needs_llm_enrichment(question, "predicted_answer")
+    ]
     if not targets:
         return {**state, "llm_usages": []}
 
@@ -1659,7 +1674,11 @@ async def driller_node(state: AgentState) -> AgentState:
     errors = list(state.get("errors") or [])
     raw_outputs = dict(state.get("raw_outputs") or {})
     questions = deepcopy(state.get("questions") or [])
-    targets = [question for question in questions if not question.get("follow_up_questions")]
+    targets = [
+        question
+        for question in questions
+        if _needs_llm_enrichment(question, "follow_up_questions")
+    ]
     if not targets:
         return {**state, "llm_usages": []}
 

@@ -208,6 +208,8 @@ def _normalize_action(action: Any) -> str:
     action_text = str(action or "").strip()
     if action_text in {"regenerate", "regenerate_question"}:
         return "regenerate_selected"
+    if action_text == "regenerate_batch":
+        return "regenerate_batch"
     if action_text in {"more", "more_questions", "add_question"}:
         return "add_question"
     return "generate"
